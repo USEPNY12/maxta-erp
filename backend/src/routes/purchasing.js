@@ -22,8 +22,13 @@ router.get('/vendors/:id', authenticate, async (req, res) => {
   try {
     const [vendors] = await pool.query('SELECT * FROM vendors WHERE id = ?', [req.params.id]);
     if (!vendors.length) return res.status(404).json({ error: 'Vendor not found' });
-    res.json(vendors[0]);
-  } catch (error) { res.status(500).json({ error: error.message }); }
+    const [items] = await pool.query(`SELECT iv.*, i.item_number, i.description FROM item_vendors iv JOIN items i ON iv.item_id = i.id WHERE iv.vendor_id = ?`, [req.params.id]);
+    const [recentPOs] = await pool.query('SELECT id, po_number, order_date, status, total FROM purchase_orders WHERE vendor_id = ? ORDER BY order_date DESC LIMIT 20', [req.params.id]);
+    const [receipts] = await pool.query(`SELECT pr.id, pr.receipt_number, pr.receipt_date, pr.status, po.po_number FROM po_receipts pr JOIN purchase_orders po ON pr.purchase_order_id = po.id WHERE po.vendor_id = ? ORDER BY pr.receipt_date DESC LIMIT 20`, [req.params.id]);
+    const [openAP] = await pool.query('SELECT id, invoice_number, invoice_date, due_date, total, status, amount_paid FROM ap_invoices WHERE vendor_id = ? ORDER BY invoice_date DESC LIMIT 20', [req.params.id]);
+    const [payments] = await pool.query('SELECT * FROM vendor_payments WHERE vendor_id = ? ORDER BY payment_date DESC LIMIT 20', [req.params.id]);
+    res.json({ ...vendors[0], items, recent_pos: recentPOs, receipts, open_ap: openAP, payments });
+  } catch (error) { console.error('Vendor detail error:', error); res.status(500).json({ error: error.message }); }
 });
 router.post('/vendors', authenticate, async (req, res) => {
   try {
@@ -644,7 +649,7 @@ router.get('/inventory-transactions', authenticate, async (req, res) => {
 router.get('/vendor-items', authenticate, async (req, res) => {
   try {
     const { vendor_id, item_id } = req.query;
-    let query = 'SELECT vi.*, i.item_number, i.description, v.company_name FROM vendor_items vi JOIN items i ON vi.item_id = i.id JOIN vendors v ON vi.vendor_id = v.id WHERE 1=1';
+    let query = 'SELECT vi.*, i.item_number, i.description, v.company_name FROM item_vendors vi JOIN items i ON vi.item_id = i.id JOIN vendors v ON vi.vendor_id = v.id WHERE 1=1';
     const params = [];
     if (vendor_id) { query += ' AND vi.vendor_id = ?'; params.push(vendor_id); }
     if (item_id) { query += ' AND vi.item_id = ?'; params.push(item_id); }
