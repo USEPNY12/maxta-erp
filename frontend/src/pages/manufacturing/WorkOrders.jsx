@@ -1,3 +1,4 @@
+import { LabelPrintButton } from "../../components/LabelPrint";
 import FileAttachments from '../../components/FileAttachments';
 import DocumentActions from '../../components/DocumentActions';
 import React, { useState, useEffect } from 'react';
@@ -423,6 +424,7 @@ function WorkOrders() {
                   {selected.status === 'planned' && <button className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-4 py-1.5 rounded font-bold" onClick={() => handleAction('release')}>Release</button>}
                   {selected.status === 'scheduled' && <button className="bg-green-500 hover:bg-green-600 text-white text-sm px-4 py-1.5 rounded font-bold" onClick={() => handleAction('start')}>Start</button>}
                   {['in_progress','scheduled','released'].includes(selected.status) && <button className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-1.5 rounded font-bold" onClick={() => handleAction('complete')}>Complete</button>}
+                  <LabelPrintButton type="work-order" id={selected.id} size="large" label="Print Production Label" />
                   <button className="text-gray-400 hover:text-white text-2xl px-2 ml-2" onClick={() => setShowDetail(false)}>×</button>
                 </div>
               </div>

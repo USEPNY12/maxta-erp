@@ -1,3 +1,4 @@
+import { LabelPrintButton } from "../../components/LabelPrint";
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -757,6 +758,7 @@ function ItemDetail() {
           ))}
         </div>
         <div className="flex gap-2">
+          {!isNew && <LabelPrintButton type="item" id={id} size="medium" label="Print Label" />}
           <button className="erp-btn erp-btn-primary" onClick={handleSave}>OK</button>
           <button className="erp-btn" onClick={() => navigate('/inventory/items')}>Cancel</button>
         </div>

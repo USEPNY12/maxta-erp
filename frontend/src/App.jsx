@@ -4,6 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import api from './services/api';
 import Login from './pages/Login';
+import Scanner from "./pages/Scanner";
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import InventoryHome from './pages/inventory/InventoryHome';
@@ -132,6 +133,7 @@ function App() {
       <ToastContainer position="top-right" autoClose={3000} />
       <Routes>
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+        <Route path="/scanner" element={user ? <Scanner /> : <Navigate to="/login" />} />
         <Route path="/" element={user ? <Layout /> : <Navigate to="/login" />}>
           <Route index element={<Dashboard />} />
           {/* Inventory */}
