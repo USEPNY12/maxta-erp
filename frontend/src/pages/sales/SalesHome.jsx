@@ -1,16 +1,14 @@
 import React from 'react';
 import ModulePage from '../../components/ModulePage';
 import Flowchart from '../../components/Flowchart';
-
 function SalesHome() {
   return (
     <ModulePage
-      title="Sales Home"
+      title="Sales"
       quickActions={[
         { label: 'New Quote', path: '/sales/quotes?new=true' },
         { label: 'New Order', path: '/sales/orders?new=true' },
         { label: 'New Shipment', path: '/sales/shipments?new=true' },
-        { label: 'New Invoice', path: '/sales/invoices?new=true' },
         { label: 'New Customer', path: '/sales/customers?new=true' },
       ]}
       setupItems={[
@@ -22,62 +20,76 @@ function SalesHome() {
       ]}
       menuItems={[
         { label: 'Sales Home', path: '/sales', icon: '🏠' },
-        { label: 'Internet Orders', path: '/sales/internet-orders', icon: '🌐' },
         { label: 'Quotes', path: '/sales/quotes', icon: '📝' },
         { label: 'Orders', path: '/sales/orders', icon: '📋' },
         { label: 'Shipments', path: '/sales/shipments', icon: '🚚' },
-        { label: 'A/R Invoices', path: '/sales/ar-invoices', icon: '💰' },
+        { label: 'A/R Invoices', path: '/sales/invoices', icon: '💰' },
         { label: 'Customers', path: '/sales/customers', icon: '👥' },
-        { label: 'Customer Pricing', path: '/sales/customer-pricing', icon: '💲' },
-        { label: 'Warranty', path: '/sales/warranty', icon: '🛡️' },
-        { label: 'ERP-Order Import', path: '/sales/import', icon: '📥' },
       ]}
       reports={{
         type: 'Sales',
-        options: ['Sales Invoice Register', 'Open Orders', 'Bookings Report', 'Shipment Report', 'Commission Report']
+        options: ['Sales Invoice Register', 'Open Orders', 'Bookings Report', 'Shipment Report', 'Aging Report']
       }}
     >
-      <Flowchart title="Sales Process">
-        <Flowchart.Box text="Customer Requests Quote" />
-        <Flowchart.Arrow direction="down" />
-        <Flowchart.Row>
-          <Flowchart.Box text="Customer On File?" />
-          <Flowchart.Arrow direction="right" label="NO" />
-          <Flowchart.Box text="Add New Customer" />
-        </Flowchart.Row>
-        <Flowchart.Arrow direction="down" label="YES" />
-        <Flowchart.Row>
-          <Flowchart.Box text="Enter New Quote" />
-          <Flowchart.Arrow direction="right" />
-          <Flowchart.Box text="Print/E-Mail Quote" />
-        </Flowchart.Row>
-        <Flowchart.Arrow direction="down" />
-        <Flowchart.Box text="Customer Places Order" />
-        <Flowchart.Arrow direction="down" />
-        <Flowchart.Row>
-          <Flowchart.Box text="Product in Stock?" highlight />
-          <Flowchart.Arrow direction="right" label="NO" />
-          <Flowchart.Box text="Create Mfg. Order" />
-          <Flowchart.Arrow direction="right" />
-          <Flowchart.Box text="Receipt Mfg. Order" />
-        </Flowchart.Row>
-        <Flowchart.Arrow direction="down" label="YES" />
-        <Flowchart.Box text="Convert to Order" />
-        <Flowchart.Arrow direction="down" />
-        <Flowchart.Row>
-          <Flowchart.Box text="Print Picking Slip" />
-          <Flowchart.Arrow direction="right" />
-          <Flowchart.Box text="Generate Shipment" />
-          <Flowchart.Arrow direction="right" />
-          <Flowchart.Box text="Print Bill of Lading" />
-          <Flowchart.Arrow direction="right" />
-          <Flowchart.Box text="Generate & Post AR Invoice" />
-          <Flowchart.Arrow direction="right" />
-          <Flowchart.Box text="Print/E-Mail Invoice" />
-        </Flowchart.Row>
-      </Flowchart>
+      <div className="p-4">
+        <h2 className="text-sm font-bold text-gray-700 mb-3">Glass Fabrication — Quote to Cash Flow</h2>
+        <div className="flex items-center gap-2 flex-wrap mb-6">
+          <div className="bg-blue-100 border border-blue-300 rounded px-3 py-2 text-center min-w-[100px]">
+            <div className="text-[10px] text-blue-600 font-bold">QUOTE</div>
+            <div className="text-[9px] text-gray-600">Glass specs, pricing</div>
+          </div>
+          <div className="text-gray-400 text-lg">→</div>
+          <div className="bg-green-100 border border-green-300 rounded px-3 py-2 text-center min-w-[100px]">
+            <div className="text-[10px] text-green-600 font-bold">SALES ORDER</div>
+            <div className="text-[9px] text-gray-600">Customer accepts</div>
+          </div>
+          <div className="text-gray-400 text-lg">→</div>
+          <div className="bg-orange-100 border border-orange-300 rounded px-3 py-2 text-center min-w-[100px]">
+            <div className="text-[10px] text-orange-600 font-bold">PRODUCTION</div>
+            <div className="text-[9px] text-gray-600">Work Orders created</div>
+          </div>
+          <div className="text-gray-400 text-lg">→</div>
+          <div className="bg-purple-100 border border-purple-300 rounded px-3 py-2 text-center min-w-[100px]">
+            <div className="text-[10px] text-purple-600 font-bold">SHIPMENT</div>
+            <div className="text-[9px] text-gray-600">Pick, pack, deliver</div>
+          </div>
+          <div className="text-gray-400 text-lg">→</div>
+          <div className="bg-red-100 border border-red-300 rounded px-3 py-2 text-center min-w-[100px]">
+            <div className="text-[10px] text-red-600 font-bold">INVOICE</div>
+            <div className="text-[9px] text-gray-600">Bill & collect</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="border rounded p-3">
+            <h3 className="text-xs font-bold mb-2">How It Works</h3>
+            <ol className="text-[10px] text-gray-700 space-y-1 list-decimal pl-4">
+              <li><strong>Create Quote</strong> — Enter glass specs (type, thickness, size, edge), quantities, pricing</li>
+              <li><strong>Send to Customer</strong> — Email PDF quote with drawings for approval</li>
+              <li><strong>Customer Accepts</strong> — Mark quote as accepted</li>
+              <li><strong>Convert to Order</strong> — Creates Sales Order with all specs copied</li>
+              <li><strong>Release to Production</strong> — Creates Work Orders for each line item</li>
+              <li><strong>Manufacturing</strong> — Glass moves through cutting, edging, tempering, etc.</li>
+              <li><strong>Create Shipment</strong> — Select completed items to ship, assign rack</li>
+              <li><strong>Create Invoice</strong> — Auto-generated from shipment with correct quantities</li>
+              <li><strong>Record Payment</strong> — Apply customer payment to close the invoice</li>
+            </ol>
+          </div>
+          <div className="border rounded p-3">
+            <h3 className="text-xs font-bold mb-2">Key Features</h3>
+            <ul className="text-[10px] text-gray-700 space-y-1 list-disc pl-4">
+              <li>Full glass specifications on every line item (glass type, thickness, dimensions, edge work)</li>
+              <li>Product type routing — each line gets the correct manufacturing sequence</li>
+              <li>Partial shipments supported — ship what's ready, invoice what's shipped</li>
+              <li>Traceability — every invoice links back to shipment → order → quote</li>
+              <li>Deposit tracking on Sales Orders</li>
+              <li>Credit memos and payment recording on invoices</li>
+              <li>Email quotes and invoices as PDF directly to customers</li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </ModulePage>
   );
 }
-
 export default SalesHome;

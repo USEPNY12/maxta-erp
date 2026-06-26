@@ -3,7 +3,6 @@ const router = express.Router();
 const pool = require('../config/database');
 const { authenticate } = require('../middleware/auth');
 const { getNextNumber } = require('../utils/sequence');
-const { checkDocumentLock, preventDelete } = require('../middleware/documentLock');
 
 // ============ CUSTOMERS ============
 router.get('/customers', authenticate, async (req, res) => {
@@ -76,12 +75,15 @@ router.put('/customers/:id', authenticate, async (req, res) => {
 // ============ QUOTES ============
 router.get('/quotes', authenticate, async (req, res) => {
   try {
-    const { status, customer_id } = req.query;
-    let query = `SELECT q.*, c.company_name as customer_name, sp.name as salesperson_name 
-                 FROM quotes q JOIN customers c ON q.customer_id = c.id LEFT JOIN salespeople sp ON q.salesperson_id = sp.id WHERE 1=1`;
+    const { status, customer_id, search } = req.query;
+    let query = `SELECT q.*, c.company_name as customer_name, sp.name as salesperson_name, (SELECT COUNT(*) FROM quote_lines ql WHERE ql.quote_id = q.id) as line_count 
+                 FROM quotes q JOIN customers c ON q.customer_id = c.id 
+                 LEFT JOIN salespeople sp ON q.salesperson_id = sp.id WHERE 1=1`;
     const params = [];
-    if (status === 'open') { query += " AND q.status IN ('draft','sent','pending')"; } else if (status && status !== 'all' && status !== '') { query += ' AND q.status = ?'; params.push(status); }
+    if (status === 'open') { query += " AND q.status IN ('draft','sent','accepted')"; }
+    else if (status && status !== 'all' && status !== '') { query += ' AND q.status = ?'; params.push(status); }
     if (customer_id) { query += ' AND q.customer_id = ?'; params.push(customer_id); }
+    if (search) { query += ' AND (q.quote_number LIKE ? OR c.company_name LIKE ? OR q.project_name LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
     query += ' ORDER BY q.quote_date DESC LIMIT 200';
     const [quotes] = await pool.query(query, params);
     res.json(quotes);
@@ -90,40 +92,49 @@ router.get('/quotes', authenticate, async (req, res) => {
 
 router.get('/quotes/:id', authenticate, async (req, res) => {
   try {
-    const [quotes] = await pool.query(`SELECT q.*, c.company_name, c.email as customer_email FROM quotes q JOIN customers c ON q.customer_id = c.id WHERE q.id = ?`, [req.params.id]);
-    if (quotes.length === 0) return res.status(404).json({ error: 'Quote not found' });
-    const [lines] = await pool.query(`SELECT ql.*, i.item_number, i.description as item_description FROM quote_lines ql LEFT JOIN items i ON ql.item_id = i.id WHERE ql.quote_id = ? ORDER BY ql.line_number`, [req.params.id]);
-    res.json({ ...quotes[0], lines });
+    const [quotes] = await pool.query(`SELECT q.*, c.company_name, c.email as customer_email, c.phone as customer_phone,
+      c.bill_address1, c.bill_city, c.bill_state, c.bill_zip
+      FROM quotes q JOIN customers c ON q.customer_id = c.id WHERE q.id = ?`, [req.params.id]);
+    if (!quotes.length) return res.status(404).json({ error: 'Quote not found' });
+    const [lines] = await pool.query(`SELECT ql.*, i.item_number FROM quote_lines ql 
+      LEFT JOIN items i ON ql.item_id = i.id WHERE ql.quote_id = ? ORDER BY ql.line_number`, [req.params.id]);
+    const [drawings] = await pool.query('SELECT * FROM quote_drawings WHERE quote_id = ? ORDER BY created_at DESC', [req.params.id]);
+    res.json({ ...quotes[0], lines, drawings });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 router.post('/quotes', authenticate, async (req, res) => {
   try {
     const quoteNumber = await getNextNumber('quote');
-    const { customer_id, quote_date, expiry_date, salesperson_id, notes, internal_notes, terms_conditions, lines } = req.body;
-    
+    const { customer_id, project_name, expiry_date, payment_terms, lead_time_days, notes, internal_notes, lines } = req.body;
     let subtotal = 0;
-    if (lines) lines.forEach(l => { subtotal += (l.quantity * l.unit_price * (1 - (l.discount_percent || 0) / 100)); });
-
+    if (lines) lines.forEach(l => { subtotal += ((parseFloat(l.quantity) || 0) * (parseFloat(l.unit_price) || 0)); });
     const [result] = await pool.query(
-      `INSERT INTO quotes (quote_number, customer_id, quote_date, expiry_date, salesperson_id, subtotal, total, status, notes, internal_notes, terms_conditions, created_by)
-       VALUES (?,?,?,?,?,?,?,'draft',?,?,?,?)`,
-      [quoteNumber, customer_id, quote_date || new Date(), expiry_date, salesperson_id, subtotal, subtotal, notes, internal_notes, terms_conditions, req.user.id]
+      `INSERT INTO quotes (quote_number, customer_id, project_name, quote_date, expiry_date, status, payment_terms, lead_time_days, subtotal, total, notes, internal_notes, created_by)
+       VALUES (?,?,?,CURDATE(),?,'draft',?,?,?,?,?,?,?)`,
+      [quoteNumber, customer_id, project_name, expiry_date, payment_terms || 'Net 30', lead_time_days, subtotal, subtotal, notes, internal_notes, req.user.id]
     );
-
     if (lines && lines.length > 0) {
       for (let i = 0; i < lines.length; i++) {
         const l = lines[i];
-        const lineTotal = l.quantity * l.unit_price * (1 - (l.discount_percent || 0) / 100);
-        const sqft = l.width_inches && l.height_inches ? (l.width_inches * l.height_inches) / 144 : null;
+        const qty = parseFloat(l.quantity) || 0;
+        const price = parseFloat(l.unit_price) || 0;
+        const lineTotal = qty * price;
+        const sqft = l.width_inches && l.height_inches ? (parseFloat(l.width_inches) * parseFloat(l.height_inches)) / 144 : null;
         await pool.query(
-          `INSERT INTO quote_lines (quote_id, line_number, item_id, description, quantity, uom, unit_price, discount_percent, line_total, width_inches, height_inches, sqft, notes)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [result.insertId, i + 1, l.item_id, l.description, l.quantity, l.uom || 'Each', l.unit_price, l.discount_percent || 0, lineTotal, l.width_inches, l.height_inches, sqft, l.notes]
+          `INSERT INTO quote_lines (quote_id, line_number, item_id, description, quantity, uom, unit_price, discount_percent, line_total, 
+           width_inches, height_inches, sqft, notes, product_type, glass_type, thickness, edge_type, shape, interlayer, has_holes, holes_count, 
+           cutouts, coating, spacer_type, gas_fill, manufacturing_notes, drawing_ref)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [result.insertId, i + 1, l.item_id || null, l.description, qty, l.uom || 'Each', price, l.discount_percent || 0, lineTotal,
+           l.width_inches || null, l.height_inches || null, sqft, l.notes || null,
+           l.product_type || null, l.glass_type || null, l.thickness || null, l.edge_type || null, l.shape || 'rectangular',
+           l.interlayer || null, l.has_holes ? 1 : 0, l.holes_count || 0,
+           l.cutouts || null, l.coating || null, l.spacer_type || null, l.gas_fill || null, l.manufacturing_notes || null, l.drawing_ref || null]
         );
       }
     }
-    await req.audit('quotes', result.insertId, 'INSERT', null, { quote_number: quoteNumber, customer_id, total: subtotal });
+    await req.audit('quotes', result.insertId, 'INSERT', null, { quote_number: quoteNumber, customer_id, project_name });
     res.status(201).json({ id: result.insertId, quote_number: quoteNumber });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -132,64 +143,130 @@ router.put('/quotes/:id', authenticate, async (req, res) => {
   try {
     const [old] = await pool.query('SELECT * FROM quotes WHERE id = ?', [req.params.id]);
     if (!old.length) return res.status(404).json({ error: 'Quote not found' });
-    if (old[0].status === 'converted') return res.status(403).json({ error: 'Cannot edit a converted quote' });
-    
-    const { customer_id, quote_date, expiry_date, salesperson_id, notes, internal_notes, terms_conditions, lines } = req.body;
+    const { customer_id, project_name, expiry_date, payment_terms, lead_time_days, notes, internal_notes, lines } = req.body;
     let subtotal = 0;
-    if (lines) lines.forEach(l => { subtotal += (l.quantity * l.unit_price * (1 - (l.discount_percent || 0) / 100)); });
-
+    if (lines) lines.forEach(l => { subtotal += ((parseFloat(l.quantity) || 0) * (parseFloat(l.unit_price) || 0)); });
     await pool.query(
-      `UPDATE quotes SET customer_id=?, quote_date=?, expiry_date=?, salesperson_id=?, subtotal=?, total=?, notes=?, internal_notes=?, terms_conditions=? WHERE id=?`,
-      [customer_id, quote_date, expiry_date, salesperson_id, subtotal, subtotal, notes, internal_notes, terms_conditions, req.params.id]
+      `UPDATE quotes SET customer_id=?, project_name=?, expiry_date=?, payment_terms=?, lead_time_days=?, subtotal=?, total=?, notes=?, internal_notes=?, updated_at=NOW() WHERE id=?`,
+      [customer_id || old[0].customer_id, project_name, expiry_date, payment_terms, lead_time_days, subtotal, subtotal, notes, internal_notes, req.params.id]
     );
-
-    // Replace lines
-    await pool.query('DELETE FROM quote_lines WHERE quote_id = ?', [req.params.id]);
-    if (lines && lines.length > 0) {
+    if (lines) {
+      await pool.query('DELETE FROM quote_lines WHERE quote_id = ?', [req.params.id]);
       for (let i = 0; i < lines.length; i++) {
         const l = lines[i];
-        const lineTotal = l.quantity * l.unit_price * (1 - (l.discount_percent || 0) / 100);
-        const sqft = l.width_inches && l.height_inches ? (l.width_inches * l.height_inches) / 144 : null;
+        const qty = parseFloat(l.quantity) || 0;
+        const price = parseFloat(l.unit_price) || 0;
+        const lineTotal = qty * price;
+        const sqft = l.width_inches && l.height_inches ? (parseFloat(l.width_inches) * parseFloat(l.height_inches)) / 144 : null;
         await pool.query(
-          `INSERT INTO quote_lines (quote_id, line_number, item_id, description, quantity, uom, unit_price, discount_percent, line_total, width_inches, height_inches, sqft, notes)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [req.params.id, i + 1, l.item_id, l.description, l.quantity, l.uom || 'Each', l.unit_price, l.discount_percent || 0, lineTotal, l.width_inches, l.height_inches, sqft, l.notes]
+          `INSERT INTO quote_lines (quote_id, line_number, item_id, description, quantity, uom, unit_price, discount_percent, line_total, 
+           width_inches, height_inches, sqft, notes, product_type, glass_type, thickness, edge_type, shape, interlayer, has_holes, holes_count, 
+           cutouts, coating, spacer_type, gas_fill, manufacturing_notes, drawing_ref)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [req.params.id, i + 1, l.item_id || null, l.description, qty, l.uom || 'Each', price, l.discount_percent || 0, lineTotal,
+           l.width_inches || null, l.height_inches || null, sqft, l.notes || null,
+           l.product_type || null, l.glass_type || null, l.thickness || null, l.edge_type || null, l.shape || 'rectangular',
+           l.interlayer || null, l.has_holes ? 1 : 0, l.holes_count || 0,
+           l.cutouts || null, l.coating || null, l.spacer_type || null, l.gas_fill || null, l.manufacturing_notes || null, l.drawing_ref || null]
         );
       }
     }
     await req.audit('quotes', req.params.id, 'UPDATE', old[0], req.body);
-    res.json({ message: 'Quote updated successfully' });
+    res.json({ message: 'Quote updated' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Convert quote to sales order
+// Send quote to customer (status: draft → sent)
+router.post('/quotes/:id/send', authenticate, async (req, res) => {
+  try {
+    const [quotes] = await pool.query('SELECT * FROM quotes WHERE id = ?', [req.params.id]);
+    if (!quotes.length) return res.status(404).json({ error: 'Quote not found' });
+    if (!['draft','sent'].includes(quotes[0].status)) return res.status(400).json({ error: 'Only draft/sent quotes can be sent' });
+    await pool.query("UPDATE quotes SET status = 'sent', updated_at = NOW() WHERE id = ?", [req.params.id]);
+    await req.audit('quotes', req.params.id, 'SEND', { status: quotes[0].status }, { status: 'sent' });
+    res.json({ message: 'Quote marked as sent' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Accept quote (status → accepted)
+router.post('/quotes/:id/accept', authenticate, async (req, res) => {
+  try {
+    const [quotes] = await pool.query('SELECT * FROM quotes WHERE id = ?', [req.params.id]);
+    if (!quotes.length) return res.status(404).json({ error: 'Quote not found' });
+    if (!['draft','sent'].includes(quotes[0].status)) return res.status(400).json({ error: 'Only draft/sent quotes can be accepted' });
+    await pool.query("UPDATE quotes SET status = 'accepted', updated_at = NOW() WHERE id = ?", [req.params.id]);
+    await req.audit('quotes', req.params.id, 'ACCEPT', { status: quotes[0].status }, { status: 'accepted' });
+    res.json({ message: 'Quote accepted' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Convert quote to sales order (the big one!)
 router.post('/quotes/:id/convert', authenticate, async (req, res) => {
   try {
     const [quotes] = await pool.query('SELECT * FROM quotes WHERE id = ?', [req.params.id]);
-    if (quotes.length === 0) return res.status(404).json({ error: 'Quote not found' });
+    if (!quotes.length) return res.status(404).json({ error: 'Quote not found' });
+    if (quotes[0].status === 'converted') return res.status(400).json({ error: 'Quote already converted' });
+    if (quotes[0].status === 'rejected') return res.status(400).json({ error: 'Cannot convert a rejected quote' });
     const quote = quotes[0];
-    if (quote.status === 'converted') return res.status(400).json({ error: 'Quote already converted to an order' });
-
+    const [lines] = await pool.query('SELECT * FROM quote_lines WHERE quote_id = ? ORDER BY line_number', [req.params.id]);
+    
+    // Create Sales Order
     const orderNumber = await getNextNumber('sales_order');
     const [orderResult] = await pool.query(
-      `INSERT INTO sales_orders (order_number, customer_id, order_date, status, quote_id, salesperson_id, subtotal, tax_amount, total, notes, created_by)
-       VALUES (?,?,NOW(),'open',?,?,?,?,?,?,?)`,
-      [orderNumber, quote.customer_id, quote.id, quote.salesperson_id, quote.subtotal, quote.tax_amount || 0, quote.total || quote.subtotal, quote.notes, req.user.id]
+      `INSERT INTO sales_orders (order_number, customer_id, project_name, customer_po, order_date, required_date, status, quote_id, 
+       salesperson_id, subtotal, total, deposit_amount, notes, internal_notes, created_by)
+       VALUES (?,?,?,?,CURDATE(),DATE_ADD(CURDATE(), INTERVAL ? DAY),'open',?,?,?,?,0,?,?,?)`,
+      [orderNumber, quote.customer_id, quote.project_name, req.body.customer_po || null, quote.lead_time_days || 21, 
+       req.params.id, quote.salesperson_id, quote.subtotal, quote.total, quote.notes, quote.internal_notes, req.user.id]
     );
-
-    const [quoteLines] = await pool.query('SELECT * FROM quote_lines WHERE quote_id = ?', [req.params.id]);
-    for (const l of quoteLines) {
+    
+    // Copy all line items with glass specs
+    for (const l of lines) {
       await pool.query(
-        `INSERT INTO sales_order_lines (sales_order_id, line_number, item_id, description, quantity_ordered, uom, unit_price, discount_percent, line_total, width_inches, height_inches, sqft, notes)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [orderResult.insertId, l.line_number, l.item_id, l.description, l.quantity, l.uom, l.unit_price, l.discount_percent, l.line_total, l.width_inches, l.height_inches, l.sqft, l.notes]
+        `INSERT INTO sales_order_lines (sales_order_id, line_number, item_id, description, quantity_ordered, uom, unit_price, 
+         discount_percent, line_total, width_inches, height_inches, sqft, notes, product_type, glass_type, thickness, edge_type, 
+         shape, interlayer, has_holes, holes_count, cutouts, coating, spacer_type, gas_fill, manufacturing_notes, drawing_ref, status)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [orderResult.insertId, l.line_number, l.item_id, l.description, l.quantity, l.uom, l.unit_price,
+         l.discount_percent, l.line_total, l.width_inches, l.height_inches, l.sqft, l.notes,
+         l.product_type, l.glass_type, l.thickness, l.edge_type, l.shape, l.interlayer,
+         l.has_holes, l.holes_count, l.cutouts, l.coating, l.spacer_type, l.gas_fill, l.manufacturing_notes, l.drawing_ref, 'open']
       );
     }
-
-    await pool.query('UPDATE quotes SET status = "converted", converted_to_order_id = ? WHERE id = ?', [orderResult.insertId, req.params.id]);
-    await req.audit('quotes', req.params.id, 'CONVERT', { status: 'draft' }, { status: 'converted', order_id: orderResult.insertId });
+    
+    // Update quote status
+    await pool.query("UPDATE quotes SET status = 'converted', converted_to_order_id = ?, updated_at = NOW() WHERE id = ?", [orderResult.insertId, req.params.id]);
+    await req.audit('quotes', req.params.id, 'CONVERT', { status: quote.status }, { status: 'converted', order_id: orderResult.insertId });
     await req.audit('sales_orders', orderResult.insertId, 'INSERT', null, { order_number: orderNumber, from_quote: quote.quote_number });
     res.status(201).json({ id: orderResult.insertId, order_number: orderNumber });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Quote drawings
+router.get('/quotes/:id/drawings', authenticate, async (req, res) => {
+  try {
+    const [drawings] = await pool.query('SELECT * FROM quote_drawings WHERE quote_id = ? ORDER BY created_at DESC', [req.params.id]);
+    res.json(drawings);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/quotes/:id/drawings', authenticate, async (req, res) => {
+  try {
+    const { file_name, file_path, quote_line_id, revision, notes } = req.body;
+    const [result] = await pool.query(
+      'INSERT INTO quote_drawings (quote_id, quote_line_id, file_name, file_path, revision, status, notes, uploaded_by) VALUES (?,?,?,?,?,\'pending\',?,?)',
+      [req.params.id, quote_line_id || null, file_name, file_path || null, revision || 'A', notes || null, req.user.id]
+    );
+    res.status(201).json({ id: result.insertId });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.put('/quotes/drawings/:id/approve', authenticate, async (req, res) => {
+  try {
+    const { status, notes } = req.body; // status: approved, rejected, revise
+    await pool.query('UPDATE quote_drawings SET status = ?, approved_by = ?, approved_at = NOW(), notes = COALESCE(?, notes) WHERE id = ?',
+      [status, req.user.full_name || 'Admin', notes, req.params.id]);
+    res.json({ message: `Drawing ${status}` });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
@@ -198,12 +275,16 @@ router.get('/orders', authenticate, async (req, res) => {
   try {
     const { status, customer_id, search } = req.query;
     let query = `SELECT so.*, c.company_name as customer_name, sp.name as salesperson_name,
-                 COALESCE(so.deposit_amount, 0) as deposit_amount
-                 FROM sales_orders so JOIN customers c ON so.customer_id = c.id LEFT JOIN salespeople sp ON so.salesperson_id = sp.id WHERE 1=1`;
+                 COALESCE(so.deposit_amount, 0) as deposit_amount,
+                 (SELECT COUNT(*) FROM work_orders WHERE sales_order_id = so.id) as wo_count,
+                 (SELECT COUNT(*) FROM shipments WHERE sales_order_id = so.id) as shipment_count
+                 FROM sales_orders so JOIN customers c ON so.customer_id = c.id 
+                 LEFT JOIN salespeople sp ON so.salesperson_id = sp.id WHERE 1=1`;
     const params = [];
-    if (status === 'open') { query += " AND so.status IN ('draft','confirmed','in_progress','partial_ship','open','partial')"; } else if (status && status !== 'all' && status !== '') { query += ' AND so.status = ?'; params.push(status); }
+    if (status === 'open') { query += " AND so.status IN ('draft','open','partial','confirmed','in_progress','partial_ship')"; }
+    else if (status && status !== 'all' && status !== '') { query += ' AND so.status = ?'; params.push(status); }
     if (customer_id) { query += ' AND so.customer_id = ?'; params.push(customer_id); }
-    if (search) { query += ' AND (so.order_number LIKE ? OR c.company_name LIKE ? OR so.customer_po LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+    if (search) { query += ' AND (so.order_number LIKE ? OR c.company_name LIKE ? OR so.customer_po LIKE ? OR so.project_name LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`); }
     query += ' ORDER BY so.order_date DESC LIMIT 200';
     const [orders] = await pool.query(query, params);
     res.json(orders);
@@ -212,147 +293,161 @@ router.get('/orders', authenticate, async (req, res) => {
 
 router.get('/orders/:id', authenticate, async (req, res) => {
   try {
-    const [orders] = await pool.query(`SELECT so.*, c.company_name, c.phone as customer_phone, c.email as customer_email FROM sales_orders so JOIN customers c ON so.customer_id = c.id WHERE so.id = ?`, [req.params.id]);
+    const [orders] = await pool.query(`SELECT so.*, c.company_name, c.phone as customer_phone, c.email as customer_email,
+      c.ship_address1, c.ship_city, c.ship_state, c.ship_zip,
+      q.quote_number
+      FROM sales_orders so JOIN customers c ON so.customer_id = c.id 
+      LEFT JOIN quotes q ON so.quote_id = q.id
+      WHERE so.id = ?`, [req.params.id]);
     if (orders.length === 0) return res.status(404).json({ error: 'Order not found' });
-    const [lines] = await pool.query(`SELECT sol.*, i.item_number, i.description as item_description FROM sales_order_lines sol LEFT JOIN items i ON sol.item_id = i.id WHERE sol.sales_order_id = ? ORDER BY sol.line_number`, [req.params.id]);
+    const [lines] = await pool.query(`SELECT sol.*, i.item_number, i.description as item_description,
+      wo.order_number as wo_number, wo.status as wo_status
+      FROM sales_order_lines sol LEFT JOIN items i ON sol.item_id = i.id 
+      LEFT JOIN work_orders wo ON wo.sales_order_line_id = sol.id
+      WHERE sol.sales_order_id = ? ORDER BY sol.line_number`, [req.params.id]);
     const [shipments] = await pool.query('SELECT * FROM shipments WHERE sales_order_id = ? ORDER BY shipment_date DESC', [req.params.id]);
+    const [invoices] = await pool.query('SELECT * FROM ar_invoices WHERE sales_order_id = ? ORDER BY invoice_date DESC', [req.params.id]);
     const [deposits] = await pool.query("SELECT * FROM customer_deposits WHERE sales_order_id = ? ORDER BY deposit_date DESC", [req.params.id]);
-    const [workOrders] = await pool.query('SELECT id, order_number, status FROM work_orders WHERE sales_order_id = ?', [req.params.id]);
-    res.json({ ...orders[0], lines, shipments, deposits, work_orders: workOrders });
+    const [workOrders] = await pool.query('SELECT id, order_number, status, product_type, quantity FROM work_orders WHERE sales_order_id = ? ORDER BY id', [req.params.id]);
+    res.json({ ...orders[0], lines, shipments, invoices, deposits, work_orders: workOrders });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 router.post('/orders', authenticate, async (req, res) => {
   try {
     const orderNumber = await getNextNumber('sales_order');
-    const { customer_id, customer_po, order_date, required_date, promised_date, salesperson_id, carrier_id,
+    const { customer_id, customer_po, project_name, order_date, required_date, promised_date, salesperson_id, carrier_id,
             ship_via, fob, ship_to_name, ship_address1, ship_address2, ship_city, ship_state, ship_zip, notes, internal_notes, lines } = req.body;
-    
     let subtotal = 0;
-    if (lines) lines.forEach(l => { subtotal += ((l.quantity_ordered || l.quantity) * l.unit_price * (1 - (l.discount_percent || 0) / 100)); });
-
+    if (lines) lines.forEach(l => { subtotal += ((parseFloat(l.quantity_ordered || l.quantity) || 0) * (parseFloat(l.unit_price) || 0) * (1 - (parseFloat(l.discount_percent) || 0) / 100)); });
     const [result] = await pool.query(
-      `INSERT INTO sales_orders (order_number, customer_id, customer_po, order_date, required_date, promised_date, status, salesperson_id, carrier_id,
+      `INSERT INTO sales_orders (order_number, customer_id, customer_po, project_name, order_date, required_date, promised_date, status, salesperson_id, carrier_id,
        ship_via, fob, ship_to_name, ship_address1, ship_address2, ship_city, ship_state, ship_zip, subtotal, total, notes, internal_notes, created_by)
-       VALUES (?,?,?,?,?,?,'open',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [orderNumber, customer_id, customer_po, order_date || new Date(), required_date, promised_date, salesperson_id, carrier_id,
+       VALUES (?,?,?,?,?,?,?,'open',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [orderNumber, customer_id, customer_po, project_name, order_date || new Date(), required_date, promised_date, salesperson_id, carrier_id,
        ship_via, fob, ship_to_name, ship_address1, ship_address2, ship_city, ship_state, ship_zip, subtotal, subtotal, notes, internal_notes, req.user.id]
     );
-
     if (lines && lines.length > 0) {
       for (let i = 0; i < lines.length; i++) {
         const l = lines[i];
-        const qty = l.quantity_ordered || l.quantity;
-        const lineTotal = qty * l.unit_price * (1 - (l.discount_percent || 0) / 100);
-        const sqft = l.width_inches && l.height_inches ? (l.width_inches * l.height_inches) / 144 : null;
+        const qty = parseFloat(l.quantity_ordered || l.quantity) || 0;
+        const lineTotal = qty * (parseFloat(l.unit_price) || 0) * (1 - (parseFloat(l.discount_percent) || 0) / 100);
+        const sqft = l.width_inches && l.height_inches ? (parseFloat(l.width_inches) * parseFloat(l.height_inches)) / 144 : null;
         await pool.query(
-          `INSERT INTO sales_order_lines (sales_order_id, line_number, item_id, description, quantity_ordered, uom, unit_price, discount_percent, line_total, width_inches, height_inches, sqft, required_date, notes)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [result.insertId, i + 1, l.item_id, l.description, qty, l.uom || 'Each', l.unit_price, l.discount_percent || 0, lineTotal, l.width_inches, l.height_inches, sqft, l.required_date, l.notes]
+          `INSERT INTO sales_order_lines (sales_order_id, line_number, item_id, description, quantity_ordered, uom, unit_price, discount_percent, line_total, 
+           width_inches, height_inches, sqft, required_date, notes, product_type, glass_type, thickness, edge_type, shape, interlayer, has_holes, holes_count, 
+           cutouts, coating, spacer_type, gas_fill, manufacturing_notes, drawing_ref, status)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [result.insertId, i + 1, l.item_id || null, l.description, qty, l.uom || 'Each', l.unit_price, l.discount_percent || 0, lineTotal,
+           l.width_inches || null, l.height_inches || null, sqft, required_date, l.notes || null,
+           l.product_type || null, l.glass_type || null, l.thickness || null, l.edge_type || null, l.shape || 'rectangular',
+           l.interlayer || null, l.has_holes ? 1 : 0, l.holes_count || 0,
+           l.cutouts || null, l.coating || null, l.spacer_type || null, l.gas_fill || null, l.manufacturing_notes || null, l.drawing_ref || null, 'open']
         );
       }
     }
-    await req.audit('sales_orders', result.insertId, 'INSERT', null, { order_number: orderNumber, customer_id, total: subtotal });
+    await req.audit('sales_orders', result.insertId, 'INSERT', null, { order_number: orderNumber, customer_id });
     res.status(201).json({ id: result.insertId, order_number: orderNumber });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-router.put('/orders/:id', authenticate, async (req, res) => {
+// ============ RELEASE TO PRODUCTION ============
+// This is the KEY action: creates Work Orders from Sales Order lines
+router.post('/orders/:id/release-to-production', authenticate, async (req, res) => {
   try {
-    const [old] = await pool.query('SELECT * FROM sales_orders WHERE id = ?', [req.params.id]);
-    if (!old.length) return res.status(404).json({ error: 'Order not found' });
-    if (['closed', 'cancelled', 'invoiced'].includes(old[0].status)) {
-      return res.status(403).json({ error: `Cannot edit a ${old[0].status} order. Create a new order or credit memo instead.` });
-    }
-
-    const { customer_po, required_date, promised_date, salesperson_id, carrier_id, ship_via, fob,
-            ship_to_name, ship_address1, ship_address2, ship_city, ship_state, ship_zip, notes, internal_notes, lines } = req.body;
-    
-    let subtotal = 0;
-    if (lines) lines.forEach(l => { subtotal += ((l.quantity_ordered || l.quantity) * l.unit_price * (1 - (l.discount_percent || 0) / 100)); });
-
-    await pool.query(
-      `UPDATE sales_orders SET customer_po=?, required_date=?, promised_date=?, salesperson_id=?, carrier_id=?, ship_via=?, fob=?,
-       ship_to_name=?, ship_address1=?, ship_address2=?, ship_city=?, ship_state=?, ship_zip=?, subtotal=?, total=?, notes=?, internal_notes=? WHERE id=?`,
-      [customer_po, required_date, promised_date, salesperson_id, carrier_id, ship_via, fob,
-       ship_to_name, ship_address1, ship_address2, ship_city, ship_state, ship_zip, subtotal, subtotal, notes, internal_notes, req.params.id]
-    );
-
-    // Replace lines
-    if (lines) {
-      await pool.query('DELETE FROM sales_order_lines WHERE sales_order_id = ?', [req.params.id]);
-      for (let i = 0; i < lines.length; i++) {
-        const l = lines[i];
-        const qty = l.quantity_ordered || l.quantity;
-        const lineTotal = qty * l.unit_price * (1 - (l.discount_percent || 0) / 100);
-        const sqft = l.width_inches && l.height_inches ? (l.width_inches * l.height_inches) / 144 : null;
-        await pool.query(
-          `INSERT INTO sales_order_lines (sales_order_id, line_number, item_id, description, quantity_ordered, uom, unit_price, discount_percent, line_total, width_inches, height_inches, sqft, required_date, notes)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [req.params.id, i + 1, l.item_id, l.description, qty, l.uom || 'Each', l.unit_price, l.discount_percent || 0, lineTotal, l.width_inches, l.height_inches, sqft, l.required_date, l.notes]
-        );
-      }
-    }
-    await req.audit('sales_orders', req.params.id, 'UPDATE', old[0], req.body);
-    res.json({ message: 'Order updated successfully' });
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
-
-// Cancel a sales order (not delete)
-router.post('/orders/:id/cancel', authenticate, async (req, res) => {
-  try {
-    const [old] = await pool.query('SELECT * FROM sales_orders WHERE id = ?', [req.params.id]);
-    if (!old.length) return res.status(404).json({ error: 'Order not found' });
-    if (['closed', 'invoiced'].includes(old[0].status)) return res.status(403).json({ error: 'Cannot cancel a closed/invoiced order' });
-    
-    await pool.query("UPDATE sales_orders SET status = 'cancelled', cancelled_by = ?, cancelled_at = NOW() WHERE id = ?", [req.user.id, req.params.id]);
-    await req.audit('sales_orders', req.params.id, 'CANCEL', { status: old[0].status }, { status: 'cancelled' });
-    res.json({ message: 'Order cancelled' });
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
-
-// ============ DEPOSITS (on Sales Orders) ============
-router.post('/orders/:id/deposit', authenticate, async (req, res) => {
-  try {
-    const { amount, payment_method, reference_number, deposit_date, notes } = req.body;
-    if (!amount || amount <= 0) return res.status(400).json({ error: 'Deposit amount must be greater than 0' });
-
     const [orders] = await pool.query('SELECT * FROM sales_orders WHERE id = ?', [req.params.id]);
     if (!orders.length) return res.status(404).json({ error: 'Order not found' });
-
-    const [result] = await pool.query(
-      `INSERT INTO customer_deposits (customer_id, sales_order_id, deposit_date, amount, payment_method, reference_number, status, notes, received_by)
-       VALUES (?,?,?,?,?,?,'unapplied',?,?)`,
-      [orders[0].customer_id, req.params.id, deposit_date || new Date(), amount, payment_method || 'check', reference_number, notes, req.user.id]
-    );
-
-    // Update order deposit total
-    await pool.query('UPDATE sales_orders SET deposit_amount = COALESCE(deposit_amount,0) + ? WHERE id = ?', [amount, req.params.id]);
-    await req.audit('customer_deposits', result.insertId, 'INSERT', null, { order_id: req.params.id, amount, payment_method });
-    res.status(201).json({ id: result.insertId, message: 'Deposit recorded successfully' });
+    if (['cancelled', 'closed'].includes(orders[0].status)) return res.status(400).json({ error: 'Cannot release cancelled/closed order' });
+    
+    const { line_ids } = req.body; // Optional: specific lines to release. If empty, release all pending lines.
+    let lineQuery = 'SELECT * FROM sales_order_lines WHERE sales_order_id = ? AND production_status = "pending"';
+    const lineParams = [req.params.id];
+    if (line_ids && line_ids.length > 0) {
+      lineQuery += ` AND id IN (${line_ids.map(() => '?').join(',')})`;
+      lineParams.push(...line_ids);
+    }
+    const [lines] = await pool.query(lineQuery, lineParams);
+    
+    if (lines.length === 0) return res.status(400).json({ error: 'No lines available to release (all already in production or no pending lines)' });
+    
+    const createdWOs = [];
+    for (const line of lines) {
+      // Create Work Order for each line
+      const woNumber = await getNextNumber('work_order');
+      const productType = line.product_type || 'tempered_panel';
+      
+      const [woResult] = await pool.query(
+        `INSERT INTO work_orders (order_number, sales_order_id, sales_order_line_id, item_id, product_type, quantity, 
+         glass_type, thickness, width, height, edge_type, interlayer_type, has_holes,
+         status, priority, start_date, notes)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURDATE(),?)`,
+        [woNumber, req.params.id, line.id, line.item_id, productType, line.quantity_ordered,
+         line.glass_type, line.thickness, line.width_inches, line.height_inches, line.edge_type, line.interlayer, line.has_holes || 0,
+         'planned', 'normal', line.manufacturing_notes || line.notes]
+      );
+      
+      // Auto-assign routing based on product type
+      const [templates] = await pool.query(
+        'SELECT id FROM routing_templates WHERE product_type = ? LIMIT 1', [productType]);
+      if (templates.length > 0) {
+        const [operations] = await pool.query(
+          'SELECT * FROM routing_template_operations WHERE template_id = ? ORDER BY sequence', [templates[0].id]);
+        for (const op of operations) {
+          await pool.query(
+            `INSERT INTO shop_floor_tracking (work_order_id, work_center_id, wo_routing_id, status, notes)
+             VALUES (?,?,?,?,?)`,
+            [woResult.insertId, op.work_center_id, null, 'queued', op.operation_name || op.description || null]
+          );
+        }
+      }
+      
+      // Update SO line status
+      await pool.query("UPDATE sales_order_lines SET production_status = 'released', work_order_id = ? WHERE id = ?", [woResult.insertId, line.id]);
+      
+      createdWOs.push({ id: woResult.insertId, order_number: woNumber, line_number: line.line_number, description: line.description });
+    }
+    
+    // Update SO status
+    const [allLines] = await pool.query('SELECT production_status FROM sales_order_lines WHERE sales_order_id = ?', [req.params.id]);
+    const allReleased = allLines.every(l => l.production_status !== 'pending');
+    if (allReleased) {
+      await pool.query("UPDATE sales_orders SET status = 'open' WHERE id = ? AND status = 'draft'", [req.params.id]);
+    }
+    
+    await req.audit('sales_orders', req.params.id, 'RELEASE_TO_PRODUCTION', null, { work_orders: createdWOs.map(w => w.order_number) });
+    res.status(201).json({ message: `${createdWOs.length} Work Order(s) created`, work_orders: createdWOs });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-router.get('/orders/:id/deposits', authenticate, async (req, res) => {
+// Record deposit on Sales Order
+router.post('/orders/:id/deposit', authenticate, async (req, res) => {
   try {
-    const [deposits] = await pool.query(
-      `SELECT cd.*, u.username as received_by_name FROM customer_deposits cd 
-       LEFT JOIN users u ON cd.received_by = u.id WHERE cd.sales_order_id = ? ORDER BY cd.deposit_date DESC`,
-      [req.params.id]
+    const { amount, payment_method, reference_number } = req.body;
+    if (!amount || amount <= 0) return res.status(400).json({ error: 'Deposit amount must be greater than 0' });
+    const depositNumber = await getNextNumber('deposit');
+    const [result] = await pool.query(
+      `INSERT INTO customer_deposits (deposit_number, customer_id, sales_order_id, deposit_date, amount, payment_method, reference_number, status, received_by)
+       SELECT ?, customer_id, ?, CURDATE(), ?, ?, ?, 'unapplied', ? FROM sales_orders WHERE id = ?`,
+      [depositNumber, req.params.id, amount, payment_method || 'check', reference_number, req.user.id, req.params.id]
     );
-    res.json(deposits);
+    await pool.query('UPDATE sales_orders SET deposit_amount = COALESCE(deposit_amount,0) + ? WHERE id = ?', [amount, req.params.id]);
+    await req.audit('sales_orders', req.params.id, 'DEPOSIT', null, { amount, payment_method, reference_number });
+    res.status(201).json({ id: result.insertId, deposit_number: depositNumber });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 // ============ SHIPMENTS ============
 router.get('/shipments', authenticate, async (req, res) => {
   try {
-    const { status, sales_order_id } = req.query;
-    let query = `SELECT s.*, c.company_name, so.order_number FROM shipments s 
-      JOIN customers c ON s.customer_id = c.id JOIN sales_orders so ON s.sales_order_id = so.id WHERE 1=1`;
+    const { status, customer_id, search } = req.query;
+    let query = `SELECT s.*, c.company_name as customer_name, so.order_number as so_number
+                 FROM shipments s JOIN customers c ON s.customer_id = c.id 
+                 LEFT JOIN sales_orders so ON s.sales_order_id = so.id WHERE 1=1`;
     const params = [];
-    if (status && status !== 'all') { query += ' AND s.status = ?'; params.push(status); }
-    if (sales_order_id) { query += ' AND s.sales_order_id = ?'; params.push(sales_order_id); }
+    if (status === 'open') { query += " AND s.status IN ('draft','shipped')"; }
+    else if (status && status !== 'all' && status !== '') { query += ' AND s.status = ?'; params.push(status); }
+    if (customer_id) { query += ' AND s.customer_id = ?'; params.push(customer_id); }
+    if (search) { query += ' AND (s.shipment_number LIKE ? OR c.company_name LIKE ? OR so.order_number LIKE ? OR s.tracking_number LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`); }
     query += ' ORDER BY s.shipment_date DESC LIMIT 200';
     const [shipments] = await pool.query(query, params);
     res.json(shipments);
@@ -361,53 +456,96 @@ router.get('/shipments', authenticate, async (req, res) => {
 
 router.get('/shipments/:id', authenticate, async (req, res) => {
   try {
-    const [shipments] = await pool.query(`SELECT s.*, c.company_name, so.order_number FROM shipments s JOIN customers c ON s.customer_id = c.id JOIN sales_orders so ON s.sales_order_id = so.id WHERE s.id = ?`, [req.params.id]);
+    const [shipments] = await pool.query(`SELECT s.*, c.company_name, so.order_number as so_number
+      FROM shipments s JOIN customers c ON s.customer_id = c.id 
+      LEFT JOIN sales_orders so ON s.sales_order_id = so.id WHERE s.id = ?`, [req.params.id]);
     if (!shipments.length) return res.status(404).json({ error: 'Shipment not found' });
-    const [lines] = await pool.query(`SELECT sl.*, i.item_number, i.description FROM shipment_lines sl LEFT JOIN items i ON sl.item_id = i.id WHERE sl.shipment_id = ?`, [req.params.id]);
+    const [lines] = await pool.query(`SELECT sl.*, sol.description, sol.product_type, sol.glass_type, sol.thickness, 
+      sol.width_inches, sol.height_inches, sol.edge_type
+      FROM shipment_lines sl 
+      LEFT JOIN sales_order_lines sol ON sl.sales_order_line_id = sol.id 
+      WHERE sl.shipment_id = ?`, [req.params.id]);
     res.json({ ...shipments[0], lines });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// Get shippable lines for a sales order (lines that have remaining quantity to ship)
+router.get('/orders/:id/shippable-lines', authenticate, async (req, res) => {
+  try {
+    const [lines] = await pool.query(`
+      SELECT sol.*, i.item_number,
+        (sol.quantity_ordered - COALESCE(sol.quantity_shipped, 0)) as remaining_qty
+      FROM sales_order_lines sol 
+      LEFT JOIN items i ON sol.item_id = i.id
+      WHERE sol.sales_order_id = ? 
+        AND (sol.quantity_ordered - COALESCE(sol.quantity_shipped, 0)) > 0
+        AND sol.status != 'cancelled'
+      ORDER BY sol.line_number`, [req.params.id]);
+    res.json(lines);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Create shipment from sales order
 router.post('/shipments', authenticate, async (req, res) => {
   try {
     const shipmentNumber = await getNextNumber('shipment');
-    const { sales_order_id, shipment_date, carrier_id, tracking_number, weight, freight_charge, ship_to_name, ship_address1, ship_address2, ship_city, ship_state, ship_zip, notes, lines } = req.body;
+    const { sales_order_id, shipment_date, carrier_id, tracking_number, weight, freight_charge,
+            ship_to_name, ship_address1, ship_address2, ship_city, ship_state, ship_zip, 
+            rack_number, delivery_instructions, notes, lines } = req.body;
     
+    if (!sales_order_id) return res.status(400).json({ error: 'Sales order is required' });
     const [orders] = await pool.query('SELECT customer_id, status FROM sales_orders WHERE id = ?', [sales_order_id]);
     if (orders.length === 0) return res.status(404).json({ error: 'Sales order not found' });
     if (['cancelled', 'closed'].includes(orders[0].status)) return res.status(400).json({ error: 'Cannot ship a cancelled/closed order' });
-
+    
+    let totalPanels = 0;
+    if (lines) lines.forEach(l => { totalPanels += (parseFloat(l.quantity_shipped) || 0); });
+    
     const [result] = await pool.query(
-      `INSERT INTO shipments (shipment_number, sales_order_id, customer_id, shipment_date, carrier_id, tracking_number, weight, freight_charge, status, ship_to_name, ship_address1, ship_address2, ship_city, ship_state, ship_zip, notes, shipped_by)
-       VALUES (?,?,?,?,?,?,?,?,'shipped',?,?,?,?,?,?,?,?)`,
-      [shipmentNumber, sales_order_id, orders[0].customer_id, shipment_date || new Date(), carrier_id, tracking_number, weight, freight_charge || 0, ship_to_name, ship_address1, ship_address2, ship_city, ship_state, ship_zip, notes, req.user.id]
+      `INSERT INTO shipments (shipment_number, sales_order_id, customer_id, shipment_date, carrier_id, tracking_number, weight, freight_charge, 
+       status, ship_to_name, ship_address1, ship_address2, ship_city, ship_state, ship_zip, rack_number, total_panels, delivery_instructions, notes, shipped_by)
+       VALUES (?,?,?,?,?,?,?,?,'shipped',?,?,?,?,?,?,?,?,?,?,?)`,
+      [shipmentNumber, sales_order_id, orders[0].customer_id, shipment_date || new Date(), carrier_id, tracking_number, weight, freight_charge || 0,
+       ship_to_name, ship_address1, ship_address2, ship_city, ship_state, ship_zip, rack_number, totalPanels, delivery_instructions, notes, req.user.id]
     );
-
+    
     if (lines && lines.length > 0) {
       for (const l of lines) {
+        const desc = l.description || null;
         await pool.query(
-          'INSERT INTO shipment_lines (shipment_id, sales_order_line_id, item_id, quantity_shipped, lot_number, serial_number) VALUES (?,?,?,?,?,?)',
-          [result.insertId, l.sales_order_line_id, l.item_id, l.quantity_shipped, l.lot_number, l.serial_number]
+          'INSERT INTO shipment_lines (shipment_id, sales_order_line_id, item_id, quantity_shipped, lot_number, serial_number, rack_position, description) VALUES (?,?,?,?,?,?,?,?)',
+          [result.insertId, l.sales_order_line_id, l.item_id, l.quantity_shipped, l.lot_number, l.serial_number, l.rack_position, desc]
         );
         // Update SO line shipped qty
-        await pool.query('UPDATE sales_order_lines SET quantity_shipped = COALESCE(quantity_shipped,0) + ? WHERE id = ?', [l.quantity_shipped, l.sales_order_line_id]);
+        await pool.query('UPDATE sales_order_lines SET quantity_shipped = COALESCE(quantity_shipped,0) + ?, production_status = "shipped" WHERE id = ?', [l.quantity_shipped, l.sales_order_line_id]);
         // Reduce inventory
-        await pool.query('UPDATE items SET qty_on_hand = COALESCE(qty_on_hand,0) - ? WHERE id = ?', [l.quantity_shipped, l.item_id]);
+        if (l.item_id) {
+          await pool.query('UPDATE items SET qty_on_hand = COALESCE(qty_on_hand,0) - ? WHERE id = ?', [l.quantity_shipped, l.item_id]);
+        }
       }
     }
-
+    
     // Update SO status based on shipment completion
     const [soLines] = await pool.query('SELECT quantity_ordered, COALESCE(quantity_shipped,0) as quantity_shipped FROM sales_order_lines WHERE sales_order_id = ?', [sales_order_id]);
-    const allShipped = soLines.every(l => l.quantity_shipped >= l.quantity_ordered);
-    const someShipped = soLines.some(l => l.quantity_shipped > 0);
+    const allShipped = soLines.every(l => parseFloat(l.quantity_shipped) >= parseFloat(l.quantity_ordered));
+    const someShipped = soLines.some(l => parseFloat(l.quantity_shipped) > 0);
     if (allShipped) {
       await pool.query("UPDATE sales_orders SET status = 'shipped' WHERE id = ?", [sales_order_id]);
     } else if (someShipped) {
       await pool.query("UPDATE sales_orders SET status = 'partial' WHERE id = ?", [sales_order_id]);
     }
-
-    await req.audit('shipments', result.insertId, 'INSERT', null, { shipment_number: shipmentNumber, sales_order_id });
+    
+    await req.audit('shipments', result.insertId, 'INSERT', null, { shipment_number: shipmentNumber, sales_order_id, total_panels: totalPanels });
     res.status(201).json({ id: result.insertId, shipment_number: shipmentNumber });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Mark shipment as delivered
+router.post('/shipments/:id/deliver', authenticate, async (req, res) => {
+  try {
+    await pool.query("UPDATE shipments SET status = 'delivered', delivered_at = NOW(), delivery_confirmed_by = ? WHERE id = ?", [req.user.id, req.params.id]);
+    await req.audit('shipments', req.params.id, 'DELIVER', { status: 'shipped' }, { status: 'delivered' });
+    res.json({ message: 'Shipment marked as delivered' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
@@ -419,7 +557,8 @@ router.get('/invoices', authenticate, async (req, res) => {
                  (i.total - COALESCE(i.amount_paid,0)) as balance
                  FROM ar_invoices i JOIN customers c ON i.customer_id = c.id WHERE 1=1`;
     const params = [];
-    if (status === 'open') { query += " AND i.status IN ('draft','posted')"; } else if (status && status !== 'all' && status !== '') { query += ' AND i.status = ?'; params.push(status); }
+    if (status === 'open') { query += " AND i.status IN ('draft','open','posted','partial')"; }
+    else if (status && status !== 'all' && status !== '') { query += ' AND i.status = ?'; params.push(status); }
     if (customer_id) { query += ' AND i.customer_id = ?'; params.push(customer_id); }
     if (search) { query += ' AND (i.invoice_number LIKE ? OR c.company_name LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
     query += ' ORDER BY i.invoice_date DESC LIMIT 200';
@@ -430,7 +569,13 @@ router.get('/invoices', authenticate, async (req, res) => {
 
 router.get('/invoices/:id', authenticate, async (req, res) => {
   try {
-    const [invoices] = await pool.query(`SELECT i.*, c.company_name, c.email as customer_email, (i.total - COALESCE(i.amount_paid,0)) as balance FROM ar_invoices i JOIN customers c ON i.customer_id = c.id WHERE i.id = ?`, [req.params.id]);
+    const [invoices] = await pool.query(`SELECT i.*, c.company_name, c.email as customer_email, 
+      so.order_number as so_number, s.shipment_number,
+      (i.total - COALESCE(i.amount_paid,0)) as balance 
+      FROM ar_invoices i JOIN customers c ON i.customer_id = c.id 
+      LEFT JOIN sales_orders so ON i.sales_order_id = so.id
+      LEFT JOIN shipments s ON i.shipment_id = s.id
+      WHERE i.id = ?`, [req.params.id]);
     if (!invoices.length) return res.status(404).json({ error: 'Invoice not found' });
     const [lines] = await pool.query('SELECT * FROM ar_invoice_lines WHERE invoice_id = ? ORDER BY line_number', [req.params.id]);
     const [payments] = await pool.query('SELECT pa.*, cp.payment_number FROM payment_applications pa LEFT JOIN customer_payments cp ON pa.payment_id = cp.id WHERE pa.invoice_id = ?', [req.params.id]);
@@ -438,75 +583,206 @@ router.get('/invoices/:id', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Create invoice from shipment (normal flow: ship then invoice)
+// Create invoice from shipment (the normal flow)
 router.post('/invoices', authenticate, async (req, res) => {
   try {
     const invoiceNumber = await getNextNumber('ar_invoice');
     const { customer_id, sales_order_id, shipment_id, invoice_date, due_date, payment_terms, notes, lines } = req.body;
-
     let subtotal = 0, taxAmount = 0;
-    if (lines) lines.forEach(l => { subtotal += (l.quantity * l.unit_price); });
-
+    if (lines) lines.forEach(l => { subtotal += ((parseFloat(l.quantity) || 0) * (parseFloat(l.unit_price) || 0)); });
     const totalAmount = subtotal + taxAmount;
-
+    
+    // Calculate due date from payment terms
+    let calcDueDate = due_date;
+    if (!calcDueDate && payment_terms) {
+      const days = parseInt(payment_terms.replace(/\D/g, '')) || 30;
+      const d = new Date(invoice_date || new Date());
+      d.setDate(d.getDate() + days);
+      calcDueDate = d.toISOString().split('T')[0];
+    }
+    
     const [result] = await pool.query(
-      `INSERT INTO ar_invoices (invoice_number, customer_id, sales_order_id, shipment_id, invoice_date, due_date, payment_terms, subtotal, tax_amount, total, amount_paid, status, notes, created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,0,'draft',?,?)`,
-      [invoiceNumber, customer_id, sales_order_id, shipment_id, invoice_date || new Date(), due_date, payment_terms || 'Net 30', subtotal, taxAmount, totalAmount, notes, req.user.id]
+      `INSERT INTO ar_invoices (invoice_number, customer_id, sales_order_id, shipment_id, invoice_date, due_date, 
+       subtotal, tax_amount, total, balance, amount_paid, status, payment_terms, notes, created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,0,'draft',?,?,?)`,
+      [invoiceNumber, customer_id, sales_order_id || null, shipment_id || null, invoice_date || new Date(), calcDueDate,
+       subtotal, taxAmount, totalAmount, totalAmount, payment_terms || 'Net 30', notes, req.user.id]
     );
-
+    
     if (lines && lines.length > 0) {
       for (let i = 0; i < lines.length; i++) {
         const l = lines[i];
+        const lineTotal = (parseFloat(l.quantity) || 0) * (parseFloat(l.unit_price) || 0);
         await pool.query(
-          `INSERT INTO ar_invoice_lines (invoice_id, line_number, item_id, description, quantity, uom, unit_price, line_total, sales_order_line_id)
-           VALUES (?,?,?,?,?,?,?,?,?)`,
-          [result.insertId, i + 1, l.item_id, l.description, l.quantity, l.uom || 'Each', l.unit_price, l.quantity * l.unit_price, l.sales_order_line_id]
+          'INSERT INTO ar_invoice_lines (invoice_id, line_number, item_id, description, quantity, unit_price, line_total, gl_account_id) VALUES (?,?,?,?,?,?,?,?)',
+          [result.insertId, i + 1, l.item_id || null, l.description, l.quantity, l.unit_price, lineTotal, l.gl_account_id || null]
         );
       }
     }
-
+    
+    // Link invoice to shipment
+    if (shipment_id) {
+      await pool.query('UPDATE shipments SET invoice_id = ? WHERE id = ?', [result.insertId, shipment_id]);
+    }
+    
+    // Update SO status
+    if (sales_order_id) {
+      await pool.query("UPDATE sales_orders SET status = 'invoiced' WHERE id = ? AND status IN ('shipped','partial')", [sales_order_id]);
+    }
+    
     await req.audit('ar_invoices', result.insertId, 'INSERT', null, { invoice_number: invoiceNumber, customer_id, total: totalAmount });
     res.status(201).json({ id: result.insertId, invoice_number: invoiceNumber });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Post invoice (locks it - cannot be edited after posting)
+// Create invoice directly from shipment (auto-populate lines)
+router.post('/shipments/:id/create-invoice', authenticate, async (req, res) => {
+  try {
+    const [shipments] = await pool.query('SELECT s.*, so.payment_terms FROM shipments s LEFT JOIN sales_orders so ON s.sales_order_id = so.id WHERE s.id = ?', [req.params.id]);
+    if (!shipments.length) return res.status(404).json({ error: 'Shipment not found' });
+    if (shipments[0].invoice_id) return res.status(400).json({ error: 'Shipment already has an invoice' });
+    
+    const shipment = shipments[0];
+    const [shipLines] = await pool.query(`
+      SELECT sl.*, sol.unit_price, sol.description as sol_description, sol.item_id as sol_item_id
+      FROM shipment_lines sl 
+      LEFT JOIN sales_order_lines sol ON sl.sales_order_line_id = sol.id
+      WHERE sl.shipment_id = ?`, [req.params.id]);
+    
+    const invoiceNumber = await getNextNumber('ar_invoice');
+    let subtotal = 0;
+    const invoiceLines = shipLines.map((sl, idx) => {
+      const lineTotal = (parseFloat(sl.quantity_shipped) || 0) * (parseFloat(sl.unit_price) || 0);
+      subtotal += lineTotal;
+      return { line_number: idx + 1, item_id: sl.sol_item_id || sl.item_id, description: sl.sol_description || sl.description, quantity: sl.quantity_shipped, unit_price: sl.unit_price || 0, line_total: lineTotal };
+    });
+    
+    const paymentTerms = shipment.payment_terms || 'Net 30';
+    const days = parseInt(paymentTerms.replace(/\D/g, '')) || 30;
+    const dueDate = new Date(); dueDate.setDate(dueDate.getDate() + days);
+    
+    const [result] = await pool.query(
+      `INSERT INTO ar_invoices (invoice_number, customer_id, sales_order_id, shipment_id, invoice_date, due_date, 
+       subtotal, tax_amount, total, balance, amount_paid, status, payment_terms, created_by)
+       VALUES (?,?,?,?,CURDATE(),?,?,0,?,?,0,'draft',?,?)`,
+      [invoiceNumber, shipment.customer_id, shipment.sales_order_id, req.params.id, dueDate.toISOString().split('T')[0],
+       subtotal, subtotal, subtotal, paymentTerms, req.user.id]
+    );
+    
+    for (const l of invoiceLines) {
+      await pool.query(
+        'INSERT INTO ar_invoice_lines (invoice_id, line_number, item_id, description, quantity, unit_price, line_total) VALUES (?,?,?,?,?,?,?)',
+        [result.insertId, l.line_number, l.item_id, l.description, l.quantity, l.unit_price, l.line_total]
+      );
+    }
+    
+    await pool.query('UPDATE shipments SET invoice_id = ? WHERE id = ?', [result.insertId, req.params.id]);
+    await req.audit('ar_invoices', result.insertId, 'INSERT', null, { invoice_number: invoiceNumber, from_shipment: shipment.shipment_number });
+    res.status(201).json({ id: result.insertId, invoice_number: invoiceNumber });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Post invoice
 router.post('/invoices/:id/post', authenticate, async (req, res) => {
   try {
     const [invoices] = await pool.query('SELECT * FROM ar_invoices WHERE id = ?', [req.params.id]);
     if (!invoices.length) return res.status(404).json({ error: 'Invoice not found' });
     if (invoices[0].status !== 'draft') return res.status(400).json({ error: 'Only draft invoices can be posted' });
-
-    await pool.query("UPDATE ar_invoices SET status = 'posted', posted_by = ?, posted_at = NOW() WHERE id = ?", [req.user.id, req.params.id]);
-    
-    // Update SO status
-    if (invoices[0].sales_order_id) {
-      await pool.query("UPDATE sales_orders SET status = 'invoiced' WHERE id = ?", [invoices[0].sales_order_id]);
-    }
-
+    await pool.query("UPDATE ar_invoices SET status = 'posted', posted = 1, posted_by = ?, posted_at = NOW() WHERE id = ?", [req.user.id, req.params.id]);
     await req.audit('ar_invoices', req.params.id, 'POST', { status: 'draft' }, { status: 'posted' });
-    res.json({ message: 'Invoice posted successfully. It is now locked and cannot be modified.' });
+    res.json({ message: 'Invoice posted' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Void invoice (creates reversal - invoice cannot be deleted)
+// Void invoice
 router.post('/invoices/:id/void', authenticate, async (req, res) => {
   try {
-    const [invoices] = await pool.query('SELECT * FROM ar_invoices WHERE id = ?', [req.params.id]);
-    if (!invoices.length) return res.status(404).json({ error: 'Invoice not found' });
-    if (invoices[0].status === 'void') return res.status(400).json({ error: 'Invoice is already voided' });
-    if (invoices[0].amount_paid > 0) return res.status(400).json({ error: 'Cannot void an invoice with payments applied. Reverse the payments first.' });
-
     const { reason } = req.body;
     await pool.query("UPDATE ar_invoices SET status = 'void', void_reason = ?, voided_by = ?, voided_at = NOW() WHERE id = ?", [reason, req.user.id, req.params.id]);
-    await req.audit('ar_invoices', req.params.id, 'VOID', { status: invoices[0].status }, { status: 'void', reason });
-    res.json({ message: 'Invoice voided successfully' });
+    await req.audit('ar_invoices', req.params.id, 'VOID', null, { reason });
+    res.json({ message: 'Invoice voided' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Invoices cannot be deleted - only voided
-router.delete('/invoices/:id', authenticate, preventDelete('ar_invoices'));
+// Record payment against a specific invoice
+router.post('/invoices/:id/payment', authenticate, async (req, res) => {
+  try {
+    const { amount, payment_method, reference_number, payment_date } = req.body;
+    const invoiceId = req.params.id;
+    // Get invoice details
+    const [inv] = await pool.query('SELECT * FROM ar_invoices WHERE id = ?', [invoiceId]);
+    if (!inv.length) return res.status(404).json({ error: 'Invoice not found' });
+    const invoice = inv[0];
+    // Create payment
+    const paymentNumber = await getNextNumber('payment');
+    const [result] = await pool.query(
+      `INSERT INTO customer_payments (payment_number, customer_id, payment_date, amount, payment_method, reference_number, status, received_by)
+       VALUES (?,?,?,?,?,?,'posted',?)`,
+      [paymentNumber, invoice.customer_id, payment_date || new Date(), amount, payment_method || 'check', reference_number, req.user.id]
+    );
+    // Apply to invoice
+    await pool.query('UPDATE ar_invoices SET amount_paid = COALESCE(amount_paid,0) + ? WHERE id = ?', [amount, invoiceId]);
+    const [updated] = await pool.query('SELECT total, amount_paid FROM ar_invoices WHERE id = ?', [invoiceId]);
+    if (updated.length && parseFloat(updated[0].amount_paid) >= parseFloat(updated[0].total)) {
+      await pool.query("UPDATE ar_invoices SET status = 'paid', balance = 0 WHERE id = ?", [invoiceId]);
+    } else {
+      await pool.query("UPDATE ar_invoices SET status = 'partial', balance = total - COALESCE(amount_paid,0) WHERE id = ?", [invoiceId]);
+    }
+    await req.audit('ar_invoices', invoiceId, 'PAYMENT', null, { payment_number: paymentNumber, amount });
+    res.json({ message: 'Payment recorded', payment_number: paymentNumber });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ CUSTOMER PAYMENTS ============
+router.get('/payments', authenticate, async (req, res) => {
+  try {
+    const { status, customer_id } = req.query;
+    let query = `SELECT cp.*, c.company_name as customer_name FROM customer_payments cp JOIN customers c ON cp.customer_id = c.id WHERE 1=1`;
+    const params = [];
+    if (status && status !== 'all') { query += ' AND cp.status = ?'; params.push(status); }
+    if (customer_id) { query += ' AND cp.customer_id = ?'; params.push(customer_id); }
+    query += ' ORDER BY cp.payment_date DESC LIMIT 200';
+    const [payments] = await pool.query(query, params);
+    res.json(payments);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/payments', authenticate, async (req, res) => {
+  try {
+    const paymentNumber = await getNextNumber('payment');
+    const { customer_id, payment_date, amount, payment_method, reference_number, notes, applications } = req.body;
+    const [result] = await pool.query(
+      `INSERT INTO customer_payments (payment_number, customer_id, payment_date, amount, payment_method, reference_number, status, notes, received_by)
+       VALUES (?,?,?,?,?,?,'posted',?,?)`,
+      [paymentNumber, customer_id, payment_date || new Date(), amount, payment_method || 'check', reference_number, notes, req.user.id]
+    );
+    
+    // Apply payment to invoices
+    if (applications && applications.length > 0) {
+      let remaining = parseFloat(amount);
+      for (const app of applications) {
+        if (remaining <= 0) break;
+        const applyAmount = Math.min(remaining, parseFloat(app.amount));
+        await pool.query(
+          'INSERT INTO payment_applications (payment_id, invoice_id, amount) VALUES (?,?,?)',
+          [result.insertId, app.invoice_id, applyAmount]
+        );
+        await pool.query('UPDATE ar_invoices SET amount_paid = COALESCE(amount_paid,0) + ? WHERE id = ?', [applyAmount, app.invoice_id]);
+        // Check if fully paid
+        const [inv] = await pool.query('SELECT total, amount_paid FROM ar_invoices WHERE id = ?', [app.invoice_id]);
+        if (inv.length && parseFloat(inv[0].amount_paid) >= parseFloat(inv[0].total)) {
+          await pool.query("UPDATE ar_invoices SET status = 'paid', balance = 0 WHERE id = ?", [app.invoice_id]);
+        } else {
+          await pool.query("UPDATE ar_invoices SET status = 'partial', balance = total - COALESCE(amount_paid,0) WHERE id = ?", [app.invoice_id]);
+        }
+        remaining -= applyAmount;
+      }
+    }
+    
+    await req.audit('customer_payments', result.insertId, 'INSERT', null, { payment_number: paymentNumber, amount });
+    res.status(201).json({ id: result.insertId, payment_number: paymentNumber });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
 
 // ============ CREDIT MEMOS ============
 router.get('/credit-memos', authenticate, async (req, res) => {
@@ -527,37 +803,30 @@ router.post('/credit-memos', authenticate, async (req, res) => {
     const memoNumber = await getNextNumber('credit_memo');
     const { customer_id, invoice_id, amount, reason, notes } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Credit amount must be greater than 0' });
-
     const [result] = await pool.query(
       `INSERT INTO credit_memos (memo_number, customer_id, invoice_id, memo_date, amount, reason, notes, status, created_by)
        VALUES (?,?,?,NOW(),?,?,?,'draft',?)`,
       [memoNumber, customer_id, invoice_id, amount, reason, notes, req.user.id]
     );
-
     await req.audit('credit_memos', result.insertId, 'INSERT', null, { memo_number: memoNumber, customer_id, amount, reason });
     res.status(201).json({ id: result.insertId, memo_number: memoNumber });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Post credit memo (applies credit to invoice and/or customer balance)
 router.post('/credit-memos/:id/post', authenticate, async (req, res) => {
   try {
     const [memos] = await pool.query('SELECT * FROM credit_memos WHERE id = ?', [req.params.id]);
     if (!memos.length) return res.status(404).json({ error: 'Credit memo not found' });
     if (memos[0].status !== 'draft') return res.status(400).json({ error: 'Only draft credit memos can be posted' });
-
-    // If linked to an invoice, reduce the invoice balance
     if (memos[0].invoice_id) {
       await pool.query('UPDATE ar_invoices SET amount_paid = COALESCE(amount_paid,0) + ? WHERE id = ?', [memos[0].amount, memos[0].invoice_id]);
-      // Check if invoice is now fully paid
       const [inv] = await pool.query('SELECT total, amount_paid FROM ar_invoices WHERE id = ?', [memos[0].invoice_id]);
-      if (inv.length && inv[0].amount_paid >= inv[0].total) {
+      if (inv.length && parseFloat(inv[0].amount_paid) >= parseFloat(inv[0].total)) {
         await pool.query("UPDATE ar_invoices SET status = 'paid' WHERE id = ?", [memos[0].invoice_id]);
       } else {
         await pool.query("UPDATE ar_invoices SET status = 'partial' WHERE id = ?", [memos[0].invoice_id]);
       }
     }
-
     await pool.query("UPDATE credit_memos SET status = 'posted', posted_by = ?, posted_at = NOW() WHERE id = ?", [req.user.id, req.params.id]);
     await req.audit('credit_memos', req.params.id, 'POST', { status: 'draft' }, { status: 'posted' });
     res.json({ message: 'Credit memo posted and applied' });
@@ -597,12 +866,16 @@ router.get('/dashboard', authenticate, async (req, res) => {
       SELECT c.company_name, SUM(so.total) as total_sales FROM sales_orders so 
       JOIN customers c ON so.customer_id = c.id WHERE YEAR(so.order_date) = YEAR(NOW()) 
       GROUP BY c.id ORDER BY total_sales DESC LIMIT 10`);
+    const [recentQuotes] = await pool.query("SELECT q.*, c.company_name as customer_name FROM quotes q JOIN customers c ON q.customer_id = c.id ORDER BY q.created_at DESC LIMIT 5");
+    const [pendingShipments] = await pool.query("SELECT COUNT(*) as count FROM shipments WHERE status = 'draft'");
     res.json({ 
       open_orders: openOrders[0].count, 
       mtd_sales: mtdSales[0].total, 
       ytd_sales: ytdSales[0].total, 
       overdue_invoices: overdueInvoices[0],
-      top_customers: topCustomers 
+      top_customers: topCustomers,
+      recent_quotes: recentQuotes,
+      pending_shipments: pendingShipments[0].count
     });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
