@@ -75,7 +75,7 @@ export default function Scanner() {
       switch (mode) {
         case 'lookup':
           res = await api.post('/api/labels/scan/lookup', { barcode: code });
-          setResult({ type: 'lookup', ...res.data });
+          setResult({ scanMode: 'lookup', type: res.data.type, record: res.data.data, message: res.data.message });
           break;
 
         case 'count':
@@ -250,7 +250,7 @@ export default function Scanner() {
 }
 
 function ScanResult({ result }) {
-  if (result.type === 'lookup') {
+  if (result.scanMode === 'lookup') {
     return (
       <div className="bg-gray-800 rounded-lg p-4 border border-blue-600">
         <div className="flex items-center gap-2 mb-2">
