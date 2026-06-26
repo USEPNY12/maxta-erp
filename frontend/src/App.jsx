@@ -30,6 +30,8 @@ import PurchasingHome from './pages/purchasing/PurchasingHome';
 import PurchaseOrders from './pages/purchasing/PurchaseOrders';
 import Vendors from './pages/purchasing/Vendors';
 import POReceipts from './pages/purchasing/POReceipts';
+import Locations from './pages/purchasing/Locations';
+import PurchasingAPInvoices from './pages/purchasing/APInvoices';
 import AccountingHome from './pages/accounting/AccountingHome';
 import GLAccounts from './pages/accounting/GLAccounts';
 import JournalVouchers from './pages/accounting/JournalVouchers';
@@ -108,6 +110,8 @@ function App() {
           <Route path="purchasing/purchase-orders" element={<PurchaseOrders />} />
           <Route path="purchasing/vendors" element={<Vendors />} />
           <Route path="purchasing/receipts" element={<POReceipts />} />
+          <Route path="purchasing/ap-invoices" element={<PurchasingAPInvoices />} />
+          <Route path="purchasing/locations" element={<Locations />} />
           {/* Accounting */}
           <Route path="accounting" element={<AccountingHome />} />
           <Route path="accounting/gl-accounts" element={<GLAccounts />} />

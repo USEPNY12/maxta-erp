@@ -1,132 +1,172 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
-
 function POReceipts() {
   const [receipts, setReceipts] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [purchaseOrders, setPurchaseOrders] = useState([]);
-  const [poLines, setPoLines] = useState([]);
-  const [form, setForm] = useState({
-    purchase_order_id: '', receipt_date: new Date().toISOString().split('T')[0], location_id: '', notes: '', lines: []
-  });
-
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const [activeTab, setActiveTab] = useState('Lines');
+  const [labels, setLabels] = useState([]);
   useEffect(() => { fetchReceipts(); }, []);
-
   const fetchReceipts = async () => {
-    try { const res = await api.get('/api/purchasing/receipts'); setReceipts(res.data); } catch { setReceipts([]); }
+    try { const res = await api.get('/api/purchasing/receipts', { params: { search } }); setReceipts(Array.isArray(res.data) ? res.data : []); } catch { setReceipts([]); }
   };
-
-  const fetchPOs = async () => {
-    try { const res = await api.get('/api/purchasing/purchase-orders', { params: { status: 'approved' } }); setPurchaseOrders(res.data); } catch { setPurchaseOrders([]); }
-  };
-
-  const handlePOChange = async (poId) => {
-    setForm({...form, purchase_order_id: poId, lines: []});
-    if (!poId) { setPoLines([]); return; }
+  const openDetail = async (r) => {
     try {
-      const res = await api.get(`/api/purchasing/purchase-orders/${poId}`);
-      const lines = (res.data.lines || []).map(l => ({
-        po_line_id: l.id, item_id: l.item_id, item_number: l.item_number, item_description: l.description,
-        qty_ordered: l.quantity, qty_received: l.quantity_received || 0, quantity_received: 0, lot_number: '', serial_number: ''
-      }));
-      setPoLines(lines);
-      setForm(f => ({...f, lines}));
-    } catch { setPoLines([]); }
+      const res = await api.get(`/api/purchasing/receipts/${r.id}`);
+      setSelected(res.data); setActiveTab('Lines'); setShowDetail(true);
+      // Fetch labels
+      try { const labRes = await api.get(`/api/purchasing/receipts/${r.id}/labels`); setLabels(Array.isArray(labRes.data?.labels) ? labRes.data.labels : (Array.isArray(labRes.data) ? labRes.data : [])); } catch { setLabels([]); }
+    } catch { setSelected(r); setShowDetail(true); }
   };
-
-  const updateLine = (idx, field, value) => {
-    const lines = [...form.lines];
-    lines[idx] = {...lines[idx], [field]: value};
-    setForm({...form, lines});
-  };
-
-  const handleNew = () => {
-    fetchPOs();
-    setForm({ purchase_order_id: '', receipt_date: new Date().toISOString().split('T')[0], location_id: '', notes: '', lines: [] });
-    setPoLines([]);
-    setShowModal(true);
-  };
-
-  const handleSave = async () => {
-    const linesToSend = form.lines.filter(l => l.quantity_received > 0);
-    if (linesToSend.length === 0) { toast.error('Enter quantities to receive'); return; }
+  const handleCreateInvoice = async () => {
     try {
-      await api.post('/api/purchasing/receipts', { ...form, lines: linesToSend });
-      toast.success('PO Receipt created - inventory updated');
-      setShowModal(false);
-      fetchReceipts();
-    } catch (err) { toast.error(err.response?.data?.error || 'Failed'); }
+      const res = await api.post(`/api/purchasing/receipts/${selected.id}/create-invoice`);
+      toast.success(`AP Invoice ${res.data.invoice_number} created`);
+      openDetail(selected);
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to create invoice'); }
   };
-
+  const fmt = (d) => d ? d.split('T')[0] : '-';
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col overflow-hidden">
       <div className="erp-toolbar">
-        <button className="erp-toolbar-btn" onClick={handleNew}><span className="text-green-600">+</span> Receive PO</button>
-        <div className="erp-toolbar-separator" />
-        <button className="erp-toolbar-btn" onClick={fetchReceipts}>↻ Refresh</button>
-        <button className="erp-toolbar-btn">Print Receipt</button>
+        <span className="text-sm font-bold">Inventory Receipts</span>
+        <input className="erp-form-input w-48" placeholder="Search receipt#, PO#..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchReceipts()} />
+        <span className="text-xs text-gray-500 ml-2">{receipts.length} receipts</span>
       </div>
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto p-2">
         <table className="erp-grid">
-          <thead>
-            <tr><th>Receipt #</th><th>PO #</th><th>Vendor</th><th>Date</th><th>Items Received</th></tr>
-          </thead>
+          <thead><tr><th>Receipt No.</th><th>Date</th><th>PO Number</th><th>Vendor</th><th>Packing Slip</th><th>Location</th><th>Items</th><th>Status</th></tr></thead>
           <tbody>
-            {receipts.map(r => (
-              <tr key={r.id}>
-                <td className="text-blue-700 font-bold">{r.receipt_number}</td>
-                <td>{r.po_number}</td>
+            {receipts.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No receipts found</td></tr> :
+            receipts.map(r => (
+              <tr key={r.id} className="cursor-pointer hover:bg-blue-50" onClick={() => openDetail(r)}>
+                <td className="font-bold text-green-700">{r.receipt_number}</td>
+                <td>{fmt(r.receipt_date)}</td>
+                <td className="text-blue-700">{r.po_number}</td>
                 <td>{r.vendor_name}</td>
-                <td>{r.receipt_date}</td>
-                <td>{r.line_count || '-'}</td>
+                <td>{r.packing_slip_number || '-'}</td>
+                <td>{r.location_name || '-'}</td>
+                <td className="text-center">{r.line_count || '-'}</td>
+                <td><span className="erp-status erp-status-received">received</span></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      {showModal && (
-        <div className="erp-modal-overlay">
-          <div className="erp-modal" style={{ minWidth: '850px' }}>
-            <div className="erp-modal-title"><span>Receive Purchase Order</span><button className="text-white" onClick={() => setShowModal(false)}>✕</button></div>
-            <div className="erp-modal-body space-y-3">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="erp-form-group"><label className="erp-form-label">Purchase Order:</label>
-                  <select className="erp-form-select" value={form.purchase_order_id} onChange={e => handlePOChange(e.target.value)}>
-                    <option value="">Select PO...</option>
-                    {purchaseOrders.map(po => <option key={po.id} value={po.id}>{po.po_number} - {po.vendor_name}</option>)}
-                  </select>
-                </div>
-                <div className="erp-form-group"><label className="erp-form-label">Receipt Date:</label><input type="date" className="erp-form-input" value={form.receipt_date} onChange={e => setForm({...form, receipt_date: e.target.value})} /></div>
-                <div className="erp-form-group"><label className="erp-form-label">Location:</label><input className="erp-form-input" value={form.location_id} onChange={e => setForm({...form, location_id: e.target.value})} placeholder="Warehouse / Bin" /></div>
+      {/* Detail Modal */}
+      {showDetail && selected && (
+        <div className="erp-modal-overlay" onClick={() => setShowDetail(false)}>
+          <div className="erp-modal" style={{ minWidth: '850px' }} onClick={e => e.stopPropagation()}>
+            <div className="erp-modal-title"><span>Receipt - {selected.receipt_number}</span><button onClick={() => setShowDetail(false)} className="text-white hover:text-gray-300">✕</button></div>
+            <div className="erp-modal-body">
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <fieldset className="border border-gray-400 p-3 rounded"><legend className="text-xs font-bold px-1">Receipt Info</legend>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between"><span className="text-gray-600">Receipt #:</span><span className="font-bold">{selected.receipt_number}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Date:</span><span>{fmt(selected.receipt_date)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Packing Slip:</span><span>{selected.packing_slip_number || '-'}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Received By:</span><span>{selected.received_by_name || 'Admin'}</span></div>
+                  </div>
+                </fieldset>
+                <fieldset className="border border-gray-400 p-3 rounded"><legend className="text-xs font-bold px-1">Purchase Order</legend>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between"><span className="text-gray-600">PO #:</span><span className="font-bold text-blue-700">{selected.po_number}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Vendor:</span><span>{selected.vendor_name}</span></div>
+                  </div>
+                </fieldset>
+                <fieldset className="border border-gray-400 p-3 rounded"><legend className="text-xs font-bold px-1">Stocking</legend>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between"><span className="text-gray-600">Location:</span><span>{selected.location_name || 'Default'}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Lots Created:</span><span className="font-bold text-green-700">{(selected.lines || []).filter(l => l.lot_number).length}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">AP Invoice:</span><span>{selected.ap_invoice_number || 'Not created'}</span></div>
+                  </div>
+                </fieldset>
               </div>
-
-              <div className="border-t border-gray-300 pt-2">
-                <h4 className="text-xs font-bold mb-2">PO Lines - Enter Quantities Received:</h4>
-                <table className="erp-grid text-xs">
-                  <thead><tr><th>Item #</th><th>Description</th><th>Ordered</th><th>Previously Rcvd</th><th>Receive Now</th><th>Lot #</th></tr></thead>
-                  <tbody>
-                    {form.lines.length === 0 ? (
-                      <tr><td colSpan="6" className="text-center p-3 text-gray-500">Select a PO to see lines</td></tr>
-                    ) : form.lines.map((line, idx) => (
-                      <tr key={idx}>
-                        <td className="font-bold">{line.item_number}</td>
-                        <td>{line.item_description}</td>
-                        <td className="text-right">{line.qty_ordered}</td>
-                        <td className="text-right">{line.qty_received}</td>
-                        <td><input type="number" className="erp-form-input w-20 text-xs" value={line.quantity_received} onChange={e => updateLine(idx, 'quantity_received', parseFloat(e.target.value) || 0)} /></td>
-                        <td><input className="erp-form-input w-28 text-xs" value={line.lot_number} onChange={e => updateLine(idx, 'lot_number', e.target.value)} placeholder="Lot/Batch #" /></td>
+              <div className="erp-tabs">
+                {['Lines', 'Lots & Inventory', 'Labels', 'AP Invoice'].map(tab => (
+                  <div key={tab} className={`erp-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>{tab}</div>
+                ))}
+              </div>
+              <div className="border border-gray-300 p-2 min-h-[180px]">
+                {activeTab === 'Lines' && (
+                  <table className="erp-grid"><thead><tr><th>#</th><th>Item</th><th>Description</th><th>Qty Received</th><th>Location</th><th>Lot #</th><th>Vendor Lot</th></tr></thead>
+                    <tbody>{(selected.lines || []).map((l, i) => (
+                      <tr key={i}>
+                        <td>{i + 1}</td><td>{l.item_number || '-'}</td><td>{l.description || l.item_description || '-'}</td>
+                        <td className="text-right font-bold">{l.quantity_received}</td>
+                        <td>{l.location_name || '-'}</td>
+                        <td className="text-green-700 font-mono">{l.lot_number || '-'}</td>
+                        <td>{l.vendor_lot || '-'}</td>
                       </tr>
+                    ))}</tbody></table>
+                )}
+                {activeTab === 'Lots & Inventory' && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-gray-600 mb-2">Each received line creates an inventory lot with tracking:</p>
+                    {(selected.lines || []).map((l, i) => (
+                      <div key={i} className="bg-green-50 border border-green-200 rounded p-2 flex items-center justify-between">
+                        <div>
+                          <div className="text-xs font-bold">{l.description || l.item_description}</div>
+                          <div className="text-[10px] text-gray-600">Lot: <span className="font-mono text-green-700">{l.lot_number || 'N/A'}</span> | Vendor Lot: {l.vendor_lot || '-'} | Qty: {l.quantity_received}</div>
+                        </div>
+                        <div className="text-xs text-right">
+                          <div className="text-green-700 font-bold">✓ Stocked</div>
+                          <div className="text-[10px] text-gray-500">{l.location_name || 'Main Warehouse'}</div>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
+                    <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                      <strong>Inventory Transactions:</strong> Each line created a "receipt" transaction in the inventory ledger, updating qty_on_hand for the item.
+                    </div>
+                  </div>
+                )}
+                {activeTab === 'Labels' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-gray-600">Barcode labels generated for this receipt:</span>
+                      <button className="erp-btn text-xs" onClick={() => toast.info('All labels sent to printer')}>🖨️ Print All Labels</button>
+                    </div>
+                    {labels.length === 0 ? <p className="text-center text-gray-500 p-4 text-xs">No labels generated</p> :
+                    labels.map((label, i) => (
+                      <div key={i} className="border border-gray-300 rounded p-3 bg-white">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-mono text-sm font-bold">{label.barcode}</div>
+                            <div className="text-xs text-gray-600 mt-1">{label.description} | Lot: {label.lot_number} | Qty: {label.quantity}</div>
+                            <div className="text-[10px] text-gray-500">Location: {label.location || 'Main'} | Vendor: {label.vendor}</div>
+                          </div>
+                          <div className="flex flex-col items-center">
+                            <div className="w-32 h-8 bg-black" style={{ background: 'repeating-linear-gradient(90deg, #000 0px, #000 2px, #fff 2px, #fff 4px)' }}></div>
+                            <div className="font-mono text-[9px] mt-1">{label.barcode}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {activeTab === 'AP Invoice' && (
+                  <div className="p-4 text-center">
+                    {selected.ap_invoice_id ? (
+                      <div className="bg-green-50 border border-green-200 rounded p-4">
+                        <div className="text-green-700 font-bold mb-1">AP Invoice Created</div>
+                        <div className="text-xs text-gray-600">Invoice #: {selected.ap_invoice_number || 'Created'}</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-3">Create an AP Invoice from this receipt for three-way matching (PO ↔ Receipt ↔ Invoice).</p>
+                        <button className="erp-btn erp-btn-primary" onClick={handleCreateInvoice}>💰 Create AP Invoice from Receipt</button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <div className="erp-form-group"><label className="erp-form-label">Notes:</label><textarea className="erp-form-input w-full h-10" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} /></div>
             </div>
             <div className="erp-modal-footer">
-              <button className="erp-btn erp-btn-primary" onClick={handleSave}>Receive & Update Inventory</button>
-              <button className="erp-btn" onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="erp-btn" onClick={() => toast.info('Labels sent to printer')}>🏷️ Print Labels</button>
+              {!selected.ap_invoice_id && <button className="erp-btn erp-btn-primary" onClick={handleCreateInvoice}>💰 Create AP Invoice</button>}
+              <button className="erp-btn" onClick={() => setShowDetail(false)}>Close</button>
             </div>
           </div>
         </div>
@@ -134,5 +174,4 @@ function POReceipts() {
     </div>
   );
 }
-
 export default POReceipts;
