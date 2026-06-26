@@ -12,6 +12,7 @@ function SalesOrders() {
   const [selected, setSelected] = useState(null);
   const [activeTab, setActiveTab] = useState('Lines');
   const [customers, setCustomers] = useState([]);
+  const [items, setItems] = useState([]);
   const [showReleaseDialog, setShowReleaseDialog] = useState(false);
   const [showShipDialog, setShowShipDialog] = useState(false);
   const [shipForm, setShipForm] = useState({ carrier: '', tracking_number: '', ship_via: '', freight_charge: 0, notes: '', lines: [] });
@@ -22,7 +23,7 @@ function SalesOrders() {
     lines: [{ description: '', quantity_ordered: 1, unit_price: 0, product_type: '', glass_type: '', thickness: '', width_inches: '', height_inches: '', edge_type: '', manufacturing_notes: '' }]
   });
 
-  useEffect(() => { fetchOrders(); fetchCustomers(); }, [statusFilter]);
+  useEffect(() => { fetchOrders(); fetchCustomers(); api.get('/api/inventory/items').then(r => setItems(Array.isArray(r.data) ? r.data : r.data.items || [])).catch(() => setItems([])); }, [statusFilter]);
 
   const fetchOrders = async () => {
     try {
@@ -104,6 +105,20 @@ function SalesOrders() {
   const glassTypes = ['Clear Float', 'Low-E', 'Tinted Grey', 'Tinted Bronze', 'Tinted Green', 'Starphire', 'Frosted'];
   const thicknesses = ['4mm', '5mm', '6mm', '8mm', '10mm', '12mm', '15mm', '19mm'];
   const edgeTypes = ['Seamed', 'Flat Polish', 'Pencil Polish', 'Beveled', 'Ogee', 'Mitered'];
+
+
+  const lookupPrice = async (idx, itemId) => {
+    if (!itemId) return;
+    try {
+      const res = await api.get('/api/sales/pricing/lookup', { params: { item_id: itemId, customer_id: newOrder.customer_id, quantity: newOrder.lines[idx]?.quantity_ordered || 1 } });
+      if (res.data.price) {
+        const lines = [...newOrder.lines];
+        const item = items.find(i => i.id === parseInt(itemId));
+        lines[idx] = { ...lines[idx], unit_price: res.data.price, description: lines[idx].description || item?.description || '' };
+        setNewOrder({ ...newOrder, lines });
+      }
+    } catch {}
+  };
 
   const addLine = () => setNewOrder({ ...newOrder, lines: [...newOrder.lines, { description: '', quantity_ordered: 1, unit_price: 0, product_type: '', glass_type: '', thickness: '', width_inches: '', height_inches: '', edge_type: '', manufacturing_notes: '' }] });
   const updateLine = (idx, field, value) => { const lines = [...newOrder.lines]; lines[idx] = { ...lines[idx], [field]: value }; setNewOrder({ ...newOrder, lines }); };

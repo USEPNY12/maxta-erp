@@ -86,6 +86,20 @@ function Quotes() {
     lines[idx] = { ...lines[idx], [field]: value };
     setNewQuote({ ...newQuote, lines });
   };
+
+  const lookupPrice = async (idx, itemId) => {
+    if (!itemId) return;
+    try {
+      const res = await api.get('/api/sales/pricing/lookup', { params: { item_id: itemId, customer_id: newQuote.customer_id, quantity: newQuote.lines[idx]?.quantity || 1 } });
+      if (res.data.price) {
+        const lines = [...newQuote.lines];
+        const item = items.find(i => i.id === parseInt(itemId));
+        lines[idx] = { ...lines[idx], unit_price: res.data.price, description: lines[idx].description || item?.description || '' };
+        setNewQuote({ ...newQuote, lines });
+      }
+    } catch {}
+  };
+
   const getTotal = () => newQuote.lines.reduce((sum, l) => sum + ((parseFloat(l.quantity) || 0) * (parseFloat(l.unit_price) || 0)), 0);
 
   const productTypes = ['tempered_panel', 'laminated', 'tempered_laminated', 'igu_standard', 'igu_low_e', 'heat_soaked', 'custom'];
@@ -180,7 +194,7 @@ function Quotes() {
                           <td className="text-right font-bold">${parseFloat(l.line_total || 0).toFixed(2)}</td>
                         </tr>
                       ))}
-                      <tr className="bg-gray-100 font-bold"><td colSpan="9" className="text-right">Total:</td><td className="text-right">${parseFloat(selected.total || 0).toFixed(2)}</td></tr>
+                      <tr className="bg-gray-100 font-bold"><td colSpan="10" className="text-right">Total:</td><td className="text-right">${parseFloat(selected.total || 0).toFixed(2)}</td></tr>
                     </tbody>
                   </table>
                 )}
@@ -247,10 +261,13 @@ function Quotes() {
               </div>
               <div className="overflow-x-auto">
                 <table className="erp-grid" style={{ minWidth: '900px' }}>
-                  <thead><tr><th>Description*</th><th>Product Type</th><th>Glass Type</th><th>Thickness</th><th>W"</th><th>H"</th><th>Edge</th><th>Qty</th><th>Unit $</th><th>Total</th><th></th></tr></thead>
+                  <thead><tr><th>Item</th><th>Description*</th><th>Product Type</th><th>Glass Type</th><th>Thickness</th><th>W"</th><th>H"</th><th>Edge</th><th>Qty</th><th>Unit $</th><th>Total</th><th></th></tr></thead>
                   <tbody>
                     {newQuote.lines.map((line, idx) => (
                       <tr key={idx}>
+                        <td><select className="erp-form-select w-32" value={line.item_id || ''} onChange={e => { updateLine(idx, 'item_id', e.target.value); lookupPrice(idx, e.target.value); }}>
+                          <option value="">Custom...</option>{items.map(it => <option key={it.id} value={it.id}>{it.item_number}</option>)}
+                        </select></td>
                         <td><input className="erp-form-input w-full" value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} placeholder="Panel description" /></td>
                         <td><select className="erp-form-select w-full" value={line.product_type} onChange={e => updateLine(idx, 'product_type', e.target.value)}>
                           <option value="">Select...</option>{productTypes.map(pt => <option key={pt} value={pt}>{pt.replace(/_/g, ' ')}</option>)}
@@ -272,7 +289,7 @@ function Quotes() {
                         <td><button className="text-red-600 text-xs" onClick={() => removeLine(idx)}>✕</button></td>
                       </tr>
                     ))}
-                    <tr className="bg-gray-100"><td colSpan="9" className="text-right font-bold">Total:</td><td className="text-right font-bold">${getTotal().toFixed(2)}</td><td></td></tr>
+                    <tr className="bg-gray-100"><td colSpan="10" className="text-right font-bold">Total:</td><td className="text-right font-bold">${getTotal().toFixed(2)}</td><td></td></tr>
                   </tbody>
                 </table>
               </div>

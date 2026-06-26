@@ -175,7 +175,7 @@ function App() {
           <Route path="accounting/ap-invoices" element={<ProtectedModule module="accounting" permissions={permissions}><APInvoices /></ProtectedModule>} />
           <Route path="accounting/customer-payments" element={<ProtectedModule module="accounting" permissions={permissions}><CustomerPayments /></ProtectedModule>} />
           <Route path="accounting/vendor-payments" element={<ProtectedModule module="accounting" permissions={permissions}><VendorPayments /></ProtectedModule>} />
-          <Route path="accounting/bank-reconciliation" element={<ProtectedModule module="accounting" permissions={permissions}><BankReconciliation /></ProtectedModule>} />
+          <Route path="accounting/bank-recon" element={<ProtectedModule module="accounting" permissions={permissions}><BankReconciliation /></ProtectedModule>} />
           {/* Reports & Setup */}
           <Route path="reports" element={<ProtectedModule module="reports" permissions={permissions}><Reports /></ProtectedModule>} />
           <Route path="setup" element={<ProtectedModule module="system_setup" permissions={permissions}><SystemSetup /></ProtectedModule>} />

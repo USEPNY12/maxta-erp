@@ -10,6 +10,8 @@ function APInvoices() {
   const [activeTab, setActiveTab] = useState('Lines');
   const [showPay, setShowPay] = useState(false);
   const [payment, setPayment] = useState({ amount: '', payment_method: 'check', reference_number: '', payment_date: '' });
+  const [showMatch, setShowMatch] = useState(false);
+  const [matchData, setMatchData] = useState(null);
   useEffect(() => { fetchInvoices(); }, [statusFilter]);
   const fetchInvoices = async () => {
     try { const res = await api.get('/api/purchasing/ap-invoices', { params: { search, status: statusFilter } }); setInvoices(Array.isArray(res.data) ? res.data : []); } catch { setInvoices([]); }
@@ -37,6 +39,13 @@ function APInvoices() {
       toast.success(`Payment recorded (${res.data.payment_number}). Balance: $${parseFloat(res.data.new_balance).toFixed(2)}`);
       setShowPay(false); openDetail(selected); fetchInvoices();
     } catch (err) { toast.error(err.response?.data?.error || 'Failed'); }
+  };
+  const viewThreeWayMatch = async (invoice) => {
+    try {
+      const res = await api.get(`/api/purchasing/three-way-match/${invoice.id}`);
+      setMatchData(res.data);
+      setShowMatch(true);
+    } catch (err) { toast.error('Failed to load match data'); }
   };
   const fmt = (d) => d ? d.split('T')[0] : '-';
   return (
@@ -140,6 +149,7 @@ function APInvoices() {
             </div>
             <div className="erp-modal-footer">
               {selected.status === 'draft' && <button className="erp-btn erp-btn-primary" onClick={handlePost}>✓ Post Invoice</button>}
+              <button className="erp-btn text-xs" onClick={() => viewThreeWayMatch(selected)}>3-Way Match</button>
               {['posted', 'partial'].includes(selected.status) && parseFloat(selected.balance) > 0 && <button className="erp-btn erp-btn-success" onClick={openPayModal}>💵 Record Payment</button>}
               {selected.status === 'draft' && <button className="erp-btn" style={{ background: '#dc2626', color: 'white' }} onClick={handleVoid}>Void</button>}
               <button className="erp-btn" onClick={() => setShowDetail(false)}>Close</button>
@@ -171,6 +181,42 @@ function APInvoices() {
             <div className="erp-modal-footer">
               <button className="erp-btn erp-btn-success" onClick={handlePay} disabled={!payment.amount || parseFloat(payment.amount) <= 0}>Apply Payment</button>
               <button className="erp-btn" onClick={() => setShowPay(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Three-Way Match Modal */}
+      {showMatch && matchData && (
+        <div className="erp-modal-overlay" onClick={() => setShowMatch(false)}>
+          <div className="erp-modal" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
+            <div className="erp-modal-header"><h3>Three-Way Match</h3><button onClick={() => setShowMatch(false)}>&times;</button></div>
+            <div className="erp-modal-body">
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="p-3 border rounded bg-blue-50">
+                  <div className="text-xs font-bold text-blue-700 mb-1">Purchase Order</div>
+                  <div className="font-bold">{matchData.purchase_order?.number || 'N/A'}</div>
+                  <div className="text-lg font-mono">${Number(matchData.purchase_order?.total || 0).toFixed(2)}</div>
+                </div>
+                <div className="p-3 border rounded bg-green-50">
+                  <div className="text-xs font-bold text-green-700 mb-1">Receipt</div>
+                  <div className="font-bold">{matchData.receipt?.number || 'N/A'}</div>
+                  <div className="text-lg font-mono">${Number(matchData.receipt?.total || 0).toFixed(2)}</div>
+                </div>
+                <div className="p-3 border rounded bg-purple-50">
+                  <div className="text-xs font-bold text-purple-700 mb-1">AP Invoice</div>
+                  <div className="font-bold">{matchData.invoice?.number || 'N/A'}</div>
+                  <div className="text-lg font-mono">${Number(matchData.invoice?.total || 0).toFixed(2)}</div>
+                </div>
+              </div>
+              <div className="p-3 border rounded text-center">
+                <div className="text-xs font-bold mb-1">Match Status</div>
+                <span className={`px-3 py-1 rounded text-sm font-bold ${matchData.match_status === 'matched' ? 'bg-green-100 text-green-700' : matchData.match_status === 'within_tolerance' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                  {matchData.match_status === 'matched' ? 'MATCHED' : matchData.match_status === 'within_tolerance' ? 'WITHIN TOLERANCE' : matchData.match_status === 'no_receipt' ? 'NO RECEIPT' : 'VARIANCE'}
+                </span>
+                {matchData.variance !== null && matchData.variance !== undefined && (
+                  <div className="mt-2 text-sm">Variance: <span className={`font-mono font-bold ${Math.abs(matchData.variance) < 0.01 ? 'text-green-600' : 'text-red-600'}`}>${Number(matchData.variance).toFixed(2)} ({matchData.variance_percent}%)</span></div>
+                )}
+              </div>
             </div>
           </div>
         </div>

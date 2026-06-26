@@ -428,4 +428,70 @@ router.post('/period-close', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+
+
+// ============ BANK TRANSACTIONS ============
+router.get('/bank-reconciliation/:bankId/transactions', authenticate, async (req, res) => {
+  try {
+    const { bankId } = req.params;
+    const { status } = req.query; // 'uncleared', 'cleared', 'all'
+    let query = 'SELECT * FROM bank_transactions WHERE bank_account_id = ?';
+    const params = [bankId];
+    if (status === 'uncleared') { query += ' AND cleared = 0'; }
+    else if (status === 'cleared') { query += ' AND cleared = 1'; }
+    query += ' ORDER BY transaction_date DESC, id DESC';
+    const [transactions] = await pool.query(query, params);
+    res.json(transactions);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/bank-reconciliation/:bankId/transactions', authenticate, async (req, res) => {
+  try {
+    const { bankId } = req.params;
+    const { transaction_date, type, reference, description, amount } = req.body;
+    const [result] = await pool.query(
+      'INSERT INTO bank_transactions (bank_account_id, transaction_date, type, reference, description, amount) VALUES (?,?,?,?,?,?)',
+      [bankId, transaction_date, type || 'withdrawal', reference, description, amount]
+    );
+    // Update bank account balance
+    await pool.query('UPDATE bank_accounts SET current_balance = current_balance + ? WHERE id = ?', [parseFloat(amount), bankId]);
+    res.status(201).json({ id: result.insertId });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/bank-reconciliation/:bankId/reconcile', authenticate, async (req, res) => {
+  try {
+    const { bankId } = req.params;
+    const { statement_date, statement_balance, cleared_transaction_ids, notes } = req.body;
+    // Create reconciliation record
+    const [result] = await pool.query(
+      "INSERT INTO bank_reconciliations (bank_account_id, statement_date, statement_balance, status, notes, created_by) VALUES (?,?,?,'reconciled',?,?)",
+      [bankId, statement_date, statement_balance, notes, req.user.id]
+    );
+    const reconId = result.insertId;
+    // Mark transactions as cleared
+    if (cleared_transaction_ids && cleared_transaction_ids.length > 0) {
+      await pool.query(
+        'UPDATE bank_transactions SET cleared = 1, reconciliation_id = ? WHERE id IN (?) AND bank_account_id = ?',
+        [reconId, cleared_transaction_ids, bankId]
+      );
+    }
+    // Update reconciliation with book balance
+    const [bookBal] = await pool.query('SELECT current_balance FROM bank_accounts WHERE id = ?', [bankId]);
+    await pool.query('UPDATE bank_reconciliations SET book_balance = ?, adjusted_balance = ?, difference = ?, reconciled_date = NOW() WHERE id = ?',
+      [bookBal[0].current_balance, statement_balance, parseFloat(statement_balance) - parseFloat(bookBal[0].current_balance), reconId]);
+    res.json({ success: true, reconciliation_id: reconId });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.get('/bank-reconciliation/:bankId/history', authenticate, async (req, res) => {
+  try {
+    const { bankId } = req.params;
+    const [history] = await pool.query(
+      'SELECT * FROM bank_reconciliations WHERE bank_account_id = ? ORDER BY statement_date DESC LIMIT 20', [bankId]
+    );
+    res.json(history);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 module.exports = router;
