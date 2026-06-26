@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../App';
-import { FaHome, FaCog, FaBoxes, FaDollarSign, FaWrench, FaIndustry, FaShoppingCart, FaCalculator, FaChartBar, FaExchangeAlt } from 'react-icons/fa';
+import { FaHome, FaCog, FaBoxes, FaDollarSign, FaWrench, FaIndustry, FaShoppingCart, FaCalculator, FaChartBar, FaExchangeAlt, FaBarcode } from 'react-icons/fa';
 
 const navItems = [
   { path: '/', label: 'Home', icon: FaHome, module: null },
@@ -12,6 +12,7 @@ const navItems = [
   { path: '/purchasing', label: 'Purchasing', icon: FaShoppingCart, module: 'purchasing' },
   { path: '/accounting', label: 'Accounting', icon: FaCalculator, module: 'accounting' },
   { path: '/reports', label: 'Reports', icon: FaChartBar, module: 'reports' },
+  { path: '/scanner', label: 'Scanner', icon: FaBarcode, module: null },
 ];
 
 function Layout() {
