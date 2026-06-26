@@ -53,6 +53,7 @@ function ManufacturingHome() {
         { label: 'Bill of Materials', path: '/manufacturing/bom', icon: '📦' },
         { label: 'Labor', path: '/manufacturing/labor', icon: '👷' },
         { label: 'Recuts / Scrap', path: '/manufacturing/recuts', icon: '⚠️' },
+        { label: 'Cutting Optimization', path: '/manufacturing/cutting-optimization', icon: '✂️' },
         { label: 'Work Centers', path: '/manufacturing/work-centers', icon: '⚙️' },
         { label: 'Routing Templates', path: '/manufacturing/routing-templates', icon: '🔄' },
       ]}

@@ -27,6 +27,7 @@ app.use('/api/purchasing', require('./routes/purchasing'));
 app.use('/api/accounting', require('./routes/accounting'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/setup', require('./routes/setup'));
+app.use('/api/cutting', require('./routes/cutting'));
 
 // New V2 routes - email, documents, audit
 try { app.use('/api/email', require('./routes/email')); } catch(e) { console.log('Email routes not loaded:', e.message); }

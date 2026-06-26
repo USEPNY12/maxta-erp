@@ -26,6 +26,7 @@ import QualityControl from './pages/manufacturing/QualityControl';
 import WorkCenters from './pages/manufacturing/WorkCenters';
 import RoutingTemplates from './pages/manufacturing/RoutingTemplates';
 import Recuts from './pages/manufacturing/Recuts';
+import CuttingOptimization from './pages/manufacturing/CuttingOptimization';
 import PurchasingHome from './pages/purchasing/PurchasingHome';
 import PurchaseOrders from './pages/purchasing/PurchaseOrders';
 import Vendors from './pages/purchasing/Vendors';
@@ -154,6 +155,7 @@ function App() {
           <Route path="manufacturing/work-centers" element={<ProtectedModule module="manufacturing" permissions={permissions}><WorkCenters /></ProtectedModule>} />
           <Route path="manufacturing/routing-templates" element={<ProtectedModule module="manufacturing" permissions={permissions}><RoutingTemplates /></ProtectedModule>} />
           <Route path="manufacturing/recuts" element={<ProtectedModule module="manufacturing" permissions={permissions}><Recuts /></ProtectedModule>} />
+          <Route path="manufacturing/cutting-optimization" element={<ProtectedModule module="manufacturing" permissions={permissions}><CuttingOptimization /></ProtectedModule>} />
           {/* Purchasing */}
           <Route path="purchasing" element={<ProtectedModule module="purchasing" permissions={permissions}><PurchasingHome /></ProtectedModule>} />
           <Route path="purchasing/purchase-orders" element={<ProtectedModule module="purchasing" permissions={permissions}><PurchaseOrders /></ProtectedModule>} />
