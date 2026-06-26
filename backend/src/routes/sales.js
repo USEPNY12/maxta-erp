@@ -235,6 +235,21 @@ router.post('/quotes/:id/convert', authenticate, async (req, res) => {
       );
     }
     
+    // Copy fabrication charges from quote lines to SO lines
+    const [soLines] = await pool.query('SELECT id, line_number FROM sales_order_lines WHERE sales_order_id = ? ORDER BY line_number', [orderResult.insertId]);
+    for (let i = 0; i < lines.length; i++) {
+      const quoteLine = lines[i];
+      const soLine = soLines[i];
+      if (soLine) {
+        const [fabCharges] = await pool.query('SELECT * FROM quote_line_fabrication WHERE quote_line_id = ?', [quoteLine.id]);
+        for (const fab of fabCharges) {
+          await pool.query(
+            'INSERT INTO so_line_fabrication (so_line_id, fabrication_charge_id, quantity, rate, notes) VALUES (?, ?, ?, ?, ?)',
+            [soLine.id, fab.fabrication_charge_id, fab.quantity, fab.rate, fab.notes || '']
+          );
+        }
+      }
+    }
     // Update quote status
     await pool.query("UPDATE quotes SET status = 'converted', converted_to_order_id = ?, updated_at = NOW() WHERE id = ?", [orderResult.insertId, req.params.id]);
     await req.audit('quotes', req.params.id, 'CONVERT', { status: quote.status }, { status: 'converted', order_id: orderResult.insertId });
@@ -967,6 +982,188 @@ router.get('/pricing/lookup', authenticate, async (req, res) => {
     
     res.json({ item_id: Number(item_id), price, price_source: priceSource });
   } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+
+// ============ FABRICATION CHARGES ============
+
+// Get all fabrication charge types (for setup and quote dropdowns)
+router.get('/fabrication-charges', authenticate, async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM fabrication_charges WHERE is_active = 1 ORDER BY sort_order, category, name');
+    res.json(rows);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Get all fabrication charges including inactive (for setup management)
+router.get('/fabrication-charges/all', authenticate, async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM fabrication_charges ORDER BY sort_order, category, name');
+    res.json(rows);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Create a new fabrication charge type
+router.post('/fabrication-charges', authenticate, async (req, res) => {
+  try {
+    const { category, name, description, pricing_method, default_rate, sort_order } = req.body;
+    const [result] = await pool.query(
+      'INSERT INTO fabrication_charges (category, name, description, pricing_method, default_rate, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+      [category, name, description || '', pricing_method, default_rate || 0, sort_order || 0]
+    );
+    res.json({ id: result.insertId, message: 'Fabrication charge created' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Update a fabrication charge type
+router.put('/fabrication-charges/:id', authenticate, async (req, res) => {
+  try {
+    const { category, name, description, pricing_method, default_rate, is_active, sort_order } = req.body;
+    await pool.query(
+      'UPDATE fabrication_charges SET category=?, name=?, description=?, pricing_method=?, default_rate=?, is_active=?, sort_order=? WHERE id=?',
+      [category, name, description, pricing_method, default_rate, is_active !== undefined ? is_active : 1, sort_order || 0, req.params.id]
+    );
+    res.json({ message: 'Fabrication charge updated' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Delete a fabrication charge type
+router.delete('/fabrication-charges/:id', authenticate, async (req, res) => {
+  try {
+    await pool.query('UPDATE fabrication_charges SET is_active = 0 WHERE id = ?', [req.params.id]);
+    res.json({ message: 'Fabrication charge deactivated' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Get fabrication charges for a specific quote line
+router.get('/quotes/:quoteId/lines/:lineId/fabrication', authenticate, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT qlf.*, fc.category, fc.name, fc.pricing_method, fc.description as charge_description
+       FROM quote_line_fabrication qlf
+       JOIN fabrication_charges fc ON qlf.fabrication_charge_id = fc.id
+       WHERE qlf.quote_id = ? AND qlf.quote_line_id = ?
+       ORDER BY fc.sort_order`,
+      [req.params.quoteId, req.params.lineId]
+    );
+    res.json(rows);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Get all fabrication charges for a quote (all lines)
+router.get('/quotes/:quoteId/fabrication', authenticate, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT qlf.*, fc.category, fc.name, fc.pricing_method, fc.description as charge_description
+       FROM quote_line_fabrication qlf
+       JOIN fabrication_charges fc ON qlf.fabrication_charge_id = fc.id
+       WHERE qlf.quote_id = ?
+       ORDER BY qlf.quote_line_id, fc.sort_order`,
+      [req.params.quoteId]
+    );
+    res.json(rows);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Add a fabrication charge to a quote line
+router.post('/quotes/:quoteId/lines/:lineId/fabrication', authenticate, async (req, res) => {
+  try {
+    const { fabrication_charge_id, quantity, rate, notes } = req.body;
+    const total = (quantity || 1) * (rate || 0);
+    const [result] = await pool.query(
+      'INSERT INTO quote_line_fabrication (quote_id, quote_line_id, fabrication_charge_id, quantity, rate, total, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [req.params.quoteId, req.params.lineId, fabrication_charge_id, quantity || 1, rate || 0, total, notes || '']
+    );
+    res.json({ id: result.insertId, total, message: 'Fabrication charge added' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Update a fabrication charge on a quote line
+router.put('/quote-fabrication/:id', authenticate, async (req, res) => {
+  try {
+    const { quantity, rate, notes } = req.body;
+    const total = (quantity || 1) * (rate || 0);
+    await pool.query(
+      'UPDATE quote_line_fabrication SET quantity=?, rate=?, total=?, notes=? WHERE id=?',
+      [quantity, rate, total, notes || '', req.params.id]
+    );
+    res.json({ total, message: 'Fabrication charge updated' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Remove a fabrication charge from a quote line
+router.delete('/quote-fabrication/:id', authenticate, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM quote_line_fabrication WHERE id = ?', [req.params.id]);
+    res.json({ message: 'Fabrication charge removed' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+
+
+// ============ QUOTE LINE FABRICATION CHARGES ============
+// Get all fabrication charges for a quote
+router.get("/quotes/:id/fabrication", authenticate, async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT qlf.*, fc.name, fc.category, fc.pricing_method, fc.description as charge_description,
+             qlf.quantity * qlf.rate as total
+      FROM quote_line_fabrication qlf
+      JOIN fabrication_charges fc ON qlf.fabrication_charge_id = fc.id
+      JOIN quote_lines ql ON qlf.quote_line_id = ql.id
+      WHERE ql.quote_id = ?
+      ORDER BY qlf.quote_line_id, qlf.id
+    `, [req.params.id]);
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Add fabrication charge to a quote line
+router.post('/quotes/:quoteId/lines/:lineId/fabrication', authenticate, async (req, res) => {
+  try {
+    const { fabrication_charge_id, quantity, rate, notes } = req.body;
+    const [result] = await pool.query(
+      'INSERT INTO quote_line_fabrication (quote_line_id, fabrication_charge_id, quantity, rate, notes) VALUES (?, ?, ?, ?, ?)',
+      [req.params.lineId, fabrication_charge_id, quantity, rate, notes || '']
+    );
+    // Update quote total to include fabrication
+    const [[{ fab_total }]] = await pool.query(
+      `SELECT COALESCE(SUM(qlf.quantity * qlf.rate), 0) as fab_total
+       FROM quote_line_fabrication qlf
+       JOIN quote_lines ql ON qlf.quote_line_id = ql.id
+       WHERE ql.quote_id = ?`, [req.params.quoteId]
+    );
+    const [[{ line_total }]] = await pool.query(
+      `SELECT COALESCE(SUM(quantity * unit_price), 0) as line_total FROM quote_lines WHERE quote_id = ?`, [req.params.quoteId]
+    );
+    await pool.query('UPDATE quotes SET total = ? WHERE id = ?', [parseFloat(line_total) + parseFloat(fab_total), req.params.quoteId]);
+    res.json({ id: result.insertId });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Delete fabrication charge from a quote line
+router.delete('/quotes/:quoteId/lines/:lineId/fabrication/:fabId', authenticate, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM quote_line_fabrication WHERE id = ? AND quote_line_id = ?', [req.params.fabId, req.params.lineId]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+
+// ============ SALES ORDER FABRICATION CHARGES ============
+router.get('/orders/:id/fabrication', authenticate, async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT slf.*, fc.name, fc.category, fc.pricing_method,
+             slf.quantity * slf.rate as total
+      FROM so_line_fabrication slf
+      JOIN fabrication_charges fc ON slf.fabrication_charge_id = fc.id
+      JOIN sales_order_lines sl ON slf.so_line_id = sl.id
+      WHERE sl.sales_order_id = ?
+      ORDER BY slf.so_line_id, slf.id
+    `, [req.params.id]);
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 module.exports = router;

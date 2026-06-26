@@ -2,6 +2,7 @@ import TemplateManager from '../components/TemplateManager';
 import GLDefaults from '../components/GLDefaults';
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
+import FabricationCharges from './setup/FabricationCharges';
 
 // ============ CONSTANTS ============
 const MODULES = ['system_setup', 'inventory', 'sales', 'manufacturing', 'purchasing', 'accounting', 'reports'];
@@ -35,7 +36,8 @@ const NAV_SECTIONS = [
     { key: 'scrap-codes', label: 'Scrap Codes' }
   ]},
   { group: 'Manufacturing', icon: '🏭', items: [
-    { key: 'work-centers', label: 'Work Centers' }
+    { key: 'work-centers', label: 'Work Centers' },
+    { key: 'fabrication-charges', label: 'Fabrication Charges' }
   ]},
   { group: 'Purchasing', icon: '🛒', items: [
     { key: 'vendor-types', label: 'Vendor Types' }
@@ -99,7 +101,8 @@ export default function SystemSetup() {
         {activeSection === 'company' && <CompanyInfo />}
         {(activeSection === 'templates' || activeSection === 'email-config') && <TemplateManager />}
         {activeSection === 'gl-defaults' && <GLDefaults />}
-        {!['users', 'roles', 'permissions', 'company', 'templates', 'email-config', 'gl-defaults'].includes(activeSection) && <GenericSetupTable tableKey={activeSection} />}
+        {activeSection === 'fabrication-charges' && <FabricationCharges />}
+        {!['users', 'roles', 'permissions', 'company', 'templates', 'email-config', 'gl-defaults', 'fabrication-charges'].includes(activeSection) && <GenericSetupTable tableKey={activeSection} />}
       </div>
 
       <style>{`

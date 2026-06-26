@@ -615,4 +615,28 @@ router.get('/dashboard', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+
+// ============ WORK ORDER FABRICATION CHARGES ============
+router.get('/work-orders/:id/fabrication', authenticate, async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT wf.*, fc.name, fc.category, fc.pricing_method,
+             wf.quantity * wf.rate as total
+      FROM wo_fabrication wf
+      JOIN fabrication_charges fc ON wf.fabrication_charge_id = fc.id
+      WHERE wf.work_order_id = ?
+      ORDER BY wf.id
+    `, [req.params.id]);
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.put('/work-orders/:woId/fabrication/:fabId/status', authenticate, async (req, res) => {
+  try {
+    const { status } = req.body;
+    await pool.query('UPDATE wo_fabrication SET status = ? WHERE id = ? AND work_order_id = ?', [status, req.params.fabId, req.params.woId]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;

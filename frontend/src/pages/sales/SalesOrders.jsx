@@ -11,6 +11,7 @@ function SalesOrders() {
   const [showNew, setShowNew] = useState(false);
   const [selected, setSelected] = useState(null);
   const [activeTab, setActiveTab] = useState('Lines');
+  const [soFabCharges, setSoFabCharges] = useState({});
   const [customers, setCustomers] = useState([]);
   const [items, setItems] = useState([]);
   const [showReleaseDialog, setShowReleaseDialog] = useState(false);
@@ -40,6 +41,16 @@ function SalesOrders() {
       const res = await api.get(`/api/sales/orders/${order.id}`);
       setSelected(res.data);
       setActiveTab('Lines');
+      // Load fabrication charges
+      try {
+        const fabRes = await api.get(`/api/sales/orders/${order.id}/fabrication`);
+        const grouped = {};
+        (fabRes.data || []).forEach(fc => {
+          if (!grouped[fc.so_line_id]) grouped[fc.so_line_id] = [];
+          grouped[fc.so_line_id].push(fc);
+        });
+        setSoFabCharges(grouped);
+      } catch { setSoFabCharges({}); }
       setShowDetail(true);
     } catch { toast.error('Failed to load order'); }
   };
@@ -180,7 +191,7 @@ function SalesOrders() {
 
               {/* Tabs */}
               <div className="erp-tabs">
-                {['Lines', 'Production', 'Shipments', 'Invoices', 'Deposits'].map(tab => (
+                {['Lines', 'Fabrication', 'Production', 'Shipments', 'Invoices', 'Deposits'].map(tab => (
                   <div key={tab} className={`erp-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>{tab}
                     {tab === 'Production' && selected.work_orders?.length > 0 && <span className="ml-1 bg-orange-200 text-orange-800 px-1 rounded text-[9px]">{selected.work_orders.length}</span>}
                     {tab === 'Shipments' && selected.shipments?.length > 0 && <span className="ml-1 bg-blue-200 text-blue-800 px-1 rounded text-[9px]">{selected.shipments.length}</span>}
@@ -210,6 +221,35 @@ function SalesOrders() {
                       ))}
                     </tbody>
                   </table>
+                )}
+                {activeTab === 'Fabrication' && (
+                  <div>
+                    {(selected.lines || []).map((line, lineIdx) => {
+                      const lineFabs = soFabCharges[line.id] || [];
+                      if (lineFabs.length === 0) return null;
+                      return (
+                        <div key={lineIdx} style={{ marginBottom: 12, border: '1px solid #e2e8f0', borderRadius: 6, padding: 10 }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 6 }}>Line {lineIdx + 1}: {line.description}</div>
+                          <table className="erp-grid text-xs" style={{ width: '100%' }}>
+                            <thead><tr><th>Category</th><th>Charge</th><th>Qty</th><th>Rate</th><th>Total</th><th>Notes</th></tr></thead>
+                            <tbody>
+                              {lineFabs.map((fc, fi) => (
+                                <tr key={fi}>
+                                  <td><span style={{ background: fc.category === 'Holes' ? '#7c3aed' : fc.category === 'Edgework' ? '#2563eb' : fc.category === 'Notches' ? '#dc2626' : '#64748b', color: '#fff', padding: '1px 6px', borderRadius: 3, fontSize: 10 }}>{fc.category}</span></td>
+                                  <td>{fc.name}</td>
+                                  <td className="text-right">{fc.quantity}</td>
+                                  <td className="text-right">${parseFloat(fc.rate).toFixed(2)}</td>
+                                  <td className="text-right font-bold">${(parseFloat(fc.quantity) * parseFloat(fc.rate)).toFixed(2)}</td>
+                                  <td className="text-gray-500">{fc.notes || '-'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      );
+                    })}
+                    {Object.keys(soFabCharges).length === 0 && <p className="text-gray-500 text-center py-6 text-xs">No fabrication charges on this order.</p>}
+                  </div>
                 )}
                 {activeTab === 'Production' && (
                   <div>
