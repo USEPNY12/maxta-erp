@@ -4,18 +4,18 @@ import { AuthContext } from '../App';
 import { FaHome, FaCog, FaBoxes, FaDollarSign, FaWrench, FaIndustry, FaShoppingCart, FaCalculator, FaChartBar, FaExchangeAlt } from 'react-icons/fa';
 
 const navItems = [
-  { path: '/', label: 'Home', icon: FaHome },
-  { path: '/setup', label: 'System Setup', icon: FaCog },
-  { path: '/inventory', label: 'Inventory', icon: FaBoxes },
-  { path: '/sales', label: 'Sales', icon: FaDollarSign },
-  { path: '/manufacturing', label: 'Manufacturing', icon: FaIndustry },
-  { path: '/purchasing', label: 'Purchasing', icon: FaShoppingCart },
-  { path: '/accounting', label: 'Accounting', icon: FaCalculator },
-  { path: '/reports', label: 'Reports', icon: FaChartBar },
+  { path: '/', label: 'Home', icon: FaHome, module: null },
+  { path: '/setup', label: 'System Setup', icon: FaCog, module: 'system_setup' },
+  { path: '/inventory', label: 'Inventory', icon: FaBoxes, module: 'inventory' },
+  { path: '/sales', label: 'Sales', icon: FaDollarSign, module: 'sales' },
+  { path: '/manufacturing', label: 'Manufacturing', icon: FaIndustry, module: 'manufacturing' },
+  { path: '/purchasing', label: 'Purchasing', icon: FaShoppingCart, module: 'purchasing' },
+  { path: '/accounting', label: 'Accounting', icon: FaCalculator, module: 'accounting' },
+  { path: '/reports', label: 'Reports', icon: FaChartBar, module: 'reports' },
 ];
 
 function Layout() {
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout, permissions } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -23,6 +23,13 @@ function Layout() {
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
   };
+
+  // Filter nav items based on permissions
+  const visibleNavItems = navItems.filter(item => {
+    if (!item.module) return true; // Home is always visible
+    if (!permissions) return true; // Show all while loading
+    return permissions[item.module] && permissions[item.module].length > 0;
+  });
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -32,7 +39,7 @@ function Layout() {
         <span className="text-gray-500">|</span>
         <span className="text-gray-600">User: {user?.first_name} {user?.last_name}</span>
         <span className="text-gray-500">|</span>
-        <span className="text-gray-600">Role: {user?.role}</span>
+        <span className="text-gray-600">Role: <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>{user?.role}</span></span>
         <div className="ml-auto">
           <button onClick={logout} className="text-red-600 hover:text-red-800 text-xs">Logout</button>
         </div>
@@ -40,7 +47,7 @@ function Layout() {
 
       {/* Navigation Bar - E2 Style */}
       <nav className="erp-navbar">
-        {navItems.map(item => (
+        {visibleNavItems.map(item => (
           <div
             key={item.path}
             className={`erp-nav-item ${isActive(item.path) ? 'active' : ''}`}
@@ -59,7 +66,7 @@ function Layout() {
 
       {/* Status Bar */}
       <div className="bg-gray-200 border-t border-gray-400 px-4 py-0.5 text-xs text-gray-600 flex justify-between">
-        <span>Max TA Group LLC - Glass Fabrication ERP v1.0</span>
+        <span>Max TA Group LLC - Glass Fabrication ERP v2.0</span>
         <span>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</span>
       </div>
     </div>
