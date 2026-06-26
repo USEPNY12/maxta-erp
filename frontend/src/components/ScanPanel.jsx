@@ -170,10 +170,14 @@ export default function ScanPanel({ mode = 'lookup', context = {}, onScanResult,
     if (!globalCapture) return;
 
     const handleKeyDown = (e) => {
-      // Don't capture if user is typing in another input (not our scan input)
+      // Don't capture if user is typing in any input field
       const target = e.target;
-      if (target !== inputRef.current && 
-          (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+        // If it's our barcode input and user presses Enter, process it
+        if (target === inputRef.current && e.key === 'Enter' && barcode.trim().length >= 3) {
+          e.preventDefault();
+          processScan(barcode.trim());
+        }
         return;
       }
 

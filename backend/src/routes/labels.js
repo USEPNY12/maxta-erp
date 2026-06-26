@@ -336,36 +336,36 @@ router.post('/scan/lookup', authenticate, async (req, res) => {
 
     // Work Order
     if (code.match(/^WO-/i)) {
-      const [rows] = await pool.query(`SELECT id, wo_number, order_number, status, item_id FROM work_orders WHERE wo_number = ? OR order_number = ?`, [code, code]);
-      if (rows.length) return res.json({ type: 'work_order', record: rows[0] });
+      const [rows] = await pool.query(`SELECT w.id, w.wo_number, w.order_number, w.status, w.quantity, w.start_date, i.item_number, i.description as item_desc FROM work_orders w LEFT JOIN items i ON w.item_id = i.id WHERE w.wo_number = ? OR w.order_number = ?`, [code, code]);
+      if (rows.length) return res.json({ type: 'work_order', data: rows[0] });
     }
     // Sales Order
     if (code.match(/^SO-/i)) {
       const [rows] = await pool.query(`SELECT id, order_number, status FROM sales_orders WHERE order_number = ?`, [code]);
-      if (rows.length) return res.json({ type: 'sales_order', record: rows[0] });
+      if (rows.length) return res.json({ type: 'sales_order', data: rows[0] });
     }
     // Purchase Order
     if (code.match(/^PO-/i)) {
       const [rows] = await pool.query(`SELECT id, po_number, status FROM purchase_orders WHERE po_number = ?`, [code]);
-      if (rows.length) return res.json({ type: 'purchase_order', record: rows[0] });
+      if (rows.length) return res.json({ type: 'purchase_order', data: rows[0] });
     }
     // Serial Number
     if (code.match(/^MTA-/i)) {
       const [rows] = await pool.query(`SELECT * FROM serial_numbers WHERE serial_number = ?`, [code]);
-      if (rows.length) return res.json({ type: 'serial_number', record: rows[0] });
+      if (rows.length) return res.json({ type: 'serial_number', data: rows[0] });
     }
     // Location
     const [locs] = await pool.query(`SELECT id, code as location_code, name, location_type FROM locations WHERE code = ?`, [code]);
-    if (locs.length) return res.json({ type: 'location', record: locs[0] });
+    if (locs.length) return res.json({ type: 'location', data: locs[0] });
     // Item
-    const [items] = await pool.query(`SELECT id, item_number, description, uom FROM items WHERE item_number = ?`, [code]);
-    if (items.length) return res.json({ type: 'item', record: items[0] });
+    const [items] = await pool.query(`SELECT i.id, i.item_number, i.description, i.uom, i.qty_on_hand, i.glass_type, i.glass_thickness, i.standard_cost, it.name as type_name FROM items i LEFT JOIN item_types it ON i.item_type_id = it.id WHERE i.item_number = ?`, [code]);
+    if (items.length) return res.json({ type: 'item', data: items[0] });
     // Lot
     const [lots] = await pool.query(`SELECT * FROM lots WHERE lot_number = ?`, [code]);
-    if (lots.length) return res.json({ type: 'lot', record: lots[0] });
+    if (lots.length) return res.json({ type: 'lot', data: lots[0] });
     // Shipment
     const [ships] = await pool.query(`SELECT id, shipment_number, status FROM shipments WHERE shipment_number = ?`, [code]);
-    if (ships.length) return res.json({ type: 'shipment', record: ships[0] });
+    if (ships.length) return res.json({ type: 'shipment', data: ships[0] });
 
     return res.json({ type: 'unknown', barcode: code, message: 'No matching record found' });
   } catch (err) { res.status(500).json({ error: err.message }); }

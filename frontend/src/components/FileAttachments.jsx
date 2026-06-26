@@ -44,7 +44,7 @@ export default function FileAttachments({ documentType, documentId, lineId, read
 
   const fetchFiles = async () => {
     try {
-      let url = `/files/${documentType}/${documentId}`;
+      let url = `/api/files/${documentType}/${documentId}`;
       if (lineId) url += `/line/${lineId}`;
       else if (machineFilter) url += `/machine/${machineFilter}`;
       const res = await api.get(url);
@@ -66,7 +66,7 @@ export default function FileAttachments({ documentType, documentId, lineId, read
       formData.append('description', description);
       if (lineId) formData.append('line_id', lineId);
 
-      await api.post(`/files/${documentType}/${documentId}/upload`, formData, {
+      await api.post(`/api/files/${documentType}/${documentId}/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       toast.success(`${fileList.length} file(s) uploaded`);
@@ -81,7 +81,7 @@ export default function FileAttachments({ documentType, documentId, lineId, read
   const handleDownload = async (file) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${api.defaults.baseURL}/files/download/${file.id}`, {
+      const response = await fetch(`${api.defaults.baseURL}/api/files/download/${file.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const blob = await response.blob();
@@ -99,7 +99,7 @@ export default function FileAttachments({ documentType, documentId, lineId, read
   const handleDelete = async (fileId) => {
     if (!window.confirm('Delete this file?')) return;
     try {
-      await api.delete(`/files/${fileId}`);
+      await api.delete(`/api/files/${fileId}`);
       toast.success('File deleted');
       fetchFiles();
     } catch (err) {
