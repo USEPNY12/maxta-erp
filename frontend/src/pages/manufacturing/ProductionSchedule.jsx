@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { formatDate } from '../../utils/formatDate';
 
 function ProductionSchedule() {
   const [schedule, setSchedule] = useState([]);
   const [dateRange, setDateRange] = useState('week');
+  const navigate = useNavigate();
 
   useEffect(() => { fetchSchedule(); }, [dateRange]);
 
@@ -12,8 +14,12 @@ function ProductionSchedule() {
     try { const res = await api.get('/api/manufacturing/schedule', { params: { range: dateRange } }); setSchedule(Array.isArray(res.data) ? res.data : []); } catch { setSchedule([]); }
   };
 
-  const statusColors = { planned: 'bg-gray-200 text-gray-700', scheduled: 'bg-blue-100 text-blue-700', in_progress: 'bg-yellow-100 text-yellow-700', completed: 'bg-green-100 text-green-700' };
+  const statusColors = { planned: 'bg-gray-200 text-gray-700', scheduled: 'bg-blue-100 text-blue-700', in_progress: 'bg-yellow-100 text-yellow-700', released: 'bg-purple-100 text-purple-700', completed: 'bg-green-100 text-green-700' };
   const priorityIcons = { urgent: '🔴', high: '🟠', normal: '🔵', low: '⚪' };
+
+  const openWorkOrder = (wo) => {
+    navigate(`/manufacturing/work-orders?wo=${wo.id}`);
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -37,14 +43,14 @@ function ProductionSchedule() {
           </tr></thead>
           <tbody>
             {schedule.map(wo => (
-              <tr key={wo.id} className={wo.priority === 'urgent' ? 'bg-red-50' : ''}>
+              <tr key={wo.id} className={`cursor-pointer hover:bg-blue-50 ${wo.priority === 'urgent' ? 'bg-red-50 hover:bg-red-100' : ''}`} onClick={() => openWorkOrder(wo)}>
                 <td className="text-center">{priorityIcons[wo.priority] || '🔵'}</td>
-                <td className="font-bold text-blue-700 text-xs">{wo.order_number}</td>
+                <td className="font-bold text-blue-700 text-xs underline cursor-pointer hover:text-blue-900">{wo.order_number}</td>
                 <td className="text-xs capitalize">{(wo.product_type || '').replace(/_/g, ' ')}</td>
                 <td className="text-xs">{wo.item_number}</td>
                 <td className="text-xs">{wo.width && wo.height ? `${wo.width}" x ${wo.height}"` : '-'}</td>
                 <td className="text-xs font-bold">{wo.quantity}</td>
-                <td><span className={`text-[10px] px-2 py-0.5 rounded ${statusColors[wo.status] || ''}`}>{wo.status}</span></td>
+                <td><span className={`text-[10px] px-2 py-0.5 rounded ${statusColors[wo.status] || ''}`}>{(wo.status || '').replace(/_/g, ' ')}</span></td>
                 <td className="text-xs">{wo.station_icon} {wo.current_station_name || '-'}</td>
                 <td className="text-xs">{formatDate(wo.start_date)}</td>
                 <td className="text-xs text-red-600 font-bold">{formatDate(wo.finish_date)}</td>
