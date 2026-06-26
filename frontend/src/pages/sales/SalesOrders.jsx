@@ -1,3 +1,4 @@
+import FileAttachments from '../../components/FileAttachments';
 import DocumentActions from '../../components/DocumentActions';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
@@ -191,7 +192,7 @@ function SalesOrders() {
 
               {/* Tabs */}
               <div className="erp-tabs">
-                {['Lines', 'Fabrication', 'Production', 'Shipments', 'Invoices', 'Deposits'].map(tab => (
+                {['Lines', 'Fabrication', 'Files', 'Production', 'Shipments', 'Invoices', 'Deposits'].map(tab => (
                   <div key={tab} className={`erp-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>{tab}
                     {tab === 'Production' && selected.work_orders?.length > 0 && <span className="ml-1 bg-orange-200 text-orange-800 px-1 rounded text-[9px]">{selected.work_orders.length}</span>}
                     {tab === 'Shipments' && selected.shipments?.length > 0 && <span className="ml-1 bg-blue-200 text-blue-800 px-1 rounded text-[9px]">{selected.shipments.length}</span>}
@@ -250,6 +251,9 @@ function SalesOrders() {
                     })}
                     {Object.keys(soFabCharges).length === 0 && <p className="text-gray-500 text-center py-6 text-xs">No fabrication charges on this order.</p>}
                   </div>
+                )}
+                {activeTab === 'Files' && (
+                  <FileAttachments documentType="sales_order" documentId={selected.id} />
                 )}
                 {activeTab === 'Production' && (
                   <div>

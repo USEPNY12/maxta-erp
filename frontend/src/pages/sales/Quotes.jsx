@@ -1,4 +1,5 @@
 import DocumentActions from '../../components/DocumentActions';
+import FileAttachments from '../../components/FileAttachments';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
@@ -97,6 +98,8 @@ function Quotes() {
   const handleConvertToOrder = async () => {
     try {
       const res = await api.post(`/api/sales/quotes/${selected.id}/convert`, { customer_po: customerPO });
+      // Copy files from quote to new sales order
+      try { await api.post('/files/copy', { from_type: 'quote', from_id: selected.id, to_type: 'sales_order', to_id: res.data.id }); } catch(e) { console.log('File copy skipped:', e); }
       toast.success(`Converted! Sales Order ${res.data.order_number} created`);
       setShowConvertDialog(false); setCustomerPO(''); openDetail(selected);
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to convert'); }
@@ -215,7 +218,7 @@ function Quotes() {
                 <div><strong>Expires:</strong> {formatDate(selected.expiry_date)}</div>
               </div>
               <div className="flex gap-2 mb-3 border-b pb-1">
-                {['Lines', 'Fabrication', 'Drawings', 'History'].map(t => (
+                {['Lines', 'Fabrication', 'Files & Drawings', 'History'].map(t => (
                   <button key={t} className={`text-xs px-3 py-1 rounded ${activeTab === t ? 'bg-blue-600 text-white' : 'bg-gray-100'}`} onClick={() => setActiveTab(t)}>{t}</button>
                 ))}
               </div>
@@ -267,12 +270,8 @@ function Quotes() {
                     {Object.keys(quoteFabCharges).length === 0 && <p className="text-gray-500 text-center py-8">No fabrication charges on this quote.</p>}
                   </div>
                 )}
-                {activeTab === 'Drawings' && (
-                  <div>{(selected.drawings || []).length === 0 ? <p className="text-gray-500 text-center py-8">No drawings attached</p> : (
-                    <div className="grid grid-cols-3 gap-3">{selected.drawings.map((d, i) => (
-                      <div key={i} className="border p-2 rounded"><div className="text-xs font-bold">{d.file_name || d.drawing_name}</div><div className="text-[10px] text-gray-500">{d.drawing_type || 'Shop Drawing'}</div></div>
-                    ))}</div>
-                  )}</div>
+                {activeTab === 'Files & Drawings' && (
+                  <FileAttachments documentType="quote" documentId={selected.id} readOnly={selected.status === 'converted'} />
                 )}
                 {activeTab === 'History' && (<div className="text-xs text-gray-500 text-center py-8">Created {formatDate(selected.created_at)} • Updated {formatDate(selected.updated_at)}</div>)}
               </div>

@@ -1,3 +1,4 @@
+import FileAttachments from '../../components/FileAttachments';
 import DocumentActions from '../../components/DocumentActions';
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -450,7 +451,7 @@ function WorkOrders() {
 
             {/* Tabs */}
             <div className="border-b flex px-2">
-              {['Routing', 'Materials', 'Labor', 'Tracking', 'QC', 'Recuts', 'Receipts'].map(tab => (
+              {['Routing', 'Materials', 'Labor', 'Files & CNC', 'Tracking', 'QC', 'Recuts', 'Receipts'].map(tab => (
                 <button key={tab} className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${activeTab === tab ? 'border-blue-600 text-blue-700 bg-blue-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`} onClick={() => setActiveTab(tab)}>{tab}</button>
               ))}
             </div>
@@ -492,6 +493,13 @@ function WorkOrders() {
                   <table className="w-full text-sm border"><thead className="bg-gray-100"><tr><th className="px-3 py-2 text-left">Date</th><th className="px-3 py-2 text-left">Station</th><th className="px-3 py-2">Hours</th><th className="px-3 py-2 text-left">Type</th><th className="px-3 py-2 text-left">Notes</th></tr></thead>
                   <tbody>{(selected.labor || []).map((l, i) => (<tr key={i} className="border-t"><td className="px-3 py-2">{formatDate(l.work_date)}</td><td className="px-3 py-2">{l.work_center_name}</td><td className="px-3 py-2 text-center font-bold">{l.hours}h</td><td className="px-3 py-2">{l.labor_type}</td><td className="px-3 py-2 text-gray-600">{l.notes}</td></tr>))}
                   {(!selected.labor || selected.labor.length === 0) && <tr><td colSpan="5" className="text-center text-gray-500 py-8">No labor logged</td></tr>}</tbody></table>
+                </div>
+              )}
+              {activeTab === 'Files & CNC' && (
+                <div>
+                  <h4 className="font-bold text-sm mb-3">Fabrication Files & CNC Programs</h4>
+                  <p className="text-xs text-gray-500 mb-3">Download files for your machine. Select your machine type to filter.</p>
+                  <FileAttachments documentType="work_order" documentId={selected.id} readOnly={false} />
                 </div>
               )}
               {activeTab === 'Tracking' && (
