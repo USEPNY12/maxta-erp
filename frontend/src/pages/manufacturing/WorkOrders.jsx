@@ -22,6 +22,27 @@ function WorkOrders() {
 
   useEffect(() => { fetchOrders(); fetchItems(); fetchTemplates(); }, [statusFilter, productFilter]);
 
+  // Auto-open a specific WO when navigated from Production Schedule or other pages
+  useEffect(() => {
+    const woId = searchParams.get('wo');
+    if (woId) {
+      // Change filter to 'all' so the WO is visible regardless of status
+      setStatusFilter('all');
+      // Fetch and open the specific work order detail
+      const openSpecificWO = async () => {
+        try {
+          const res = await api.get(`/api/manufacturing/work-orders/${woId}`);
+          setSelected(res.data);
+          setActiveTab('Routing');
+          setShowDetail(true);
+        } catch (err) {
+          toast.error('Could not load work order');
+        }
+      };
+      openSpecificWO();
+    }
+  }, []);
+
   const fetchOrders = async () => {
     try { const res = await api.get('/api/manufacturing/work-orders', { params: { search, status: statusFilter, product_type: productFilter || undefined } }); setOrders(Array.isArray(res.data) ? res.data : []); } catch { setOrders([]); }
   };
