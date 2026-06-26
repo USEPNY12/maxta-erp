@@ -226,8 +226,8 @@ router.post('/customer-payments', authenticate, async (req, res) => {
         );
         await pool.query('UPDATE ar_invoices SET amount_paid = COALESCE(amount_paid,0) + ? WHERE id = ?', [ai.amount, ai.invoice_id]);
         // Check if fully paid
-        const [inv] = await pool.query('SELECT total_amount, COALESCE(amount_paid,0) as amount_paid FROM ar_invoices WHERE id = ?', [ai.invoice_id]);
-        if (inv.length && inv[0].amount_paid >= inv[0].total_amount) {
+        const [inv] = await pool.query('SELECT total, COALESCE(amount_paid,0) as amount_paid FROM ar_invoices WHERE id = ?', [ai.invoice_id]);
+        if (inv.length && inv[0].amount_paid >= inv[0].total) {
           await pool.query("UPDATE ar_invoices SET status = 'paid' WHERE id = ?", [ai.invoice_id]);
         } else {
           await pool.query("UPDATE ar_invoices SET status = 'partial' WHERE id = ?", [ai.invoice_id]);
@@ -351,24 +351,79 @@ router.post('/bank-reconciliation', authenticate, async (req, res) => {
 // ============ DASHBOARD ============
 router.get('/dashboard', authenticate, async (req, res) => {
   try {
-    const [openAR] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial')");
+    const [openAR] = await pool.query("SELECT COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial')");
     const [openAP] = await pool.query("SELECT COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ap_invoices WHERE status IN ('open','posted','partial')");
     const [bankBalance] = await pool.query("SELECT COALESCE(SUM(current_balance),0) as total FROM bank_accounts WHERE is_active = TRUE");
-    const [mtdRevenue] = await pool.query("SELECT COALESCE(SUM(total_amount),0) as total FROM ar_invoices WHERE MONTH(invoice_date) = MONTH(NOW()) AND YEAR(invoice_date) = YEAR(NOW()) AND status != 'void'");
-    const [ytdRevenue] = await pool.query("SELECT COALESCE(SUM(total_amount),0) as total FROM ar_invoices WHERE YEAR(invoice_date) = YEAR(NOW()) AND status != 'void'");
-    const [overdueAR] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE due_date < CURDATE() AND status IN ('posted','partial')");
+    const [mtdRevenue] = await pool.query("SELECT COALESCE(SUM(total),0) as total FROM ar_invoices WHERE MONTH(invoice_date) = MONTH(NOW()) AND YEAR(invoice_date) = YEAR(NOW()) AND status != 'void'");
+    const [ytdRevenue] = await pool.query("SELECT COALESCE(SUM(total),0) as total FROM ar_invoices WHERE YEAR(invoice_date) = YEAR(NOW()) AND status != 'void'");
+    const [overdueAR] = await pool.query("SELECT COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE due_date < CURDATE() AND status IN ('posted','partial')");
     
     // AR Aging
-    const [arCurrent] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) <= 0");
-    const [ar30] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) BETWEEN 1 AND 30");
-    const [ar60] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) BETWEEN 31 AND 60");
-    const [ar90] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) > 60");
+    const [arCurrent] = await pool.query("SELECT COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) <= 0");
+    const [ar30] = await pool.query("SELECT COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) BETWEEN 1 AND 30");
+    const [ar60] = await pool.query("SELECT COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) BETWEEN 31 AND 60");
+    const [ar90] = await pool.query("SELECT COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) > 60");
 
     res.json({
       open_ar: openAR[0].total, open_ap: openAP[0].total, bank_balance: bankBalance[0].total,
       mtd_revenue: mtdRevenue[0].total, ytd_revenue: ytdRevenue[0].total, overdue_ar: overdueAR[0].total,
       ar_aging: { current: arCurrent[0].total, days_30: ar30[0].total, days_60: ar60[0].total, days_90_plus: ar90[0].total }
     });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ TRIAL BALANCE ============
+router.get('/trial-balance', authenticate, async (req, res) => {
+  try {
+    const [accounts] = await pool.query(`
+      SELECT ga.id, ga.account_number, ga.account_name, ga.account_type, ga.normal_balance,
+        COALESCE(ga.balance, 0) as balance,
+        COALESCE(SUM(CASE WHEN glt.debit > 0 THEN glt.debit ELSE 0 END), 0) as total_debits,
+        COALESCE(SUM(CASE WHEN glt.credit > 0 THEN glt.credit ELSE 0 END), 0) as total_credits
+      FROM gl_accounts ga
+      LEFT JOIN gl_transactions glt ON ga.id = glt.gl_account_id
+      WHERE ga.is_active = TRUE
+      GROUP BY ga.id ORDER BY ga.account_number`);
+    const total_debits = accounts.reduce((s, a) => s + Number(a.total_debits), 0);
+    const total_credits = accounts.reduce((s, a) => s + Number(a.total_credits), 0);
+    res.json({ accounts, total_debits, total_credits, is_balanced: Math.abs(total_debits - total_credits) < 0.01 });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ INCOME STATEMENT ============
+router.get('/income-statement', authenticate, async (req, res) => {
+  try {
+    const [revenue] = await pool.query(`SELECT ga.account_number, ga.account_name, COALESCE(ga.balance, 0) as balance FROM gl_accounts ga WHERE ga.account_type = 'revenue' AND ga.is_active = TRUE ORDER BY ga.account_number`);
+    const [cogs] = await pool.query(`SELECT ga.account_number, ga.account_name, COALESCE(ga.balance, 0) as balance FROM gl_accounts ga WHERE ga.account_type = 'cogs' AND ga.is_active = TRUE ORDER BY ga.account_number`);
+    const [expenses] = await pool.query(`SELECT ga.account_number, ga.account_name, COALESCE(ga.balance, 0) as balance FROM gl_accounts ga WHERE ga.account_type = 'expense' AND ga.is_active = TRUE ORDER BY ga.account_number`);
+    const total_revenue = revenue.reduce((s, a) => s + Number(a.balance), 0);
+    const total_cogs = cogs.reduce((s, a) => s + Number(a.balance), 0);
+    const total_expenses = expenses.reduce((s, a) => s + Number(a.balance), 0);
+    const gross_profit = total_revenue - total_cogs;
+    const net_income = gross_profit - total_expenses;
+    res.json({ revenue, cogs, expenses, total_revenue, total_cogs, gross_profit, total_expenses, net_income });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ BALANCE SHEET ============
+router.get('/balance-sheet', authenticate, async (req, res) => {
+  try {
+    const [assets] = await pool.query(`SELECT ga.account_number, ga.account_name, ga.sub_type, COALESCE(ga.balance, 0) as balance FROM gl_accounts ga WHERE ga.account_type = 'asset' AND ga.is_active = TRUE ORDER BY ga.account_number`);
+    const [liabilities] = await pool.query(`SELECT ga.account_number, ga.account_name, ga.sub_type, COALESCE(ga.balance, 0) as balance FROM gl_accounts ga WHERE ga.account_type = 'liability' AND ga.is_active = TRUE ORDER BY ga.account_number`);
+    const [equity] = await pool.query(`SELECT ga.account_number, ga.account_name, ga.sub_type, COALESCE(ga.balance, 0) as balance FROM gl_accounts ga WHERE ga.account_type = 'equity' AND ga.is_active = TRUE ORDER BY ga.account_number`);
+    const total_assets = assets.reduce((s, a) => s + Number(a.balance), 0);
+    const total_liabilities = liabilities.reduce((s, a) => s + Number(a.balance), 0);
+    const total_equity = equity.reduce((s, a) => s + Number(a.balance), 0);
+    res.json({ assets, liabilities, equity, total_assets, total_liabilities, total_equity, is_balanced: Math.abs(total_assets - (total_liabilities + total_equity)) < 0.01 });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ PERIOD CLOSE ============
+router.post('/period-close', authenticate, async (req, res) => {
+  try {
+    const { period_id } = req.body;
+    await pool.query('UPDATE accounting_periods SET status = ? WHERE id = ?', ['closed', period_id]);
+    res.json({ success: true, message: 'Period closed successfully' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 

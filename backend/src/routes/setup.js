@@ -32,6 +32,7 @@ const setupTables = {
   'work-centers': 'work_centers',
   'carriers': 'carriers',
   'tax-codes': 'tax_codes',
+  'users': 'users',
   'price-lists': 'price_lists',
   'salespeople': 'users',
   'currencies': 'currencies',
@@ -39,7 +40,10 @@ const setupTables = {
   'departments': 'departments',
   'scrap-codes': 'scrap_codes',
   'adjustment-codes': 'adjustment_codes',
-  'payment-terms': 'payment_terms'
+  'payment-terms': 'payment_terms',
+  'tax-groups': 'tax_groups',
+  'banks': 'banks',
+  'bank-accounts': 'bank_accounts'
 };
 
 // GET all records for a setup table
@@ -47,7 +51,9 @@ router.get('/:table', authenticate, async (req, res) => {
   try {
     const tableName = setupTables[req.params.table];
     if (!tableName) return res.status(404).json({ error: 'Setup table not found' });
-    const [rows] = await pool.query(`SELECT * FROM ${tableName} ORDER BY name`);
+    const [cols] = await pool.query(`SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='maxta_erp' AND TABLE_NAME=? AND COLUMN_NAME='name'`, [tableName]);
+    const orderCol = cols.length > 0 ? 'name' : 'id';
+    const [rows] = await pool.query(`SELECT * FROM ${tableName} ORDER BY ${orderCol}`);
     res.json(rows);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });

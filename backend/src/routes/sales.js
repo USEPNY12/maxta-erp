@@ -689,6 +689,20 @@ router.post('/invoices/:id/post', authenticate, async (req, res) => {
     if (!invoices.length) return res.status(404).json({ error: 'Invoice not found' });
     if (invoices[0].status !== 'draft') return res.status(400).json({ error: 'Only draft invoices can be posted' });
     await pool.query("UPDATE ar_invoices SET status = 'posted', posted = 1, posted_by = ?, posted_at = NOW() WHERE id = ?", [req.user.id, req.params.id]);
+    // GL Auto-Post: Debit Accounts Receivable (1100), Credit Sales Revenue (4000)
+    const invTotal = Number(invoices[0].total || 0);
+    if (invTotal > 0) {
+      const period = `${new Date().getMonth()+1}-${new Date().getFullYear()}`;
+      await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
+        VALUES ((SELECT id FROM gl_accounts WHERE account_number = '1100'), NOW(), ?, ?, 0, ?, 'ar_invoice', ?, ?)`,
+        [period, invTotal, `AR Invoice ${invoices[0].invoice_number} posted`, req.params.id, req.user.id]);
+      await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
+        VALUES ((SELECT id FROM gl_accounts WHERE account_number = '4000'), NOW(), ?, 0, ?, ?, 'ar_invoice', ?, ?)`,
+        [period, invTotal, `AR Invoice ${invoices[0].invoice_number} posted`, req.params.id, req.user.id]);
+      // Update GL account balances
+      await pool.query('UPDATE gl_accounts SET balance = balance + ? WHERE account_number = ?', [invTotal, '1100']);
+      await pool.query('UPDATE gl_accounts SET balance = balance + ? WHERE account_number = ?', [invTotal, '4000']);
+    }
     await req.audit('ar_invoices', req.params.id, 'POST', { status: 'draft' }, { status: 'posted' });
     res.json({ message: 'Invoice posted' });
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -728,6 +742,16 @@ router.post('/invoices/:id/payment', authenticate, async (req, res) => {
     } else {
       await pool.query("UPDATE ar_invoices SET status = 'partial', balance = total - COALESCE(amount_paid,0) WHERE id = ?", [invoiceId]);
     }
+    // GL Auto-Post: Debit Cash (1000), Credit Accounts Receivable (1100)
+    const period = `${new Date().getMonth()+1}-${new Date().getFullYear()}`;
+    await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
+      VALUES ((SELECT id FROM gl_accounts WHERE account_number = '1000'), NOW(), ?, ?, 0, ?, 'customer_payment', ?, ?)`,
+      [period, amount, `Customer payment ${paymentNumber} for ${invoice.invoice_number}`, invoiceId, req.user.id]);
+    await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
+      VALUES ((SELECT id FROM gl_accounts WHERE account_number = '1100'), NOW(), ?, 0, ?, ?, 'customer_payment', ?, ?)`,
+      [period, amount, `Customer payment ${paymentNumber} for ${invoice.invoice_number}`, invoiceId, req.user.id]);
+    await pool.query('UPDATE gl_accounts SET balance = balance + ? WHERE account_number = ?', [amount, '1000']);
+    await pool.query('UPDATE gl_accounts SET balance = balance - ? WHERE account_number = ?', [amount, '1100']);
     await req.audit('ar_invoices', invoiceId, 'PAYMENT', null, { payment_number: paymentNumber, amount });
     res.json({ message: 'Payment recorded', payment_number: paymentNumber });
   } catch (error) { res.status(500).json({ error: error.message }); }

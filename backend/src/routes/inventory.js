@@ -255,4 +255,69 @@ router.get('/dashboard', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// ============ STOCK TRANSFERS ============
+router.get('/transfers', authenticate, async (req, res) => {
+  try {
+    const [transfers] = await pool.query(`
+      SELECT st.*, i.item_number, i.description as item_description,
+        fl.name as from_location_name, tl.name as to_location_name
+      FROM stock_transfers st
+      JOIN items i ON st.item_id = i.id
+      JOIN locations fl ON st.from_location_id = fl.id
+      JOIN locations tl ON st.to_location_id = tl.id
+      ORDER BY st.transfer_date DESC LIMIT 100`);
+    res.json(transfers);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/transfers', authenticate, async (req, res) => {
+  try {
+    const { item_id, from_location_id, to_location_id, quantity, lot_number, reason, notes } = req.body;
+    const transferNumber = await getNextNumber('transfer');
+    const [result] = await pool.query(
+      `INSERT INTO stock_transfers (transfer_number, item_id, from_location_id, to_location_id, quantity, lot_number, reason, notes, transferred_by)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      [transferNumber, item_id, from_location_id, to_location_id, quantity, lot_number, reason, notes, req.user.id]
+    );
+    // Log inventory transactions
+    await pool.query(
+      `INSERT INTO inventory_transactions (item_id, transaction_type, quantity, reference_type, reference_id, reference_number, location_id, lot_number, notes, created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?,?,?)`,
+      [item_id, 'transfer_out', -quantity, 'transfer', result.insertId, transferNumber, from_location_id, lot_number, `Transfer to location ${to_location_id}`, req.user.id,
+       item_id, 'transfer_in', quantity, 'transfer', result.insertId, transferNumber, to_location_id, lot_number, `Transfer from location ${from_location_id}`, req.user.id]
+    );
+    res.status(201).json({ id: result.insertId, transfer_number: transferNumber });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ LOT DETAIL ============
+router.get('/lots/:id', authenticate, async (req, res) => {
+  try {
+    const [lot] = await pool.query(`
+      SELECT l.*, i.item_number, i.description as item_description, loc.name as location_name
+      FROM lots l JOIN items i ON l.item_id = i.id LEFT JOIN locations loc ON l.location_id = loc.id
+      WHERE l.id = ?`, [req.params.id]);
+    if (!lot.length) return res.status(404).json({ error: 'Lot not found' });
+    const [transactions] = await pool.query(`
+      SELECT * FROM inventory_transactions WHERE lot_number = ? ORDER BY created_at DESC`, [lot[0].lot_number]);
+    res.json({ ...lot[0], transactions });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ STOCK STATUS (by location) ============
+router.get('/stock-status', authenticate, async (req, res) => {
+  try {
+    const [stock] = await pool.query(`
+      SELECT i.id, i.item_number, i.description, i.item_type, i.qty_on_hand,
+        i.standard_cost, i.minimum_qty, i.lead_time_days,
+        (i.qty_on_hand * i.standard_cost) as extended_value,
+        CASE WHEN i.qty_on_hand <= 0 THEN 'out_of_stock'
+             WHEN i.qty_on_hand <= i.minimum_qty THEN 'low_stock'
+             ELSE 'in_stock' END as stock_status
+      FROM items i WHERE i.is_active = TRUE
+      ORDER BY i.item_number`);
+    res.json(stock);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 module.exports = router;

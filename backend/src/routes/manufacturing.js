@@ -379,6 +379,21 @@ router.post('/receipts', authenticate, async (req, res) => {
       [receiptNumber, work_order_id, quantity_completed, quantity_scrapped || 0, scrap_code, location_id, lot_number, materialCost[0].total, laborCost[0].total, materialCost[0].total + laborCost[0].total, notes, req.user.id]);
     await pool.query('UPDATE work_orders SET qty_completed = qty_completed + ?, qty_scrapped = qty_scrapped + ? WHERE id = ?', [quantity_completed, quantity_scrapped || 0, work_order_id]);
     await pool.query('UPDATE items SET qty_on_hand = qty_on_hand + ? WHERE id = ?', [quantity_completed, wos[0].item_id]);
+    // Log inventory transaction for finished goods receipt
+    await pool.query(`INSERT INTO inventory_transactions (item_id, transaction_type, quantity, location_id, lot_number, reference_type, reference_id, reference_number, notes, created_by)
+      VALUES (?, 'wo_receipt', ?, ?, ?, 'work_order', ?, ?, ?, ?)`,
+      [wos[0].item_id, quantity_completed, location_id, lot_number, work_order_id, wos[0].order_number, `WO Receipt ${receiptNumber}`, req.user.id]);
+    // GL Auto-Post: Debit Finished Goods Inventory (1300), Credit WIP (1350)
+    const totalCost = materialCost[0].total + laborCost[0].total;
+    if (totalCost > 0) {
+      const period = `${new Date().getMonth()+1}-${new Date().getFullYear()}`;
+      await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
+        VALUES ((SELECT id FROM gl_accounts WHERE account_number = '1300'), NOW(), ?, ?, 0, ?, 'wo_receipt', ?, ?)`,
+        [period, totalCost, `WO Receipt ${receiptNumber} - ${wos[0].order_number}`, result.insertId, req.user.id]);
+      await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
+        VALUES ((SELECT id FROM gl_accounts WHERE account_number = '1350'), NOW(), ?, 0, ?, ?, 'wo_receipt', ?, ?)`,
+        [period, totalCost, `WO Receipt ${receiptNumber} - ${wos[0].order_number}`, result.insertId, req.user.id]);
+    }
     const [updatedWO] = await pool.query('SELECT quantity, qty_completed FROM work_orders WHERE id = ?', [work_order_id]);
     if (updatedWO[0].qty_completed >= updatedWO[0].quantity) {
       await pool.query("UPDATE work_orders SET status = 'completed', actual_finish_date = NOW() WHERE id = ?", [work_order_id]);

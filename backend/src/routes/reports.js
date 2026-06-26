@@ -168,4 +168,57 @@ router.get('/sales/by-customer', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// ============ ADDITIONAL REPORTS ============
+// Purchase Order Status Report
+router.get('/purchasing/po-status', authenticate, async (req, res) => {
+  try {
+    const [data] = await pool.query(`
+      SELECT po.*, v.company_name as vendor_name
+      FROM purchase_orders po JOIN vendors v ON po.vendor_id = v.id
+      ORDER BY po.order_date DESC LIMIT 100`);
+    res.json(data);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Reorder Report
+router.get('/inventory/reorder', authenticate, async (req, res) => {
+  try {
+    const [data] = await pool.query(`
+      SELECT i.item_number, i.description, i.item_type, i.qty_on_hand, i.minimum_qty,
+        (i.minimum_qty - i.qty_on_hand) as qty_to_order, i.lead_time_days
+      FROM items i WHERE i.qty_on_hand <= i.minimum_qty AND i.is_active = TRUE
+      ORDER BY (i.minimum_qty - i.qty_on_hand) DESC`);
+    res.json(data);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Stock Status Report
+router.get('/inventory/stock-status', authenticate, async (req, res) => {
+  try {
+    const [data] = await pool.query(`
+      SELECT i.item_number, i.description, i.item_type, i.qty_on_hand, i.minimum_qty,
+        i.standard_cost, (i.qty_on_hand * i.standard_cost) as value,
+        CASE WHEN i.qty_on_hand <= 0 THEN 'Out of Stock'
+             WHEN i.qty_on_hand <= i.minimum_qty THEN 'Low Stock'
+             ELSE 'In Stock' END as status
+      FROM items i WHERE i.is_active = TRUE ORDER BY i.item_number`);
+    res.json(data);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Production Efficiency Report
+router.get('/manufacturing/efficiency', authenticate, async (req, res) => {
+  try {
+    const [data] = await pool.query(`
+      SELECT wo.wo_number, i.item_number, i.description as item_description,
+        wo.quantity as quantity_ordered, wo.quantity_completed, wo.status,
+        wo.start_date, wo.finish_date,
+        DATEDIFF(COALESCE(wo.finish_date, CURDATE()), wo.start_date) as actual_days
+      FROM work_orders wo JOIN items i ON wo.item_id = i.id
+      WHERE wo.status IN ('completed','closed','in_progress')
+      ORDER BY wo.start_date DESC LIMIT 50`);
+    res.json(data);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 module.exports = router;
