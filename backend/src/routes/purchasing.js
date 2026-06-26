@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../config/database');
 const { authenticate } = require('../middleware/auth');
 const { getNextNumber } = require('../utils/sequence');
+const GLService = require('../services/glService');
 const { checkDocumentLock, preventDelete } = require('../middleware/documentLock');
 
 // ============ VENDORS ============
@@ -557,18 +558,60 @@ router.post('/ap-invoices/:id/post', authenticate, async (req, res) => {
     const [invoices] = await pool.query('SELECT * FROM ap_invoices WHERE id = ?', [req.params.id]);
     if (!invoices.length) return res.status(404).json({ error: 'AP Invoice not found' });
     if (invoices[0].status !== 'open') return res.status(400).json({ error: 'Only open AP invoices can be posted' });
+    // Period Lock Enforcement
+    try {
+      await GLService.validatePeriod(invoices[0].invoice_date || new Date());
+    } catch (periodError) {
+      return res.status(400).json({ error: periodError.message });
+    }
     await pool.query("UPDATE ap_invoices SET status = 'posted', posted = 1, posted_date = NOW() WHERE id = ?", [req.params.id]);
-    // GL Auto-Post: Debit COGS/Expense (5000), Credit Accounts Payable (2000)
+    // GL Auto-Post with Purchase Price Variance (PPV)
     const invTotal = Number(invoices[0].total || 0);
     if (invTotal > 0) {
       const period = `${new Date().getMonth()+1}-${new Date().getFullYear()}`;
-      await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
-        VALUES ((SELECT id FROM gl_accounts WHERE account_number = '5000'), NOW(), ?, ?, 0, ?, 'ap_invoice', ?, ?)`,
-        [period, invTotal, `AP Invoice ${invoices[0].invoice_number} posted`, req.params.id, req.user.id]);
-      await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
+      
+      // Check for three-way match: compare invoice total vs receipt/PO cost
+      let receiptCost = 0;
+      let ppvAmount = 0;
+      const [matchedReceipts] = await pool.query('SELECT id FROM po_receipts WHERE ap_invoice_id = ?', [req.params.id]);
+      if (matchedReceipts.length > 0) {
+        const [receiptLines] = await pool.query(
+          `SELECT prl.quantity_received, pl.unit_cost 
+           FROM po_receipt_lines prl 
+           JOIN po_lines pl ON prl.po_line_id = pl.id 
+           WHERE prl.receipt_id = ?`, [matchedReceipts[0].id]);
+        receiptCost = receiptLines.reduce((sum, l) => sum + (Number(l.quantity_received) * Number(l.unit_cost)), 0);
+        ppvAmount = invTotal - receiptCost;
+      }
+      
+      // Debit: Inventory/Expense for the receipt cost, PPV for the difference
+      if (Math.abs(ppvAmount) > 0.01 && receiptCost > 0) {
+        // Three-way match with variance
+        // Debit Inventory (receipt cost)
+        await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, memo, source_type, source_id, posted_by)
+          VALUES ((SELECT id FROM gl_accounts WHERE account_number = '1200'), NOW(), ?, ?, 0, ?, 'ap_invoice', ?, ?)`,
+          [period, receiptCost, `AP Invoice ${invoices[0].invoice_number} - receipt cost`, req.params.id, req.user.id]);
+        // Debit or Credit PPV account (5100) for the variance
+        if (ppvAmount > 0) {
+          await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, memo, source_type, source_id, posted_by)
+            VALUES ((SELECT id FROM gl_accounts WHERE account_number = '5100'), NOW(), ?, ?, 0, ?, 'ap_invoice', ?, ?)`,
+            [period, ppvAmount, `PPV - Invoice ${invoices[0].invoice_number} over PO cost`, req.params.id, req.user.id]);
+        } else {
+          await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, memo, source_type, source_id, posted_by)
+            VALUES ((SELECT id FROM gl_accounts WHERE account_number = '5100'), NOW(), ?, 0, ?, ?, 'ap_invoice', ?, ?)`,
+            [period, Math.abs(ppvAmount), `PPV - Invoice ${invoices[0].invoice_number} under PO cost`, req.params.id, req.user.id]);
+        }
+      } else {
+        // No variance or no receipt match - debit expense directly
+        await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, memo, source_type, source_id, posted_by)
+          VALUES ((SELECT id FROM gl_accounts WHERE account_number = '5000'), NOW(), ?, ?, 0, ?, 'ap_invoice', ?, ?)`,
+          [period, invTotal, `AP Invoice ${invoices[0].invoice_number} posted`, req.params.id, req.user.id]);
+      }
+      
+      // Credit: Accounts Payable (always the full invoice amount)
+      await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, memo, source_type, source_id, posted_by)
         VALUES ((SELECT id FROM gl_accounts WHERE account_number = '2000'), NOW(), ?, 0, ?, ?, 'ap_invoice', ?, ?)`,
         [period, invTotal, `AP Invoice ${invoices[0].invoice_number} posted`, req.params.id, req.user.id]);
-      await pool.query('UPDATE gl_accounts SET balance = balance + ? WHERE account_number = ?', [invTotal, '5000']);
       await pool.query('UPDATE gl_accounts SET balance = balance + ? WHERE account_number = ?', [invTotal, '2000']);
     }
     await req.audit('ap_invoices', req.params.id, 'POST', { status: 'open' }, { status: 'posted' });
@@ -601,10 +644,10 @@ router.post('/ap-invoices/:id/pay', authenticate, async (req, res) => {
       [newAmountPaid, Math.max(0, newBalance), newStatus, req.params.id]);
     // GL Auto-Post: Debit Accounts Payable (2000), Credit Cash (1000)
     const period = `${new Date().getMonth()+1}-${new Date().getFullYear()}`;
-    await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
+    await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, memo, source_type, source_id, posted_by)
       VALUES ((SELECT id FROM gl_accounts WHERE account_number = '2000'), NOW(), ?, ?, 0, ?, 'vendor_payment', ?, ?)`,
       [period, payAmount, `Vendor payment ${paymentNumber} for ${invoices[0].invoice_number}`, req.params.id, req.user.id]);
-    await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
+    await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, memo, source_type, source_id, posted_by)
       VALUES ((SELECT id FROM gl_accounts WHERE account_number = '1000'), NOW(), ?, 0, ?, ?, 'vendor_payment', ?, ?)`,
       [period, payAmount, `Vendor payment ${paymentNumber} for ${invoices[0].invoice_number}`, req.params.id, req.user.id]);
     await pool.query('UPDATE gl_accounts SET balance = balance - ? WHERE account_number = ?', [payAmount, '2000']);
@@ -699,6 +742,53 @@ router.get('/vendor-item-info/:vendorId/:itemId', authenticate, async (req, res)
       WHERE iv.vendor_id = ? AND iv.item_id = ?`, [req.params.vendorId, req.params.itemId]);
     if (rows.length === 0) return res.json(null);
     res.json(rows[0]);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+
+// ============ THREE-WAY MATCH VALIDATION ============
+router.get('/three-way-match/:invoice_id', authenticate, async (req, res) => {
+  try {
+    const [invoices] = await pool.query('SELECT * FROM ap_invoices WHERE id = ?', [req.params.invoice_id]);
+    if (!invoices.length) return res.status(404).json({ error: 'AP Invoice not found' });
+    const invoice = invoices[0];
+    
+    // Get linked PO
+    let poData = null;
+    if (invoice.purchase_order_id) {
+      const [pos] = await pool.query('SELECT * FROM purchase_orders WHERE id = ?', [invoice.purchase_order_id]);
+      if (pos.length) poData = pos[0];
+    }
+    
+    // Get linked receipt
+    const [receipts] = await pool.query('SELECT * FROM po_receipts WHERE ap_invoice_id = ?', [req.params.invoice_id]);
+    let receiptData = null;
+    let receiptTotal = 0;
+    if (receipts.length) {
+      receiptData = receipts[0];
+      const [rLines] = await pool.query(
+        `SELECT prl.quantity_received, pl.unit_cost 
+         FROM po_receipt_lines prl JOIN po_lines pl ON prl.po_line_id = pl.id 
+         WHERE prl.receipt_id = ?`, [receipts[0].id]);
+      receiptTotal = rLines.reduce((s, l) => s + Number(l.quantity_received) * Number(l.unit_cost), 0);
+    }
+    
+    const invoiceTotal = Number(invoice.total || 0);
+    const poTotal = poData ? Number(poData.total || 0) : null;
+    const variance = receiptTotal > 0 ? invoiceTotal - receiptTotal : null;
+    
+    const matchStatus = {
+      invoice: { id: invoice.id, number: invoice.invoice_number, total: invoiceTotal },
+      purchase_order: poData ? { id: poData.id, number: poData.po_number, total: poTotal } : null,
+      receipt: receiptData ? { id: receiptData.id, number: receiptData.receipt_number, total: receiptTotal } : null,
+      variance: variance,
+      variance_percent: receiptTotal > 0 ? ((variance / receiptTotal) * 100).toFixed(2) : null,
+      match_status: !receiptData ? 'no_receipt' : 
+                    Math.abs(variance) < 0.01 ? 'matched' : 
+                    Math.abs(variance) / receiptTotal < 0.05 ? 'within_tolerance' : 'variance'
+    };
+    
+    res.json(matchStatus);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 

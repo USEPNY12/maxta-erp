@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../config/database');
 const { authenticate } = require('../middleware/auth');
 const { getNextNumber } = require('../utils/sequence');
+const GLService = require('../services/glService');
 
 // ============ ITEMS ============
 // List items with search and filters
@@ -232,6 +233,26 @@ router.post('/adjustments', authenticate, async (req, res) => {
     // Update item qty on hand
     const qtyChange = adjustment_type === 'increase' ? quantity : -quantity;
     await pool.query('UPDATE items SET qty_on_hand = qty_on_hand + ? WHERE id = ?', [qtyChange, item_id]);
+
+    // GL Auto-Post: Debit/Credit Inventory, Credit/Debit Adjustment Expense
+    try {
+      const [item] = await pool.query('SELECT standard_cost FROM items WHERE id = ?', [item_id]);
+      const itemCost = item.length ? Number(item[0].standard_cost || 0) : (cost || 0);
+      if (itemCost > 0) {
+        await GLService.postInventoryAdjustment({
+          adjustmentId: result.insertId,
+          itemId: item_id,
+          quantity: Math.abs(quantity),
+          cost: itemCost,
+          adjustmentType: adjustment_type,
+          transactionDate: new Date(),
+          memo: `Inventory Adjustment ${adjustmentNumber} - ${reason_code || 'Manual'}`,
+          postedBy: req.user.id
+        });
+      }
+    } catch (glError) {
+      console.error('GL posting error (inventory adjustment):', glError.message);
+    }
 
     res.status(201).json({ id: result.insertId, adjustment_number: adjustmentNumber });
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -676,5 +697,263 @@ router.get('/items/:id/inquiry/mrp-by-location', authenticate, async (req, res) 
     res.json({ stock, on_order: onOrder });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
+
+
+// ============ MRP ENGINE - Material Requirements Planning ============
+router.get('/mrp', authenticate, async (req, res) => {
+  try {
+    const { item_id, item_type, below_reorder } = req.query;
+    
+    // Get all inventory items with their demand/supply picture
+    let itemFilter = 'WHERE i.is_active = 1';
+    const params = [];
+    if (item_id) { itemFilter += ' AND i.id = ?'; params.push(item_id); }
+    if (item_type) { itemFilter += ' AND i.item_type = ?'; params.push(item_type); }
+    
+    const [items] = await pool.query(`
+      SELECT i.id, i.item_number, i.description, i.item_type, i.uom,
+             i.qty_on_hand, i.reorder_point, i.reorder_qty, i.standard_cost,
+             i.lead_time_days
+      FROM items i ${itemFilter}
+      ORDER BY i.item_number`, params);
+    
+    // Get all open SO demand (unshipped quantities)
+    const [soDemand] = await pool.query(`
+      SELECT sol.item_id, SUM(sol.quantity_ordered - COALESCE(sol.quantity_shipped, 0)) as demand_qty
+      FROM sales_order_lines sol
+      JOIN sales_orders so ON sol.sales_order_id = so.id
+      WHERE so.status IN ('open', 'released', 'in_progress')
+        AND sol.quantity_ordered > COALESCE(sol.quantity_shipped, 0)
+      GROUP BY sol.item_id`);
+    
+    // Get all open WO material demand (required but not yet issued)
+    const [woMaterialDemand] = await pool.query(`
+      SELECT wm.item_id, SUM(wm.total_qty - COALESCE(wm.quantity_issued, 0)) as demand_qty
+      FROM wo_materials wm
+      JOIN work_orders wo ON wm.work_order_id = wo.id
+      WHERE wo.status IN ('planned', 'scheduled', 'released', 'in_progress')
+        AND wm.total_qty > COALESCE(wm.quantity_issued, 0)
+      GROUP BY wm.item_id`);
+    
+    // Get all open PO supply (ordered but not yet received)
+    const [poSupply] = await pool.query(`
+      SELECT pol.item_id, SUM(pol.quantity_ordered - COALESCE(pol.quantity_received, 0)) as supply_qty
+      FROM po_lines pol
+      JOIN purchase_orders po ON pol.purchase_order_id = po.id
+      WHERE po.status IN ('open', 'approved', 'sent', 'partial')
+        AND pol.quantity_ordered > COALESCE(pol.quantity_received, 0)
+      GROUP BY pol.item_id`);
+    
+    // Get all open WO receipt supply (WOs that will produce finished goods)
+    const [woReceiptSupply] = await pool.query(`
+      SELECT wo.item_id, SUM(wo.quantity - COALESCE(wo.qty_completed, 0)) as supply_qty
+      FROM work_orders wo
+      WHERE wo.status IN ('planned', 'scheduled', 'released', 'in_progress')
+        AND wo.item_id IS NOT NULL
+        AND wo.quantity > COALESCE(wo.qty_completed, 0)
+      GROUP BY wo.item_id`);
+    
+    // Build demand/supply maps
+    const soDemandMap = {};
+    soDemand.forEach(r => { soDemandMap[r.item_id] = Number(r.demand_qty); });
+    const woMatDemandMap = {};
+    woMaterialDemand.forEach(r => { woMatDemandMap[r.item_id] = Number(r.demand_qty); });
+    const poSupplyMap = {};
+    poSupply.forEach(r => { poSupplyMap[r.item_id] = Number(r.supply_qty); });
+    const woSupplyMap = {};
+    woReceiptSupply.forEach(r => { woSupplyMap[r.item_id] = Number(r.supply_qty); });
+    
+    // Calculate MRP for each item
+    const mrpResults = items.map(item => {
+      const onHand = Number(item.qty_on_hand || 0);
+      const soDem = soDemandMap[item.id] || 0;
+      const woMatDem = woMatDemandMap[item.id] || 0;
+      const totalDemand = soDem + woMatDem;
+      const poSup = poSupplyMap[item.id] || 0;
+      const woSup = woSupplyMap[item.id] || 0;
+      const totalSupply = poSup + woSup;
+      const available = onHand - totalDemand + totalSupply;
+      const netRequirement = Math.max(0, (Number(item.reorder_point || 0)) - available);
+      const suggestedOrder = netRequirement > 0 ? Math.max(netRequirement, Number(item.reorder_qty || netRequirement)) : 0;
+      
+      return {
+        ...item,
+        on_hand: onHand,
+        so_demand: soDem,
+        wo_material_demand: woMatDem,
+        total_demand: totalDemand,
+        po_supply: poSup,
+        wo_receipt_supply: woSup,
+        total_supply: totalSupply,
+        available: available,
+        net_requirement: netRequirement,
+        suggested_order_qty: suggestedOrder,
+        below_reorder: available < Number(item.reorder_point || 0)
+      };
+    });
+    
+    // Filter if requested
+    let filtered = mrpResults;
+    if (below_reorder === 'true') {
+      filtered = mrpResults.filter(r => r.below_reorder);
+    }
+    
+    res.json({
+      items: filtered,
+      summary: {
+        total_items: filtered.length,
+        items_below_reorder: filtered.filter(r => r.below_reorder).length,
+        total_demand_value: filtered.reduce((s, r) => s + r.total_demand * Number(r.standard_cost || 0), 0),
+        total_supply_value: filtered.reduce((s, r) => s + r.total_supply * Number(r.standard_cost || 0), 0)
+      }
+    });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ ITEM TYPES UPGRADE ============
+router.get('/item-types', authenticate, async (req, res) => {
+  try {
+    const [types] = await pool.query('SELECT * FROM item_types ORDER BY name');
+    res.json(types);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.put('/item-types/:id', authenticate, async (req, res) => {
+  try {
+    const fields = req.body;
+    delete fields.id;
+    const columns = Object.keys(fields);
+    if (columns.length === 0) return res.status(400).json({ error: 'No fields to update' });
+    const values = columns.map(k => fields[k]);
+    await pool.query(`UPDATE item_types SET ${columns.map(k => k + '=?').join(',')} WHERE id=?`, [...values, req.params.id]);
+    res.json({ message: 'Item type updated' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ PHYSICAL COUNT WORKFLOW ============
+router.post('/physical-counts', authenticate, async (req, res) => {
+  try {
+    const countNumber = await getNextNumber('physical_count');
+    const { count_date, location_id, description, items: countItems } = req.body;
+    
+    const [result] = await pool.query(
+      `INSERT INTO physical_counts (count_number, count_date, location_id, description, status, created_by)
+       VALUES (?, ?, ?, ?, 'open', ?)`,
+      [countNumber, count_date || new Date(), location_id, description, req.user.id]);
+    
+    // If items provided, create count lines with system quantities
+    if (countItems && countItems.length > 0) {
+      for (const item of countItems) {
+        const [inv] = await pool.query('SELECT qty_on_hand FROM items WHERE id = ?', [item.item_id]);
+        const systemQty = inv.length ? Number(inv[0].qty_on_hand) : 0;
+        await pool.query(
+          `INSERT INTO physical_count_lines (physical_count_id, item_id, location_id, system_qty, counted_qty, variance_qty, status)
+           VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
+          [result.insertId, item.item_id, item.location_id || location_id, systemQty, item.counted_qty || null, 
+           item.counted_qty != null ? (item.counted_qty - systemQty) : null]);
+      }
+    }
+    
+    res.status(201).json({ id: result.insertId, count_number: countNumber });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.get('/physical-counts', authenticate, async (req, res) => {
+  try {
+    const { status } = req.query;
+    let query = `SELECT pc.*, u.full_name as created_by_name, l.name as location_name
+      FROM physical_counts pc 
+      LEFT JOIN users u ON pc.created_by = u.id
+      LEFT JOIN locations l ON pc.location_id = l.id WHERE 1=1`;
+    const params = [];
+    if (status && status !== 'all') { query += ' AND pc.status = ?'; params.push(status); }
+    query += ' ORDER BY pc.count_date DESC LIMIT 100';
+    const [counts] = await pool.query(query, params);
+    res.json(counts);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.get('/physical-counts/:id', authenticate, async (req, res) => {
+  try {
+    const [counts] = await pool.query('SELECT * FROM physical_counts WHERE id = ?', [req.params.id]);
+    if (!counts.length) return res.status(404).json({ error: 'Physical count not found' });
+    const [lines] = await pool.query(
+      `SELECT pcl.*, i.item_number, i.description as item_description, i.uom
+       FROM physical_count_lines pcl
+       JOIN items i ON pcl.item_id = i.id
+       WHERE pcl.physical_count_id = ? ORDER BY i.item_number`, [req.params.id]);
+    res.json({ ...counts[0], lines });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.put('/physical-counts/:id/lines', authenticate, async (req, res) => {
+  try {
+    const { lines } = req.body;
+    for (const line of lines) {
+      if (line.id) {
+        const variance = (line.counted_qty != null && line.system_qty != null) ? (line.counted_qty - line.system_qty) : null;
+        await pool.query(
+          'UPDATE physical_count_lines SET counted_qty = ?, variance_qty = ?, status = ? WHERE id = ?',
+          [line.counted_qty, variance, line.counted_qty != null ? 'counted' : 'pending', line.id]);
+      }
+    }
+    res.json({ message: 'Count lines updated' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/physical-counts/:id/post', authenticate, async (req, res) => {
+  try {
+    const [counts] = await pool.query('SELECT * FROM physical_counts WHERE id = ?', [req.params.id]);
+    if (!counts.length) return res.status(404).json({ error: 'Physical count not found' });
+    if (counts[0].status === 'posted') return res.status(400).json({ error: 'Already posted' });
+    
+    const [lines] = await pool.query(
+      'SELECT pcl.*, i.standard_cost FROM physical_count_lines pcl JOIN items i ON pcl.item_id = i.id WHERE pcl.physical_count_id = ? AND pcl.counted_qty IS NOT NULL',
+      [req.params.id]);
+    
+    let totalVarianceQty = 0;
+    let totalVarianceCost = 0;
+    
+    for (const line of lines) {
+      const variance = Number(line.counted_qty) - Number(line.system_qty);
+      if (variance === 0) continue;
+      
+      totalVarianceQty += Math.abs(variance);
+      totalVarianceCost += Math.abs(variance) * Number(line.standard_cost || 0);
+      
+      // Update inventory quantity to match count
+      await pool.query('UPDATE items SET qty_on_hand = ? WHERE id = ?', [line.counted_qty, line.item_id]);
+      
+      // Log inventory transaction
+      await pool.query(
+        `INSERT INTO inventory_transactions (item_id, transaction_type, quantity, location_id, reference_type, reference_id, reference_number, notes, created_by)
+         VALUES (?, 'physical_count', ?, ?, 'physical_count', ?, ?, ?, ?)`,
+        [line.item_id, variance, line.location_id, req.params.id, counts[0].count_number,
+         `Physical count variance: system ${line.system_qty} -> counted ${line.counted_qty}`, req.user.id]);
+      
+      // GL posting for variance
+      try {
+        const adjustType = variance > 0 ? 'increase' : 'decrease';
+        await GLService.postInventoryAdjustment({
+          adjustmentId: req.params.id,
+          itemId: line.item_id,
+          quantity: Math.abs(variance),
+          cost: Number(line.standard_cost || 0),
+          adjustmentType: adjustType,
+          transactionDate: new Date(),
+          memo: `Physical Count ${counts[0].count_number} - ${line.item_id}`,
+          postedBy: req.user.id
+        });
+      } catch (glErr) { console.error('GL physical count error:', glErr.message); }
+      
+      await pool.query("UPDATE physical_count_lines SET status = 'posted' WHERE id = ?", [line.id]);
+    }
+    
+    await pool.query("UPDATE physical_counts SET status = 'posted', posted_by = ?, posted_at = NOW() WHERE id = ?", [req.user.id, req.params.id]);
+    
+    res.json({ message: 'Physical count posted', total_variance_qty: totalVarianceQty, total_variance_cost: totalVarianceCost });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 
 module.exports = router;

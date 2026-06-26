@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../config/database');
 const { authenticate } = require('../middleware/auth');
 const { getNextNumber } = require('../utils/sequence');
+const GLService = require('../services/glService');
 
 // ============ WORK CENTERS ============
 router.get('/work-centers', authenticate, async (req, res) => {
@@ -370,35 +371,157 @@ router.post('/receipts', authenticate, async (req, res) => {
   try {
     const receiptNumber = await getNextNumber('wo_receipt');
     const { work_order_id, quantity_completed, quantity_scrapped, scrap_code, location_id, lot_number, notes } = req.body;
+    if (!work_order_id || !quantity_completed) return res.status(400).json({ error: 'Work order and quantity required' });
+    
     const [wos] = await pool.query('SELECT * FROM work_orders WHERE id = ?', [work_order_id]);
     if (wos.length === 0) return res.status(404).json({ error: 'Work order not found' });
-    const [materialCost] = await pool.query('SELECT COALESCE(SUM(quantity_issued * unit_cost),0) as total FROM wo_materials WHERE work_order_id = ?', [work_order_id]);
-    const [laborCost] = await pool.query('SELECT COALESCE(SUM(hours * rate),0) as total FROM wo_labor WHERE work_order_id = ?', [work_order_id]);
-    const [result] = await pool.query(
-      'INSERT INTO wo_receipts (receipt_number, work_order_id, receipt_date, quantity_completed, quantity_scrapped, scrap_code, location_id, lot_number, material_cost, labor_cost, total_cost, notes, received_by) VALUES (?,?,CURDATE(),?,?,?,?,?,?,?,?,?,?)',
-      [receiptNumber, work_order_id, quantity_completed, quantity_scrapped || 0, scrap_code, location_id, lot_number, materialCost[0].total, laborCost[0].total, materialCost[0].total + laborCost[0].total, notes, req.user.id]);
-    await pool.query('UPDATE work_orders SET qty_completed = qty_completed + ?, qty_scrapped = qty_scrapped + ? WHERE id = ?', [quantity_completed, quantity_scrapped || 0, work_order_id]);
-    await pool.query('UPDATE items SET qty_on_hand = qty_on_hand + ? WHERE id = ?', [quantity_completed, wos[0].item_id]);
-    // Log inventory transaction for finished goods receipt
-    await pool.query(`INSERT INTO inventory_transactions (item_id, transaction_type, quantity, location_id, lot_number, reference_type, reference_id, reference_number, notes, created_by)
-      VALUES (?, 'wo_receipt', ?, ?, ?, 'work_order', ?, ?, ?, ?)`,
-      [wos[0].item_id, quantity_completed, location_id, lot_number, work_order_id, wos[0].order_number, `WO Receipt ${receiptNumber}`, req.user.id]);
-    // GL Auto-Post: Debit Finished Goods Inventory (1300), Credit WIP (1350)
-    const totalCost = materialCost[0].total + laborCost[0].total;
-    if (totalCost > 0) {
-      const period = `${new Date().getMonth()+1}-${new Date().getFullYear()}`;
-      await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
-        VALUES ((SELECT id FROM gl_accounts WHERE account_number = '1300'), NOW(), ?, ?, 0, ?, 'wo_receipt', ?, ?)`,
-        [period, totalCost, `WO Receipt ${receiptNumber} - ${wos[0].order_number}`, result.insertId, req.user.id]);
-      await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
-        VALUES ((SELECT id FROM gl_accounts WHERE account_number = '1350'), NOW(), ?, 0, ?, ?, 'wo_receipt', ?, ?)`,
-        [period, totalCost, `WO Receipt ${receiptNumber} - ${wos[0].order_number}`, result.insertId, req.user.id]);
+    const wo = wos[0];
+
+    const conn = await pool.getConnection();
+    await conn.beginTransaction();
+    try {
+      // ===== MATERIAL BACKFLUSH ENGINE =====
+      // Get BOM for the WO item (or use wo_materials if already populated)
+      let materialsToIssue = [];
+      const [existingMaterials] = await conn.query('SELECT * FROM wo_materials WHERE work_order_id = ?', [work_order_id]);
+      
+      if (existingMaterials.length > 0) {
+        // Use pre-loaded WO materials
+        materialsToIssue = existingMaterials;
+      } else if (wo.item_id) {
+        // Auto-load from BOM if available
+        const [bomHeaders] = await conn.query(
+          'SELECT id, batch_size FROM bom_headers WHERE item_id = ? AND is_active = 1 ORDER BY effective_date DESC LIMIT 1', [wo.item_id]);
+        if (bomHeaders.length > 0) {
+          const bom = bomHeaders[0];
+          const [bomLines] = await conn.query(
+            `SELECT bl.*, i.item_number, i.description, i.standard_cost, i.uom 
+             FROM bom_lines bl JOIN items i ON bl.component_item_id = i.id 
+             WHERE bl.bom_id = ? ORDER BY bl.sequence`, [bom.id]);
+          
+          // Create wo_materials from BOM and calculate quantities
+          let lineNum = 1;
+          for (const bl of bomLines) {
+            const qtyPer = Number(bl.quantity_per) / Number(bom.batch_size || 1);
+            const wastePct = Number(bl.waste_percent || 0);
+            const qtyRequired = qtyPer * Number(wo.quantity);
+            const totalQty = qtyRequired * (1 + wastePct / 100);
+            
+            await conn.query(
+              `INSERT INTO wo_materials (work_order_id, line_number, item_id, description, quantity_required, waste_percent, total_qty, quantity_issued, unit_cost, total_cost, location_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?)`,
+              [work_order_id, lineNum, bl.component_item_id, bl.description || bl.item_number, qtyRequired, wastePct, totalQty, Number(bl.standard_cost || 0), location_id]);
+            
+            materialsToIssue.push({
+              id: null, item_id: bl.component_item_id, item_number: bl.item_number,
+              quantity_required: qtyRequired, total_qty: totalQty, waste_percent: wastePct,
+              unit_cost: Number(bl.standard_cost || 0), quantity_issued: 0
+            });
+            lineNum++;
+          }
+        }
+      }
+
+      // Issue materials proportional to quantity completed vs total WO quantity
+      const completionRatio = Number(quantity_completed) / Number(wo.quantity || 1);
+      const glMaterialLines = [];
+      
+      for (const mat of materialsToIssue) {
+        const issueQty = Number(mat.total_qty || mat.quantity_required) * completionRatio;
+        if (issueQty <= 0 || !mat.item_id) continue;
+        
+        // Update wo_materials issued quantity
+        if (mat.id) {
+          await conn.query('UPDATE wo_materials SET quantity_issued = quantity_issued + ?, total_cost = (quantity_issued + ?) * unit_cost WHERE id = ?',
+            [issueQty, issueQty, mat.id]);
+        } else {
+          await conn.query('UPDATE wo_materials SET quantity_issued = quantity_issued + ?, total_cost = (quantity_issued + ?) * unit_cost WHERE work_order_id = ? AND item_id = ?',
+            [issueQty, issueQty, work_order_id, mat.item_id]);
+        }
+        
+        // Deduct from raw material inventory
+        await conn.query('UPDATE items SET qty_on_hand = GREATEST(0, qty_on_hand - ?) WHERE id = ?', [issueQty, mat.item_id]);
+        
+        // Log inventory transaction for material issue
+        await conn.query(
+          `INSERT INTO inventory_transactions (item_id, transaction_type, quantity, location_id, reference_type, reference_id, reference_number, notes, created_by)
+           VALUES (?, 'wo_issue', ?, ?, 'work_order', ?, ?, ?, ?)`,
+          [mat.item_id, -issueQty, location_id, work_order_id, wo.order_number, 
+           'Material backflush for WO receipt ' + receiptNumber, req.user.id]);
+        
+        // Accumulate GL material cost
+        glMaterialLines.push({ itemId: mat.item_id, quantity: issueQty });
+      }
+
+      // Calculate costs for the receipt
+      const [materialCost] = await conn.query('SELECT COALESCE(SUM(quantity_issued * unit_cost),0) as total FROM wo_materials WHERE work_order_id = ?', [work_order_id]);
+      const [laborCost] = await conn.query('SELECT COALESCE(SUM(hours * rate),0) as total FROM wo_labor WHERE work_order_id = ?', [work_order_id]);
+      const matCostTotal = Number(materialCost[0].total);
+      const labCostTotal = Number(laborCost[0].total);
+      const totalCost = matCostTotal + labCostTotal;
+
+      // Create the receipt record
+      const [result] = await conn.query(
+        'INSERT INTO wo_receipts (receipt_number, work_order_id, receipt_date, quantity_completed, quantity_scrapped, scrap_code, location_id, lot_number, material_cost, labor_cost, total_cost, notes, received_by) VALUES (?,?,CURDATE(),?,?,?,?,?,?,?,?,?,?)',
+        [receiptNumber, work_order_id, quantity_completed, quantity_scrapped || 0, scrap_code, location_id, lot_number, matCostTotal, labCostTotal, totalCost, notes, req.user.id]);
+
+      // Update WO quantities
+      await conn.query('UPDATE work_orders SET qty_completed = qty_completed + ?, qty_scrapped = qty_scrapped + ? WHERE id = ?', 
+        [quantity_completed, quantity_scrapped || 0, work_order_id]);
+
+      // Add finished goods to inventory
+      if (wo.item_id) {
+        await conn.query('UPDATE items SET qty_on_hand = qty_on_hand + ? WHERE id = ?', [quantity_completed, wo.item_id]);
+        await conn.query(
+          `INSERT INTO inventory_transactions (item_id, transaction_type, quantity, location_id, lot_number, reference_type, reference_id, reference_number, notes, created_by)
+           VALUES (?, 'wo_receipt', ?, ?, ?, 'work_order', ?, ?, ?, ?)`,
+          [wo.item_id, quantity_completed, location_id, lot_number, work_order_id, wo.order_number, 'WO Receipt ' + receiptNumber, req.user.id]);
+      }
+
+      // ===== GL AUTO-POSTING =====
+      // 1. Material Issue: Debit WIP, Credit Raw Materials
+      if (glMaterialLines.length > 0) {
+        try {
+          await GLService.postMaterialIssue({
+            workOrderId: work_order_id,
+            lines: glMaterialLines,
+            transactionDate: new Date(),
+            memo: 'Material backflush - WO ' + wo.order_number + ' Receipt ' + receiptNumber,
+            postedBy: req.user.id,
+            connection: conn
+          });
+        } catch (glErr) { console.error('GL material issue error:', glErr.message); }
+      }
+
+      // 2. WO Receipt: Debit Finished Goods, Credit WIP
+      if (wo.item_id && totalCost > 0) {
+        try {
+          await GLService.postWOReceipt({
+            workOrderId: work_order_id,
+            itemId: wo.item_id,
+            quantity: quantity_completed,
+            transactionDate: new Date(),
+            memo: 'WO Receipt ' + receiptNumber + ' - ' + wo.order_number,
+            postedBy: req.user.id,
+            connection: conn
+          });
+        } catch (glErr) { console.error('GL WO receipt error:', glErr.message); }
+      }
+
+      // Auto-close WO if fully received
+      const [updatedWO] = await conn.query('SELECT quantity, qty_completed FROM work_orders WHERE id = ?', [work_order_id]);
+      if (updatedWO[0].qty_completed >= updatedWO[0].quantity) {
+        await conn.query("UPDATE work_orders SET status = 'completed', actual_finish_date = NOW() WHERE id = ?", [work_order_id]);
+      }
+
+      await conn.commit();
+      res.status(201).json({ id: result.insertId, receipt_number: receiptNumber, materials_issued: glMaterialLines.length });
+    } catch (innerError) {
+      await conn.rollback();
+      throw innerError;
+    } finally {
+      conn.release();
     }
-    const [updatedWO] = await pool.query('SELECT quantity, qty_completed FROM work_orders WHERE id = ?', [work_order_id]);
-    if (updatedWO[0].qty_completed >= updatedWO[0].quantity) {
-      await pool.query("UPDATE work_orders SET status = 'completed', actual_finish_date = NOW() WHERE id = ?", [work_order_id]);
-    }
-    res.status(201).json({ id: result.insertId, receipt_number: receiptNumber });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 

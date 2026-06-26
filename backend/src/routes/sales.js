@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../config/database');
 const { authenticate } = require('../middleware/auth');
 const { getNextNumber } = require('../utils/sequence');
+const GLService = require('../services/glService');
 
 // ============ CUSTOMERS ============
 router.get('/customers', authenticate, async (req, res) => {
@@ -535,6 +536,24 @@ router.post('/shipments', authenticate, async (req, res) => {
       await pool.query("UPDATE sales_orders SET status = 'partial' WHERE id = ?", [sales_order_id]);
     }
     
+    // GL Auto-Post: Debit COGS, Credit Finished Goods Inventory (on shipment)
+    try {
+      const shipLines = (lines || []).filter(l => l.item_id && l.quantity_shipped > 0).map(l => ({
+        itemId: l.item_id,
+        quantity: Number(l.quantity_shipped)
+      }));
+      if (shipLines.length > 0) {
+        await GLService.postShipment({
+          shipmentId: result.insertId,
+          lines: shipLines,
+          transactionDate: shipment_date || new Date(),
+          memo: `Shipment ${shipmentNumber} - SO ${sales_order_id}`,
+          postedBy: req.user.id
+        });
+      }
+    } catch (glError) {
+      console.error('GL posting error (shipment COGS):', glError.message);
+    }
     await req.audit('shipments', result.insertId, 'INSERT', null, { shipment_number: shipmentNumber, sales_order_id, total_panels: totalPanels });
     res.status(201).json({ id: result.insertId, shipment_number: shipmentNumber });
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -688,15 +707,21 @@ router.post('/invoices/:id/post', authenticate, async (req, res) => {
     const [invoices] = await pool.query('SELECT * FROM ar_invoices WHERE id = ?', [req.params.id]);
     if (!invoices.length) return res.status(404).json({ error: 'Invoice not found' });
     if (invoices[0].status !== 'draft') return res.status(400).json({ error: 'Only draft invoices can be posted' });
+    // Period Lock Enforcement
+    try {
+      await GLService.validatePeriod(invoices[0].invoice_date || new Date());
+    } catch (periodError) {
+      return res.status(400).json({ error: periodError.message });
+    }
     await pool.query("UPDATE ar_invoices SET status = 'posted', posted = 1, posted_by = ?, posted_at = NOW() WHERE id = ?", [req.user.id, req.params.id]);
     // GL Auto-Post: Debit Accounts Receivable (1100), Credit Sales Revenue (4000)
     const invTotal = Number(invoices[0].total || 0);
     if (invTotal > 0) {
       const period = `${new Date().getMonth()+1}-${new Date().getFullYear()}`;
-      await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
+      await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, memo, source_type, source_id, posted_by)
         VALUES ((SELECT id FROM gl_accounts WHERE account_number = '1100'), NOW(), ?, ?, 0, ?, 'ar_invoice', ?, ?)`,
         [period, invTotal, `AR Invoice ${invoices[0].invoice_number} posted`, req.params.id, req.user.id]);
-      await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
+      await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, memo, source_type, source_id, posted_by)
         VALUES ((SELECT id FROM gl_accounts WHERE account_number = '4000'), NOW(), ?, 0, ?, ?, 'ar_invoice', ?, ?)`,
         [period, invTotal, `AR Invoice ${invoices[0].invoice_number} posted`, req.params.id, req.user.id]);
       // Update GL account balances
@@ -744,10 +769,10 @@ router.post('/invoices/:id/payment', authenticate, async (req, res) => {
     }
     // GL Auto-Post: Debit Cash (1000), Credit Accounts Receivable (1100)
     const period = `${new Date().getMonth()+1}-${new Date().getFullYear()}`;
-    await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
+    await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, memo, source_type, source_id, posted_by)
       VALUES ((SELECT id FROM gl_accounts WHERE account_number = '1000'), NOW(), ?, ?, 0, ?, 'customer_payment', ?, ?)`,
       [period, amount, `Customer payment ${paymentNumber} for ${invoice.invoice_number}`, invoiceId, req.user.id]);
-    await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit_amount, credit_amount, description, source_type, source_id, entered_by)
+    await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, memo, source_type, source_id, posted_by)
       VALUES ((SELECT id FROM gl_accounts WHERE account_number = '1100'), NOW(), ?, 0, ?, ?, 'customer_payment', ?, ?)`,
       [period, amount, `Customer payment ${paymentNumber} for ${invoice.invoice_number}`, invoiceId, req.user.id]);
     await pool.query('UPDATE gl_accounts SET balance = balance + ? WHERE account_number = ?', [amount, '1000']);
@@ -901,6 +926,46 @@ router.get('/dashboard', authenticate, async (req, res) => {
       recent_quotes: recentQuotes,
       pending_shipments: pendingShipments[0].count
     });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+
+// ============ PRICING ENGINE ============
+router.get('/pricing/lookup', authenticate, async (req, res) => {
+  try {
+    const { item_id, customer_id, quantity } = req.query;
+    if (!item_id) return res.status(400).json({ error: 'item_id required' });
+    
+    let price = null;
+    let priceSource = 'standard';
+    
+    // 1. Check customer-specific price list
+    if (customer_id) {
+      const [customer] = await pool.query('SELECT price_list_id FROM customers WHERE id = ?', [customer_id]);
+      if (customer.length && customer[0].price_list_id) {
+        const [listPrice] = await pool.query(
+          `SELECT price, min_quantity FROM item_pricing 
+           WHERE item_id = ? AND price_list_id = ? 
+             AND (min_quantity IS NULL OR min_quantity <= ?)
+           ORDER BY min_quantity DESC LIMIT 1`,
+          [item_id, customer[0].price_list_id, quantity || 1]);
+        if (listPrice.length) {
+          price = Number(listPrice[0].price);
+          priceSource = 'price_list';
+        }
+      }
+    }
+    
+    // 2. Fall back to item base_price
+    if (price === null) {
+      const [item] = await pool.query('SELECT COALESCE(base_price, 0) as base_price, standard_cost FROM items WHERE id = ?', [item_id]);
+      if (item.length) {
+        price = Number(item[0].base_price) > 0 ? Number(item[0].base_price) : Number(item[0].standard_cost || 0);
+        priceSource = Number(item[0].base_price) > 0 ? 'base_price' : 'standard_cost';
+      }
+    }
+    
+    res.json({ item_id: Number(item_id), price, price_source: priceSource });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 

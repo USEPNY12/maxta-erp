@@ -4,6 +4,7 @@ const pool = require('../config/database');
 const { authenticate } = require('../middleware/auth');
 const { getNextNumber } = require('../utils/sequence');
 const { preventDelete } = require('../middleware/documentLock');
+const GLService = require('../services/glService');
 
 // ============ GL ACCOUNTS (Chart of Accounts) ============
 router.get('/gl-accounts', authenticate, async (req, res) => {
