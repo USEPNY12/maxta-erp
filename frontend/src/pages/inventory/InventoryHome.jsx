@@ -40,6 +40,8 @@ function InventoryHome() {
         <button onClick={() => setActiveTab('adjustments')} className="px-3 py-1.5 bg-orange-600 text-white rounded text-sm hover:bg-orange-700">Adjustments</button>
         <button onClick={() => setActiveTab('transfers')} className="px-3 py-1.5 bg-purple-600 text-white rounded text-sm hover:bg-purple-700">Transfers</button>
         <button onClick={() => setActiveTab('lots')} className="px-3 py-1.5 bg-teal-600 text-white rounded text-sm hover:bg-teal-700">Lot Tracking</button>
+        <button onClick={() => navigate('/inventory/mrp')} className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700">MRP</button>
+        <button onClick={() => navigate('/inventory/physical-count')} className="px-3 py-1.5 bg-pink-600 text-white rounded text-sm hover:bg-pink-700">Physical Count</button>
       </div>
       <div className="flex border-b border-gray-400 mb-3">
         {['stock','lots','adjustments','transfers'].map(t => (

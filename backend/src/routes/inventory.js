@@ -259,25 +259,6 @@ router.post('/adjustments', authenticate, async (req, res) => {
 });
 
 // ============ PHYSICAL COUNTS ============
-router.get('/physical-counts', authenticate, async (req, res) => {
-  try {
-    const [counts] = await pool.query('SELECT * FROM physical_counts ORDER BY count_date DESC');
-    res.json(counts);
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
-
-router.post('/physical-counts', authenticate, async (req, res) => {
-  try {
-    const { count_date, location_id, notes } = req.body;
-    const countNumber = 'PC-' + Date.now();
-    const [result] = await pool.query(
-      'INSERT INTO physical_counts (count_number, count_date, location_id, notes, created_by) VALUES (?,?,?,?,?)',
-      [countNumber, count_date, location_id, notes, req.user.id]
-    );
-    res.status(201).json({ id: result.insertId, count_number: countNumber });
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
-
 // ============ DASHBOARD DATA ============
 router.get('/dashboard', authenticate, async (req, res) => {
   try {
@@ -834,12 +815,12 @@ router.put('/item-types/:id', authenticate, async (req, res) => {
 router.post('/physical-counts', authenticate, async (req, res) => {
   try {
     const countNumber = await getNextNumber('physical_count');
-    const { count_date, location_id, description, items: countItems } = req.body;
+    const { count_date, location_id, description, notes, items: countItems } = req.body;
     
     const [result] = await pool.query(
-      `INSERT INTO physical_counts (count_number, count_date, location_id, description, status, created_by)
-       VALUES (?, ?, ?, ?, 'open', ?)`,
-      [countNumber, count_date || new Date(), location_id, description, req.user.id]);
+      `INSERT INTO physical_counts (count_number, count_date, location_id, notes, status, created_by)
+       VALUES (?, ?, ?, ?, 'draft', ?)`,
+      [countNumber, count_date || new Date().toISOString().split('T')[0], location_id, description || notes || '', req.user.id]);
     
     // If items provided, create count lines with system quantities
     if (countItems && countItems.length > 0) {
@@ -861,7 +842,7 @@ router.post('/physical-counts', authenticate, async (req, res) => {
 router.get('/physical-counts', authenticate, async (req, res) => {
   try {
     const { status } = req.query;
-    let query = `SELECT pc.*, u.full_name as created_by_name, l.name as location_name
+    let query = `SELECT pc.*, pc.notes as description, CONCAT(u.first_name, ' ', u.last_name) as created_by_name, l.name as location_name
       FROM physical_counts pc 
       LEFT JOIN users u ON pc.created_by = u.id
       LEFT JOIN locations l ON pc.location_id = l.id WHERE 1=1`;
@@ -875,7 +856,7 @@ router.get('/physical-counts', authenticate, async (req, res) => {
 
 router.get('/physical-counts/:id', authenticate, async (req, res) => {
   try {
-    const [counts] = await pool.query('SELECT * FROM physical_counts WHERE id = ?', [req.params.id]);
+    const [counts] = await pool.query('SELECT *, notes as description FROM physical_counts WHERE id = ?', [req.params.id]);
     if (!counts.length) return res.status(404).json({ error: 'Physical count not found' });
     const [lines] = await pool.query(
       `SELECT pcl.*, i.item_number, i.description as item_description, i.uom
@@ -903,7 +884,7 @@ router.put('/physical-counts/:id/lines', authenticate, async (req, res) => {
 
 router.post('/physical-counts/:id/post', authenticate, async (req, res) => {
   try {
-    const [counts] = await pool.query('SELECT * FROM physical_counts WHERE id = ?', [req.params.id]);
+    const [counts] = await pool.query('SELECT *, notes as description FROM physical_counts WHERE id = ?', [req.params.id]);
     if (!counts.length) return res.status(404).json({ error: 'Physical count not found' });
     if (counts[0].status === 'posted') return res.status(400).json({ error: 'Already posted' });
     

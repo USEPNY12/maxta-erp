@@ -1,4 +1,5 @@
 import TemplateManager from '../components/TemplateManager';
+import GLDefaults from '../components/GLDefaults';
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 
@@ -46,7 +47,8 @@ const NAV_SECTIONS = [
   { group: 'Accounting', icon: '📊', items: [
     { key: 'banks', label: 'Banks' },
     { key: 'bank-accounts', label: 'Bank Accounts' },
-    { key: 'accounting-periods', label: 'Accounting Periods' }
+    { key: 'accounting-periods', label: 'Accounting Periods' },
+    { key: 'gl-defaults', label: 'GL Defaults' }
   ]}
 ];
 
@@ -96,7 +98,8 @@ export default function SystemSetup() {
         {activeSection === 'permissions' && <PermissionsMatrix />}
         {activeSection === 'company' && <CompanyInfo />}
         {(activeSection === 'templates' || activeSection === 'email-config') && <TemplateManager />}
-        {!['users', 'roles', 'permissions', 'company', 'templates', 'email-config'].includes(activeSection) && <GenericSetupTable tableKey={activeSection} />}
+        {activeSection === 'gl-defaults' && <GLDefaults />}
+        {!['users', 'roles', 'permissions', 'company', 'templates', 'email-config', 'gl-defaults'].includes(activeSection) && <GenericSetupTable tableKey={activeSection} />}
       </div>
 
       <style>{`

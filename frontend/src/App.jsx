@@ -9,6 +9,8 @@ import Dashboard from './pages/Dashboard';
 import InventoryHome from './pages/inventory/InventoryHome';
 import Items from './pages/inventory/Items';
 import ItemDetail from './pages/inventory/ItemDetail';
+import MRP from './pages/inventory/MRP';
+import PhysicalCount from './pages/inventory/PhysicalCount';
 import SalesHome from './pages/sales/SalesHome';
 import Customers from './pages/sales/Customers';
 import Quotes from './pages/sales/Quotes';
@@ -136,6 +138,8 @@ function App() {
           <Route path="inventory" element={<ProtectedModule module="inventory" permissions={permissions}><InventoryHome /></ProtectedModule>} />
           <Route path="inventory/items" element={<ProtectedModule module="inventory" permissions={permissions}><Items /></ProtectedModule>} />
           <Route path="inventory/items/:id" element={<ProtectedModule module="inventory" permissions={permissions}><ItemDetail /></ProtectedModule>} />
+          <Route path="inventory/mrp" element={<ProtectedModule module="inventory" permissions={permissions}><MRP /></ProtectedModule>} />
+          <Route path="inventory/physical-count" element={<ProtectedModule module="inventory" permissions={permissions}><PhysicalCount /></ProtectedModule>} />
           {/* Sales */}
           <Route path="sales" element={<ProtectedModule module="sales" permissions={permissions}><SalesHome /></ProtectedModule>} />
           <Route path="sales/customers" element={<ProtectedModule module="sales" permissions={permissions}><Customers /></ProtectedModule>} />

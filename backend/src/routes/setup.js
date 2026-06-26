@@ -259,6 +259,25 @@ const setupTables = {
   'bank-accounts': 'bank_accounts'
 };
 
+
+// ============ GL DEFAULTS ============
+router.get("/gl-defaults", authenticate, async (req, res) => {
+  try {
+    const [settings] = await pool.query("SELECT setting_key, setting_value, description FROM system_settings WHERE category = 'accounting' ORDER BY setting_key");
+    const [accounts] = await pool.query("SELECT account_number, account_name FROM gl_accounts WHERE is_active = 1 ORDER BY account_number");
+    res.json({ settings, accounts });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put("/gl-defaults", authenticate, async (req, res) => {
+  try {
+    const { settings } = req.body;
+    for (const [key, value] of Object.entries(settings)) {
+      await pool.query("UPDATE system_settings SET setting_value = ? WHERE setting_key = ?", [value, key]);
+    }
+    res.json({ message: "GL defaults updated successfully" });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 // GET all records for a setup table
 router.get('/:table', authenticate, async (req, res) => {
   try {
