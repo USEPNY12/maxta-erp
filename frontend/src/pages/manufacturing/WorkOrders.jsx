@@ -429,7 +429,7 @@ function WorkOrders() {
             {/* Glass Specs Banner */}
             <div className="px-5 py-3 bg-blue-50 border-b grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3 text-xs">
               <div className="text-center"><div className="text-gray-500 text-[10px]">GLASS TYPE</div><div className="font-bold">{selected.glass_type || '-'}</div></div>
-              <div className="text-center"><div className="text-gray-500 text-[10px]">THICKNESS</div><div className="font-bold">{selected.thickness}mm</div></div>
+              <div className="text-center"><div className="text-gray-500 text-[10px]">THICKNESS</div><div className="font-bold">{selected.thickness}{String(selected.thickness || '').includes('mm') ? '' : 'mm'}</div></div>
               <div className="text-center"><div className="text-gray-500 text-[10px]">SIZE (W×H)</div><div className="font-bold">{selected.width}" × {selected.height}"</div></div>
               <div className="text-center"><div className="text-gray-500 text-[10px]">EDGE</div><div className="font-bold">{selected.edge_type || '-'}</div></div>
               <div className="text-center"><div className="text-gray-500 text-[10px]">QUANTITY</div><div className="font-bold text-lg">{selected.quantity}</div></div>

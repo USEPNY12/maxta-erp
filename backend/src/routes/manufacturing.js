@@ -431,16 +431,26 @@ router.post('/labor', authenticate, async (req, res) => {
 // ============ PRODUCTION SCHEDULE ============
 router.get('/schedule', authenticate, async (req, res) => {
   try {
-    const { date_from, date_to, status } = req.query;
+    const { date_from, date_to, status, range } = req.query;
     let query = `SELECT wo.*, i.item_number, i.description as item_description, 
                  wc.name as current_station_name, wc.icon as station_icon, wc.color as station_color,
                  c.company_name as customer_name, so.order_number as so_number
-                 FROM work_orders wo JOIN items i ON wo.item_id = i.id
+                 FROM work_orders wo LEFT JOIN items i ON wo.item_id = i.id
                  LEFT JOIN work_centers wc ON wo.current_station_id = wc.id
                  LEFT JOIN sales_orders so ON wo.sales_order_id = so.id
                  LEFT JOIN customers c ON so.customer_id = c.id
                  WHERE wo.status IN ('planned','scheduled','in_progress','released')`;
     const params = [];
+    // Handle range parameter from frontend (today/week/month/all)
+    if (range && range !== 'all') {
+      if (range === 'today') {
+        query += ' AND (wo.finish_date >= CURDATE() OR wo.finish_date IS NULL)';
+      } else if (range === 'week') {
+        query += ' AND (wo.finish_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) OR wo.finish_date IS NULL)';
+      } else if (range === 'month') {
+        query += ' AND (wo.finish_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) OR wo.finish_date IS NULL)';
+      }
+    }
     if (date_from) { query += ' AND wo.start_date >= ?'; params.push(date_from); }
     if (date_to) { query += ' AND wo.finish_date <= ?'; params.push(date_to); }
     query += ' ORDER BY FIELD(wo.priority,"urgent","high","normal","low"), wo.start_date ASC LIMIT 500';
