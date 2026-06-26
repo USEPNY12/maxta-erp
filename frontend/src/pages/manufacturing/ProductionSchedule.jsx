@@ -1,113 +1,61 @@
 import React, { useState, useEffect } from 'react';
-import { toast } from 'react-toastify';
 import api from '../../services/api';
+import { formatDate } from '../../utils/formatDate';
 
 function ProductionSchedule() {
-  const [workOrders, setWorkOrders] = useState([]);
-  const [workCenters, setWorkCenters] = useState([]);
-  const [viewMode, setViewMode] = useState('list'); // list or board
-  const [filterStation, setFilterStation] = useState('');
+  const [schedule, setSchedule] = useState([]);
+  const [dateRange, setDateRange] = useState('week');
 
-  useEffect(() => { fetchSchedule(); fetchWorkCenters(); }, []);
+  useEffect(() => { fetchSchedule(); }, [dateRange]);
 
   const fetchSchedule = async () => {
-    try { const res = await api.get('/api/manufacturing/work-orders', { params: { status: 'scheduled,in_progress,planned' } }); setWorkOrders(Array.isArray(res.data) ? res.data : res.data.orders || res.data.work_orders || []); } catch { setWorkOrders([]); }
+    try { const res = await api.get('/api/manufacturing/schedule', { params: { range: dateRange } }); setSchedule(Array.isArray(res.data) ? res.data : []); } catch { setSchedule([]); }
   };
 
-  const fetchWorkCenters = async () => {
-    try { const res = await api.get('/api/manufacturing/work-centers'); setWorkCenters(res.data); } catch { setWorkCenters([]); }
-  };
-
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'planned': return 'bg-gray-200 text-gray-700';
-      case 'scheduled': return 'bg-blue-100 text-blue-800';
-      case 'in_progress': return 'bg-yellow-100 text-yellow-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100';
-    }
-  };
-
-  const getPriorityColor = (priority) => {
-    switch(priority) {
-      case 'rush': return 'text-red-700 font-bold';
-      case 'high': return 'text-orange-600 font-bold';
-      default: return '';
-    }
-  };
-
-  const filteredOrders = filterStation ? workOrders.filter(wo => wo.current_station === filterStation) : workOrders;
+  const statusColors = { planned: 'bg-gray-200 text-gray-700', scheduled: 'bg-blue-100 text-blue-700', in_progress: 'bg-yellow-100 text-yellow-700', completed: 'bg-green-100 text-green-700' };
+  const priorityIcons = { urgent: '🔴', high: '🟠', normal: '🔵', low: '⚪' };
 
   return (
     <div className="h-full flex flex-col">
       <div className="erp-toolbar">
-        <button className="erp-toolbar-btn" onClick={fetchSchedule}>↻ Refresh</button>
+        <span className="font-bold text-sm">Production Schedule</span>
         <div className="erp-toolbar-separator" />
-        <span className="text-xs">View:</span>
-        <button className={`erp-toolbar-btn ${viewMode === 'list' ? 'bg-blue-100' : ''}`} onClick={() => setViewMode('list')}>List</button>
-        <button className={`erp-toolbar-btn ${viewMode === 'board' ? 'bg-blue-100' : ''}`} onClick={() => setViewMode('board')}>Board</button>
+        <button className="erp-toolbar-btn" onClick={fetchSchedule}>Refresh</button>
         <div className="erp-toolbar-separator" />
-        <span className="text-xs">Station:</span>
-        <select className="erp-form-select w-40 ml-1" value={filterStation} onChange={e => setFilterStation(e.target.value)}>
-          <option value="">All Stations</option>
-          {workCenters.map(wc => <option key={wc.id} value={wc.name}>{wc.name}</option>)}
+        <select className="erp-form-select text-xs" value={dateRange} onChange={e => setDateRange(e.target.value)}>
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+          <option value="all">All</option>
         </select>
-        <div className="erp-toolbar-separator" />
-        <button className="erp-toolbar-btn">Print Schedule</button>
-        <button className="erp-toolbar-btn">Auto-Schedule</button>
       </div>
 
-      {viewMode === 'list' ? (
-        <div className="flex-1 overflow-auto">
-          <table className="erp-grid">
-            <thead>
-              <tr><th>Priority</th><th>WO #</th><th>Item</th><th>Qty</th><th>Start</th><th>Due</th><th>Status</th><th>Current Station</th><th>% Complete</th></tr>
-            </thead>
-            <tbody>
-              {filteredOrders.map(wo => (
-                <tr key={wo.id}>
-                  <td className={getPriorityColor(wo.priority)}>{(wo.priority || 'normal').toUpperCase()}</td>
-                  <td className="text-blue-700 font-bold">{wo.wo_number}</td>
-                  <td>{wo.item_number} - {wo.item_description}</td>
-                  <td className="text-right">{wo.quantity}</td>
-                  <td>{wo.start_date}</td>
-                  <td className={wo.finish_date && new Date(wo.finish_date) < new Date() && wo.status !== 'completed' ? 'text-red-700 font-bold' : ''}>{wo.finish_date}</td>
-                  <td><span className={`px-2 py-0.5 rounded text-xs ${getStatusColor(wo.status)}`}>{wo.status}</span></td>
-                  <td>{wo.current_station || '-'}</td>
-                  <td>
-                    <div className="flex items-center gap-1">
-                      <div className="w-16 bg-gray-200 rounded-full h-2">
-                        <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${wo.quantity > 0 ? Math.round((wo.qty_completed || 0) / wo.quantity * 100) : 0}%` }}></div>
-                      </div>
-                      <span className="text-xs">{wo.quantity > 0 ? Math.round((wo.qty_completed || 0) / wo.quantity * 100) : 0}%</span>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="flex-1 overflow-auto p-3">
-          <div className="grid grid-cols-7 gap-2 h-full">
-            {['Cutting', 'Polishing', 'Drilling/CNC', 'Lamination', 'Tempering', 'QC', 'Packing'].map(station => (
-              <div key={station} className="bg-gray-50 border rounded p-2 overflow-auto">
-                <div className="text-xs font-bold text-center border-b pb-1 mb-2 text-gray-700">{station}</div>
-                {workOrders.filter(wo => wo.current_station === station).map(wo => (
-                  <div key={wo.id} className={`p-2 mb-1 rounded border text-xs ${wo.priority === 'rush' ? 'border-red-400 bg-red-50' : 'bg-white'}`}>
-                    <div className="font-bold text-blue-700">{wo.wo_number}</div>
-                    <div className="text-gray-600 truncate">{wo.item_number}</div>
-                    <div>Qty: {wo.quantity}</div>
-                    <div className="text-gray-400">Due: {wo.finish_date}</div>
-                  </div>
-                ))}
-              </div>
+      <div className="flex-1 overflow-auto">
+        <table className="erp-table w-full">
+          <thead><tr>
+            <th>Pri</th><th>WO#</th><th>Product Type</th><th>Item</th><th>Size</th><th>Qty</th><th>Status</th><th>Current Station</th><th>Start Date</th><th>Due Date</th><th>Customer</th>
+          </tr></thead>
+          <tbody>
+            {schedule.map(wo => (
+              <tr key={wo.id} className={wo.priority === 'urgent' ? 'bg-red-50' : ''}>
+                <td className="text-center">{priorityIcons[wo.priority] || '🔵'}</td>
+                <td className="font-bold text-blue-700 text-xs">{wo.order_number}</td>
+                <td className="text-xs capitalize">{(wo.product_type || '').replace(/_/g, ' ')}</td>
+                <td className="text-xs">{wo.item_number}</td>
+                <td className="text-xs">{wo.width && wo.height ? `${wo.width}" x ${wo.height}"` : '-'}</td>
+                <td className="text-xs font-bold">{wo.quantity}</td>
+                <td><span className={`text-[10px] px-2 py-0.5 rounded ${statusColors[wo.status] || ''}`}>{wo.status}</span></td>
+                <td className="text-xs">{wo.station_icon} {wo.current_station_name || '-'}</td>
+                <td className="text-xs">{formatDate(wo.start_date)}</td>
+                <td className="text-xs text-red-600 font-bold">{formatDate(wo.finish_date)}</td>
+                <td className="text-xs">{wo.customer_name || '-'}</td>
+              </tr>
             ))}
-          </div>
-        </div>
-      )}
+          </tbody>
+        </table>
+        {schedule.length === 0 && <div className="text-center text-gray-500 py-8">No scheduled work orders</div>}
+      </div>
     </div>
   );
 }
-
 export default ProductionSchedule;

@@ -22,6 +22,10 @@ import WOTransactions from './pages/manufacturing/WOTransactions';
 import ShopFloor from './pages/manufacturing/ShopFloor';
 import ProductionSchedule from './pages/manufacturing/ProductionSchedule';
 import Labor from './pages/manufacturing/Labor';
+import QualityControl from './pages/manufacturing/QualityControl';
+import WorkCenters from './pages/manufacturing/WorkCenters';
+import RoutingTemplates from './pages/manufacturing/RoutingTemplates';
+import Recuts from './pages/manufacturing/Recuts';
 import PurchasingHome from './pages/purchasing/PurchasingHome';
 import PurchaseOrders from './pages/purchasing/PurchaseOrders';
 import Vendors from './pages/purchasing/Vendors';
@@ -93,8 +97,12 @@ function App() {
           <Route path="manufacturing/bom" element={<BillOfMaterials />} />
           <Route path="manufacturing/wo-transactions" element={<WOTransactions />} />
           <Route path="manufacturing/shop-floor" element={<ShopFloor />} />
-          <Route path="manufacturing/schedule" element={<ProductionSchedule />} />
+          <Route path="manufacturing/production-schedule" element={<ProductionSchedule />} />
           <Route path="manufacturing/labor" element={<Labor />} />
+          <Route path="manufacturing/quality" element={<QualityControl />} />
+          <Route path="manufacturing/work-centers" element={<WorkCenters />} />
+          <Route path="manufacturing/routing-templates" element={<RoutingTemplates />} />
+          <Route path="manufacturing/recuts" element={<Recuts />} />
           {/* Purchasing */}
           <Route path="purchasing" element={<PurchasingHome />} />
           <Route path="purchasing/purchase-orders" element={<PurchaseOrders />} />
