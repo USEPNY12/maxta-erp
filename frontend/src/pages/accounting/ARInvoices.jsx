@@ -1,3 +1,4 @@
+import { formatDate } from '../../utils/formatDate';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
@@ -14,11 +15,11 @@ function ARInvoices() {
   useEffect(() => { fetchInvoices(); }, []);
 
   const fetchInvoices = async () => {
-    try { const res = await api.get('/api/accounting/ar-invoices'); setInvoices(res.data); } catch { setInvoices([]); }
+    try { const res = await api.get('/api/sales/invoices'); setInvoices(Array.isArray(res.data) ? res.data : res.data.invoices || []); } catch { setInvoices([]); }
   };
 
   const fetchCustomers = async () => {
-    try { const res = await api.get('/api/sales/customers'); setCustomers(res.data); } catch { setCustomers([]); }
+    try { const res = await api.get('/api/sales/customers'); setCustomers(Array.isArray(res.data) ? res.data : res.data.customers || []); } catch { setCustomers([]); }
   };
 
   const handleNew = () => {
@@ -30,7 +31,7 @@ function ARInvoices() {
   const handleSave = async () => {
     const total = (parseFloat(form.subtotal) || 0) + (parseFloat(form.tax_amount) || 0) + (parseFloat(form.freight) || 0);
     try {
-      await api.post('/api/accounting/ar-invoices', { ...form, total });
+      await api.post('/api/sales/invoices', { ...form, total });
       toast.success('AR Invoice created');
       setShowModal(false);
       fetchInvoices();
@@ -59,8 +60,8 @@ function ARInvoices() {
               <tr key={inv.id}>
                 <td className="text-blue-700 font-bold">{inv.invoice_number}</td>
                 <td>{inv.customer_name}</td>
-                <td>{inv.invoice_date}</td>
-                <td className={inv.due_date && new Date(inv.due_date) < new Date() && inv.status === 'open' ? 'text-red-700 font-bold' : ''}>{inv.due_date}</td>
+                <td>{formatDate(inv.invoice_date)}</td>
+                <td className={inv.due_date && new Date(inv.due_date) < new Date() && inv.status === 'open' ? 'text-red-700 font-bold' : ''}>{formatDate(inv.due_date)}</td>
                 <td className="text-right font-bold">${parseFloat(inv.total || 0).toFixed(2)}</td>
                 <td className="text-right">${parseFloat(inv.balance || 0).toFixed(2)}</td>
                 <td><span className={`erp-status erp-status-${inv.status}`}>{inv.status}</span></td>

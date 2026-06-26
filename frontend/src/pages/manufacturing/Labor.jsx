@@ -19,7 +19,7 @@ function Labor() {
   };
 
   const fetchWorkOrders = async () => {
-    try { const res = await api.get('/api/manufacturing/work-orders', { params: { status: 'in_progress' } }); setWorkOrders(res.data); } catch { setWorkOrders([]); }
+    try { const res = await api.get('/api/manufacturing/work-orders', { params: { status: 'in_progress' } }); setWorkOrders(Array.isArray(res.data) ? res.data : res.data.orders || res.data.work_orders || []); } catch { setWorkOrders([]); }
   };
 
   const fetchWorkCenters = async () => {

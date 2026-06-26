@@ -11,7 +11,7 @@ function ProductionSchedule() {
   useEffect(() => { fetchSchedule(); fetchWorkCenters(); }, []);
 
   const fetchSchedule = async () => {
-    try { const res = await api.get('/api/manufacturing/work-orders', { params: { status: 'scheduled,in_progress,planned' } }); setWorkOrders(res.data); } catch { setWorkOrders([]); }
+    try { const res = await api.get('/api/manufacturing/work-orders', { params: { status: 'scheduled,in_progress,planned' } }); setWorkOrders(Array.isArray(res.data) ? res.data : res.data.orders || res.data.work_orders || []); } catch { setWorkOrders([]); }
   };
 
   const fetchWorkCenters = async () => {

@@ -16,7 +16,7 @@ function Items() {
     setLoading(true);
     try {
       const res = await api.get('/api/inventory/items', { params: { search: query } });
-      setItems(res.data);
+      setItems(Array.isArray(res.data) ? res.data : res.data.items || []);
     } catch (err) {
       setItems([]);
     }
@@ -103,13 +103,13 @@ function Items() {
                 <tr><td colSpan="9" className="text-center p-4">No items found. Click "New" to create one.</td></tr>
               ) : items.map(item => (
                 <tr key={item.id} className="cursor-pointer" onDoubleClick={() => navigate(`/inventory/items/${item.id}`)}>
-                  <td className="text-blue-700 font-bold">{item.item_no}</td>
+                  <td className="text-blue-700 font-bold">{item.item_number}</td>
                   <td>{item.description}</td>
                   <td>{item.item_type}</td>
                   <td className="text-right">{item.qty_on_hand || 0}</td>
                   <td className="text-right">{item.avg_cost ? '$' + parseFloat(item.avg_cost).toFixed(2) : ''}</td>
                   <td className="text-right">{item.standard_cost ? '$' + parseFloat(item.standard_cost).toFixed(2) : ''}</td>
-                  <td>{item.default_location}</td>
+                  <td>{item.receipt_location_name}</td>
                   <td className="text-center">{item.lot_control ? '✓' : ''}</td>
                   <td className="text-center">{item.serial_control ? '✓' : ''}</td>
                 </tr>
