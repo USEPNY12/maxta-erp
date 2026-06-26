@@ -109,7 +109,7 @@ router.get('/work-orders', authenticate, async (req, res) => {
     let query = `SELECT wo.*, i.item_number, i.description as item_description, 
                  wc.name as current_station_name, wc.icon as station_icon, wc.color as station_color,
                  c.company_name as customer_name, so.order_number as so_number
-                 FROM work_orders wo JOIN items i ON wo.item_id = i.id
+                 FROM work_orders wo LEFT JOIN items i ON wo.item_id = i.id
                  LEFT JOIN work_centers wc ON wo.current_station_id = wc.id
                  LEFT JOIN sales_orders so ON wo.sales_order_id = so.id
                  LEFT JOIN customers c ON so.customer_id = c.id WHERE 1=1`;
@@ -125,7 +125,7 @@ router.get('/work-orders', authenticate, async (req, res) => {
     }
     if (product_type) { query += ' AND wo.product_type = ?'; params.push(product_type); }
     if (priority) { query += ' AND wo.priority = ?'; params.push(priority); }
-    if (search) { query += ' AND (wo.order_number LIKE ? OR i.item_number LIKE ? OR i.description LIKE ?)'; params.push('%'+search+'%', '%'+search+'%', '%'+search+'%'); }
+    if (search) { query += ' AND (wo.order_number LIKE ? OR i.item_number LIKE ? OR i.description LIKE ? OR c.company_name LIKE ?)'; params.push('%'+search+'%', '%'+search+'%', '%'+search+'%', '%'+search+'%'); }
     query += ' ORDER BY FIELD(wo.priority,"urgent","high","normal","low"), wo.start_date ASC LIMIT 500';
     const [orders] = await pool.query(query, params);
     res.json(orders);
@@ -138,7 +138,7 @@ router.get('/work-orders/:id', authenticate, async (req, res) => {
       SELECT wo.*, i.item_number, i.description as item_description, 
              wc.name as current_station_name, wc.icon as station_icon, wc.color as station_color,
              c.company_name as customer_name, so.order_number as so_number
-      FROM work_orders wo JOIN items i ON wo.item_id = i.id
+      FROM work_orders wo LEFT JOIN items i ON wo.item_id = i.id
       LEFT JOIN work_centers wc ON wo.current_station_id = wc.id
       LEFT JOIN sales_orders so ON wo.sales_order_id = so.id
       LEFT JOIN customers c ON so.customer_id = c.id WHERE wo.id = ?`, [req.params.id]);

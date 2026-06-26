@@ -100,9 +100,30 @@ function PurchaseOrders() {
       openDetail(selected);
     } catch (err) { toast.error(err.response?.data?.error || 'Failed'); }
   };
-  const addLine = () => setNewPO({ ...newPO, lines: [...newPO.lines, { item_id: '', description: '', quantity: 1, unit_price: 0, glass_type: '', thickness: '', width: '', height: '' }] });
+  const addLine = () => setNewPO({ ...newPO, lines: [...newPO.lines, { item_id: '', description: '', quantity: 1, unit_price: 0, glass_type: '', thickness: '', width: '', height: '', vendor_item_number: '' }] });
   const removeLine = (idx) => setNewPO({ ...newPO, lines: newPO.lines.filter((_, i) => i !== idx) });
-  const updateLine = (idx, field, val) => { const lines = [...newPO.lines]; lines[idx][field] = val; setNewPO({ ...newPO, lines }); };
+  const updateLine = async (idx, field, val) => {
+    const lines = [...newPO.lines]; lines[idx][field] = val;
+    // Auto-fill vendor item info when item is selected and vendor is set
+    if (field === 'item_id' && val && newPO.vendor_id) {
+      try {
+        const res = await api.get(`/api/purchasing/vendor-item-info/${newPO.vendor_id}/${val}`);
+        if (res.data) {
+          lines[idx].unit_price = parseFloat(res.data.unit_cost) || lines[idx].unit_price;
+          lines[idx].vendor_item_number = res.data.vendor_item_number || '';
+          lines[idx].description = res.data.vendor_description || lines[idx].description;
+        } else {
+          // Fall back to item description
+          const itm = items.find(i => i.id === parseInt(val));
+          if (itm) lines[idx].description = itm.description || '';
+        }
+      } catch { 
+        const itm = items.find(i => i.id === parseInt(val));
+        if (itm) lines[idx].description = itm.description || '';
+      }
+    }
+    setNewPO({ ...newPO, lines });
+  };
   const getTotal = () => newPO.lines.reduce((sum, l) => sum + (parseFloat(l.quantity) || 0) * (parseFloat(l.unit_price) || 0), 0);
   const fmt = (d) => d ? d.split('T')[0] : '-';
   return (
@@ -312,10 +333,11 @@ function PurchaseOrders() {
                 <div className="erp-form-group col-span-2"><label className="erp-form-label">Notes</label><input className="erp-form-input" value={newPO.notes} onChange={e => setNewPO({ ...newPO, notes: e.target.value })} /></div>
               </div>
               <div className="mb-2 flex items-center gap-2"><span className="text-xs font-bold">PO Lines</span><button className="erp-btn text-xs" onClick={addLine}>+ Add Line</button></div>
-              <table className="erp-grid text-xs"><thead><tr><th>Item</th><th>Description</th><th>Glass Type</th><th>Thickness</th><th>W×H</th><th>Qty</th><th>Unit $</th><th>Total</th><th></th></tr></thead>
+              <table className="erp-grid text-xs"><thead><tr><th>Item</th><th>Vendor Item#</th><th>Description</th><th>Glass Type</th><th>Thickness</th><th>W×H</th><th>Qty</th><th>Unit $</th><th>Total</th><th></th></tr></thead>
                 <tbody>{newPO.lines.map((line, idx) => (
                   <tr key={idx}>
                     <td><select className="erp-form-select w-28" value={line.item_id} onChange={e => updateLine(idx, 'item_id', e.target.value)}><option value="">Select...</option>{items.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}</select></td>
+                    <td><input className="erp-form-input w-24 bg-gray-50" value={line.vendor_item_number || ''} readOnly title="Auto-filled from Item Vendor setup" /></td>
                     <td><input className="erp-form-input w-full" value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} /></td>
                     <td><select className="erp-form-select w-24" value={line.glass_type} onChange={e => updateLine(idx, 'glass_type', e.target.value)}><option value="">-</option><option>Clear Float</option><option>Low-E</option><option>Tinted</option><option>Reflective</option><option>Patterned</option></select></td>
                     <td><input className="erp-form-input w-14 text-right" value={line.thickness} onChange={e => updateLine(idx, 'thickness', e.target.value)} placeholder="mm" /></td>
@@ -326,7 +348,7 @@ function PurchaseOrders() {
                     <td><button className="text-red-600" onClick={() => removeLine(idx)}>✕</button></td>
                   </tr>
                 ))}
-                <tr className="bg-gray-100"><td colSpan="7" className="text-right font-bold">Total:</td><td className="text-right font-bold">${getTotal().toFixed(2)}</td><td></td></tr>
+                <tr className="bg-gray-100"><td colSpan="8" className="text-right font-bold">Total:</td><td className="text-right font-bold">${getTotal().toFixed(2)}</td><td></td></tr>
                 </tbody></table>
             </div>
             <div className="erp-modal-footer">

@@ -21,6 +21,8 @@ function ItemDetail() {
     lead_time_days: 0, production_days: 0, production_qty: 0, include_in_forecast: false,
     batch_size: 1, notes: '', internal_notes: '',
     glass_type: '', glass_thickness: '', edge_type: '', tempering_status: '', pricing_method: 'per_unit',
+    manufacturer_name: '', manufacturer_part_number: '', country_of_origin: '', hs_code: '', certification: '',
+    tech_specifications: '', application_notes: '', commission_percent: 0, commission_type: 'standard',
   });
   const [loading, setLoading] = useState(false);
   // Tab data states
@@ -43,6 +45,7 @@ function ItemDetail() {
   // Modal states
   const [showModal, setShowModal] = useState(null);
   const [modalData, setModalData] = useState({});
+  const [editingId, setEditingId] = useState(null);
   // Inquiry modal
   const [inquiryModal, setInquiryModal] = useState(null);
   const [inquiryData, setInquiryData] = useState([]);
@@ -85,42 +88,51 @@ function ItemDetail() {
     if (isNew) return;
     try {
       switch (tab) {
-        case 'Stock Status':
+        case 'Stock Status': {
           const sl = await api.get(`/api/inventory/items/${id}/stock-by-location`);
           setStockByLoc(sl.data || []);
           break;
-        case 'Pricing/Discounts':
+        }
+        case 'Pricing/Discounts': {
           const pr = await api.get(`/api/inventory/items/${id}/pricing`);
           setPricing(pr.data || []);
           break;
-        case 'Bill Of Materials':
+        }
+        case 'Bill Of Materials': {
           const bm = await api.get(`/api/inventory/items/${id}/bom`);
           setBomData(bm.data || { bom: null, lines: [] });
           break;
-        case 'Routing':
+        }
+        case 'Routing': {
           const rt = await api.get(`/api/inventory/items/${id}/routing`);
           setRoutingData(rt.data || { routing: null, operations: [] });
           break;
-        case 'Vendor':
+        }
+        case 'Vendor': {
           const vn = await api.get(`/api/inventory/items/${id}/vendors`);
           setVendors(vn.data || []);
           break;
-        case 'Customer':
+        }
+        case 'Customer': {
           const cu = await api.get(`/api/inventory/items/${id}/customers`);
           setCustomers(cu.data || []);
           break;
-        case 'GL Accounts':
+        }
+        case 'GL Accounts': {
           const gl = await api.get(`/api/inventory/items/${id}/gl-accounts`);
           setGlAccounts(gl.data || []);
           break;
-        case 'Dimensions':
+        }
+        case 'Dimensions': {
           const dm = await api.get(`/api/inventory/items/${id}/dimensions`);
           setDimensions(dm.data || []);
           break;
-        case 'Documents':
+        }
+        case 'Documents': {
           const dc = await api.get(`/api/inventory/items/${id}/documents`);
           setDocuments(dc.data || []);
           break;
+        }
       }
     } catch (err) { console.error('Tab data fetch error', err); }
   };
@@ -130,8 +142,10 @@ function ItemDetail() {
   const handleSave = async () => {
     try {
       const payload = { ...item };
+      // Remove read-only and embedded data fields
       delete payload.pricing; delete payload.vendors; delete payload.bom;
       delete payload.lots; delete payload.serials; delete payload.item_type_name;
+      delete payload.receipt_location_name;
       if (isNew) {
         const res = await api.post('/api/inventory/items', payload);
         toast.success('Item created');
@@ -139,26 +153,37 @@ function ItemDetail() {
       } else {
         await api.put(`/api/inventory/items/${id}`, payload);
         toast.success('Item saved');
+        fetchItem();
       }
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to save'); }
   };
 
   const updateField = (field, value) => setItem(prev => ({ ...prev, [field]: value }));
 
-  const openModal = (type, data = {}) => { setShowModal(type); setModalData(data); };
-  const closeModal = () => { setShowModal(null); setModalData({}); };
+  const openModal = (type, data = {}, editId = null) => { setShowModal(type); setModalData(data); setEditingId(editId); };
+  const closeModal = () => { setShowModal(null); setModalData({}); setEditingId(null); };
 
   const handleModalSave = async () => {
     try {
       switch (showModal) {
         case 'vendor':
-          await api.post(`/api/inventory/items/${id}/vendors`, modalData);
-          toast.success('Vendor added');
+          if (editingId) {
+            await api.put(`/api/inventory/items/${id}/vendors/${editingId}`, modalData);
+            toast.success('Vendor updated');
+          } else {
+            await api.post(`/api/inventory/items/${id}/vendors`, modalData);
+            toast.success('Vendor added');
+          }
           fetchTabData('Vendor');
           break;
         case 'customer':
-          await api.post(`/api/inventory/items/${id}/customers`, modalData);
-          toast.success('Customer added');
+          if (editingId) {
+            await api.put(`/api/inventory/items/${id}/customers/${editingId}`, modalData);
+            toast.success('Customer updated');
+          } else {
+            await api.post(`/api/inventory/items/${id}/customers`, modalData);
+            toast.success('Customer added');
+          }
           fetchTabData('Customer');
           break;
         case 'pricing':
@@ -181,18 +206,20 @@ function ItemDetail() {
           toast.success('Document added');
           fetchTabData('Documents');
           break;
-        case 'bom_line':
+        case 'bom_line': {
           const bomLines = [...(bomData.lines || []), { ...modalData, sequence: (bomData.lines?.length || 0) + 1 }];
           await api.post(`/api/inventory/items/${id}/bom`, { revision: 'A', description: 'BOM', batch_size: item.batch_size || 1, lines: bomLines.map((l, i) => ({ ...l, sequence: i + 1 })) });
           toast.success('BOM updated');
           fetchTabData('Bill Of Materials');
           break;
-        case 'routing_op':
+        }
+        case 'routing_op': {
           const ops = [...(routingData.operations || []), { ...modalData, sequence: (routingData.operations?.length || 0) + 1 }];
           await api.post(`/api/inventory/items/${id}/routing`, { revision: 'A', description: 'Routing', operations: ops.map((o, i) => ({ ...o, sequence: i + 1 })) });
           toast.success('Routing updated');
           fetchTabData('Routing');
           break;
+        }
       }
       closeModal();
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to save'); }
@@ -394,9 +421,9 @@ function ItemDetail() {
                   <tr className="font-bold bg-gray-100">
                     <td>TOTAL</td>
                     <td className="text-right">{stockByLoc.reduce((s, r) => s + parseFloat(r.on_hand), 0).toFixed(2)}</td>
-                    <td className="text-right">0.00</td>
-                    <td className="text-right">{stockByLoc.reduce((s, r) => s + parseFloat(r.on_hand), 0).toFixed(2)}</td>
-                    <td className="text-right">0.00</td>
+                    <td className="text-right">{stockByLoc.reduce((s, r) => s + parseFloat(r.allocated || 0), 0).toFixed(2)}</td>
+                    <td className="text-right">{stockByLoc.reduce((s, r) => s + parseFloat(r.on_hand) - parseFloat(r.allocated || 0), 0).toFixed(2)}</td>
+                    <td className="text-right">{stockByLoc.reduce((s, r) => s + parseFloat(r.on_order || 0), 0).toFixed(2)}</td>
                   </tr>
                 )}
               </tbody>
@@ -438,11 +465,16 @@ function ItemDetail() {
             <fieldset className="border border-gray-400 p-3 max-w-md">
               <legend className="text-xs font-bold px-1">Commission Settings</legend>
               <div className="space-y-2">
-                <div className="erp-form-group"><label className="erp-form-label">Commission %:</label><input className="erp-form-input" placeholder="0.00" /></div>
+                <div className="erp-form-group"><label className="erp-form-label">Commission %:</label>
+                  <input className="erp-form-input" type="number" step="0.01" value={item.commission_percent || ''} onChange={e => updateField('commission_percent', e.target.value)} />
+                </div>
                 <div className="erp-form-group"><label className="erp-form-label">Commission Type:</label>
-                  <select className="erp-form-select"><option value="standard">Standard</option><option value="flat">Flat Rate</option><option value="tiered">Tiered</option></select>
+                  <select className="erp-form-select" value={item.commission_type || 'standard'} onChange={e => updateField('commission_type', e.target.value)}>
+                    <option value="standard">Standard</option><option value="flat">Flat Rate</option><option value="tiered">Tiered</option>
+                  </select>
                 </div>
                 <label className="text-xs block"><input type="checkbox" checked={!!item.exempt_from_commission} onChange={e => updateField('exempt_from_commission', e.target.checked)} /> Exempt from Commission</label>
+                <div className="mt-3 text-xs text-gray-500">Commission settings are saved with the item. Click OK to persist changes.</div>
               </div>
             </fieldset>
           </div>
@@ -543,6 +575,7 @@ function ItemDetail() {
           <div>
             <div className="erp-toolbar mb-2">
               <button className="erp-toolbar-btn" onClick={() => openModal('vendor')} disabled={isNew}><span className="text-green-600">+</span> Add Vendor</button>
+              <span className="text-xs text-gray-500 ml-3">Vendors assigned here will auto-fill cost/item# when creating POs for this item.</span>
             </div>
             <table className="erp-grid">
               <thead><tr><th>Vendor</th><th>Vendor Item #</th><th>Description</th><th>Unit Cost</th><th>Lead Time</th><th>Min Qty</th><th>Preferred</th><th>Actions</th></tr></thead>
@@ -550,15 +583,22 @@ function ItemDetail() {
                 {vendors.length === 0 ? (
                   <tr><td colSpan="8" className="text-center p-4 text-gray-500">No vendors assigned. Click "Add Vendor" to link suppliers.</td></tr>
                 ) : vendors.map(v => (
-                  <tr key={v.id}>
+                  <tr key={v.id} className={v.is_preferred ? 'bg-yellow-50' : ''}>
                     <td className="text-blue-700">{v.vendor_name}</td>
                     <td>{v.vendor_item_number}</td>
                     <td>{v.vendor_description}</td>
                     <td className="text-right">${parseFloat(v.unit_cost || 0).toFixed(2)}</td>
                     <td className="text-right">{v.lead_time_days} days</td>
                     <td className="text-right">{v.min_order_qty}</td>
-                    <td className="text-center">{v.is_preferred ? '★' : ''}</td>
-                    <td><button className="text-red-600 text-xs" onClick={() => handleDelete('vendors', v.id)}>Delete</button></td>
+                    <td className="text-center">{v.is_preferred ? '★ Preferred' : ''}</td>
+                    <td>
+                      <button className="text-blue-600 text-xs mr-2" onClick={() => openModal('vendor', {
+                        vendor_id: v.vendor_id, vendor_item_number: v.vendor_item_number,
+                        vendor_description: v.vendor_description, unit_cost: v.unit_cost,
+                        lead_time_days: v.lead_time_days, min_order_qty: v.min_order_qty, is_preferred: v.is_preferred
+                      }, v.id)}>Edit</button>
+                      <button className="text-red-600 text-xs" onClick={() => handleDelete('vendors', v.id)}>Delete</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -571,6 +611,7 @@ function ItemDetail() {
           <div>
             <div className="erp-toolbar mb-2">
               <button className="erp-toolbar-btn" onClick={() => openModal('customer')} disabled={isNew}><span className="text-green-600">+</span> Add Customer</button>
+              <span className="text-xs text-gray-500 ml-3">Customers assigned here will auto-fill pricing when creating Sales Orders for this item.</span>
             </div>
             <table className="erp-grid">
               <thead><tr><th>Customer</th><th>Customer Item #</th><th>Description</th><th>Unit Price</th><th>Min Qty</th><th>Preferred</th><th>Actions</th></tr></thead>
@@ -578,14 +619,21 @@ function ItemDetail() {
                 {customers.length === 0 ? (
                   <tr><td colSpan="7" className="text-center p-4 text-gray-500">No customers assigned. Click "Add Customer" to link buyers.</td></tr>
                 ) : customers.map(c => (
-                  <tr key={c.id}>
+                  <tr key={c.id} className={c.is_preferred ? 'bg-yellow-50' : ''}>
                     <td className="text-blue-700">{c.customer_name}</td>
                     <td>{c.customer_item_number}</td>
                     <td>{c.customer_description}</td>
                     <td className="text-right">${parseFloat(c.unit_price || 0).toFixed(2)}</td>
                     <td className="text-right">{c.min_order_qty}</td>
-                    <td className="text-center">{c.is_preferred ? '★' : ''}</td>
-                    <td><button className="text-red-600 text-xs" onClick={() => handleDelete('customers', c.id)}>Delete</button></td>
+                    <td className="text-center">{c.is_preferred ? '★ Preferred' : ''}</td>
+                    <td>
+                      <button className="text-blue-600 text-xs mr-2" onClick={() => openModal('customer', {
+                        customer_id: c.customer_id, customer_item_number: c.customer_item_number,
+                        customer_description: c.customer_description, unit_price: c.unit_price,
+                        min_order_qty: c.min_order_qty, is_preferred: c.is_preferred
+                      }, c.id)}>Edit</button>
+                      <button className="text-red-600 text-xs" onClick={() => handleDelete('customers', c.id)}>Delete</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -648,11 +696,22 @@ function ItemDetail() {
             <fieldset className="border border-gray-400 p-3 max-w-lg">
               <legend className="text-xs font-bold px-1">Manufacturer Information</legend>
               <div className="space-y-2">
-                <div className="erp-form-group"><label className="erp-form-label">Manufacturer:</label><input className="erp-form-input" placeholder="Enter manufacturer name" /></div>
-                <div className="erp-form-group"><label className="erp-form-label">Mfg Part No.:</label><input className="erp-form-input" placeholder="Manufacturer part number" /></div>
-                <div className="erp-form-group"><label className="erp-form-label">Country of Origin:</label><input className="erp-form-input" placeholder="e.g., USA, China" /></div>
-                <div className="erp-form-group"><label className="erp-form-label">HS Code:</label><input className="erp-form-input" placeholder="Harmonized System code" /></div>
-                <div className="erp-form-group"><label className="erp-form-label">Certification:</label><input className="erp-form-input" placeholder="e.g., ANSI Z97.1, CPSC 16 CFR 1201" /></div>
+                <div className="erp-form-group"><label className="erp-form-label">Manufacturer:</label>
+                  <input className="erp-form-input" value={item.manufacturer_name || ''} onChange={e => updateField('manufacturer_name', e.target.value)} placeholder="Enter manufacturer name" />
+                </div>
+                <div className="erp-form-group"><label className="erp-form-label">Mfg Part No.:</label>
+                  <input className="erp-form-input" value={item.manufacturer_part_number || ''} onChange={e => updateField('manufacturer_part_number', e.target.value)} placeholder="Manufacturer part number" />
+                </div>
+                <div className="erp-form-group"><label className="erp-form-label">Country of Origin:</label>
+                  <input className="erp-form-input" value={item.country_of_origin || ''} onChange={e => updateField('country_of_origin', e.target.value)} placeholder="e.g., USA, China" />
+                </div>
+                <div className="erp-form-group"><label className="erp-form-label">HS Code:</label>
+                  <input className="erp-form-input" value={item.hs_code || ''} onChange={e => updateField('hs_code', e.target.value)} placeholder="Harmonized System code" />
+                </div>
+                <div className="erp-form-group"><label className="erp-form-label">Certification:</label>
+                  <input className="erp-form-input" value={item.certification || ''} onChange={e => updateField('certification', e.target.value)} placeholder="e.g., ANSI Z97.1, CPSC 16 CFR 1201" />
+                </div>
+                <div className="mt-3 text-xs text-gray-500">Manufacturer data is saved with the item. Click OK to persist changes.</div>
               </div>
             </fieldset>
           </div>
@@ -668,12 +727,13 @@ function ItemDetail() {
               </div>
               <div>
                 <label className="text-xs font-bold block mb-1">Technical Specifications:</label>
-                <textarea className="erp-form-input w-full h-24 resize-none" placeholder="Enter technical specifications..." />
+                <textarea className="erp-form-input w-full h-24 resize-none" value={item.tech_specifications || ''} onChange={e => updateField('tech_specifications', e.target.value)} placeholder="Enter technical specifications..." />
               </div>
               <div>
                 <label className="text-xs font-bold block mb-1">Application Notes:</label>
-                <textarea className="erp-form-input w-full h-24 resize-none" placeholder="Enter application notes, usage instructions, or installation guidelines..." />
+                <textarea className="erp-form-input w-full h-24 resize-none" value={item.application_notes || ''} onChange={e => updateField('application_notes', e.target.value)} placeholder="Enter application notes, usage instructions, or installation guidelines..." />
               </div>
+              <div className="mt-2 text-xs text-gray-500">All text fields are saved with the item. Click OK to persist changes.</div>
             </div>
           </div>
         )}
@@ -707,8 +767,8 @@ function ItemDetail() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-4 w-96 max-h-[80vh] overflow-auto">
             <h3 className="font-bold text-sm mb-3 border-b pb-2">
-              {showModal === 'vendor' && 'Add Vendor'}
-              {showModal === 'customer' && 'Add Customer'}
+              {showModal === 'vendor' && (editingId ? 'Edit Vendor' : 'Add Vendor')}
+              {showModal === 'customer' && (editingId ? 'Edit Customer' : 'Add Customer')}
               {showModal === 'pricing' && 'Add Price Rule'}
               {showModal === 'dimension' && 'Add Dimension'}
               {showModal === 'document' && 'Add Document'}
@@ -723,7 +783,7 @@ function ItemDetail() {
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Vendor Item #:</label><input className="erp-form-input" value={modalData.vendor_item_number || ''} onChange={e => setModalData(p => ({ ...p, vendor_item_number: e.target.value }))} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Description:</label><input className="erp-form-input" value={modalData.vendor_description || ''} onChange={e => setModalData(p => ({ ...p, vendor_description: e.target.value }))} /></div>
-                <div className="erp-form-group"><label className="erp-form-label">Unit Cost:</label><input className="erp-form-input" type="number" value={modalData.unit_cost || ''} onChange={e => setModalData(p => ({ ...p, unit_cost: e.target.value }))} /></div>
+                <div className="erp-form-group"><label className="erp-form-label">Unit Cost:</label><input className="erp-form-input" type="number" step="0.01" value={modalData.unit_cost || ''} onChange={e => setModalData(p => ({ ...p, unit_cost: e.target.value }))} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Lead Time (days):</label><input className="erp-form-input" type="number" value={modalData.lead_time_days || ''} onChange={e => setModalData(p => ({ ...p, lead_time_days: e.target.value }))} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Min Order Qty:</label><input className="erp-form-input" type="number" value={modalData.min_order_qty || ''} onChange={e => setModalData(p => ({ ...p, min_order_qty: e.target.value }))} /></div>
                 <label className="text-xs"><input type="checkbox" checked={!!modalData.is_preferred} onChange={e => setModalData(p => ({ ...p, is_preferred: e.target.checked }))} /> Preferred Vendor</label>
@@ -735,7 +795,7 @@ function ItemDetail() {
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Customer Item #:</label><input className="erp-form-input" value={modalData.customer_item_number || ''} onChange={e => setModalData(p => ({ ...p, customer_item_number: e.target.value }))} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Description:</label><input className="erp-form-input" value={modalData.customer_description || ''} onChange={e => setModalData(p => ({ ...p, customer_description: e.target.value }))} /></div>
-                <div className="erp-form-group"><label className="erp-form-label">Unit Price:</label><input className="erp-form-input" type="number" value={modalData.unit_price || ''} onChange={e => setModalData(p => ({ ...p, unit_price: e.target.value }))} /></div>
+                <div className="erp-form-group"><label className="erp-form-label">Unit Price:</label><input className="erp-form-input" type="number" step="0.01" value={modalData.unit_price || ''} onChange={e => setModalData(p => ({ ...p, unit_price: e.target.value }))} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Min Order Qty:</label><input className="erp-form-input" type="number" value={modalData.min_order_qty || ''} onChange={e => setModalData(p => ({ ...p, min_order_qty: e.target.value }))} /></div>
                 <label className="text-xs"><input type="checkbox" checked={!!modalData.is_preferred} onChange={e => setModalData(p => ({ ...p, is_preferred: e.target.checked }))} /> Preferred Customer</label>
               </>)}
@@ -745,11 +805,11 @@ function ItemDetail() {
                   <select className="erp-form-select" value={modalData.tier_type || 'standard'} onChange={e => setModalData(p => ({ ...p, tier_type: e.target.value }))}>
                     <option value="standard">Standard</option><option value="stock_sheet">Stock Sheet</option><option value="half_sheet">Half Sheet</option><option value="custom_cut">Custom Cut</option>
                   </select></div>
-                <div className="erp-form-group"><label className="erp-form-label">Unit Price:</label><input className="erp-form-input" type="number" value={modalData.unit_price || ''} onChange={e => setModalData(p => ({ ...p, unit_price: e.target.value }))} /></div>
-                <div className="erp-form-group"><label className="erp-form-label">Price/SqFt:</label><input className="erp-form-input" type="number" value={modalData.price_per_sqft || ''} onChange={e => setModalData(p => ({ ...p, price_per_sqft: e.target.value }))} /></div>
+                <div className="erp-form-group"><label className="erp-form-label">Unit Price:</label><input className="erp-form-input" type="number" step="0.01" value={modalData.unit_price || ''} onChange={e => setModalData(p => ({ ...p, unit_price: e.target.value }))} /></div>
+                <div className="erp-form-group"><label className="erp-form-label">Price/SqFt:</label><input className="erp-form-input" type="number" step="0.01" value={modalData.price_per_sqft || ''} onChange={e => setModalData(p => ({ ...p, price_per_sqft: e.target.value }))} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Min Qty:</label><input className="erp-form-input" type="number" value={modalData.min_qty || 0} onChange={e => setModalData(p => ({ ...p, min_qty: e.target.value }))} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Max Qty:</label><input className="erp-form-input" type="number" value={modalData.max_qty || 999999} onChange={e => setModalData(p => ({ ...p, max_qty: e.target.value }))} /></div>
-                <div className="erp-form-group"><label className="erp-form-label">Min Charge:</label><input className="erp-form-input" type="number" value={modalData.minimum_charge || ''} onChange={e => setModalData(p => ({ ...p, minimum_charge: e.target.value }))} /></div>
+                <div className="erp-form-group"><label className="erp-form-label">Min Charge:</label><input className="erp-form-input" type="number" step="0.01" value={modalData.minimum_charge || ''} onChange={e => setModalData(p => ({ ...p, minimum_charge: e.target.value }))} /></div>
               </>)}
               {showModal === 'dimension' && (<>
                 <div className="erp-form-group"><label className="erp-form-label">Type:</label>
@@ -776,7 +836,7 @@ function ItemDetail() {
                   <select className="erp-form-select" value={modalData.component_item_id || ''} onChange={e => setModalData(p => ({ ...p, component_item_id: e.target.value }))}>
                     <option value="">Select Item...</option>{lookupItems.filter(i => i.id !== parseInt(id)).map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
                   </select></div>
-                <div className="erp-form-group"><label className="erp-form-label">Qty Per:</label><input className="erp-form-input" type="number" value={modalData.quantity_per || ''} onChange={e => setModalData(p => ({ ...p, quantity_per: e.target.value }))} /></div>
+                <div className="erp-form-group"><label className="erp-form-label">Qty Per:</label><input className="erp-form-input" type="number" step="0.01" value={modalData.quantity_per || ''} onChange={e => setModalData(p => ({ ...p, quantity_per: e.target.value }))} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Waste %:</label><input className="erp-form-input" type="number" value={modalData.waste_percent || 0} onChange={e => setModalData(p => ({ ...p, waste_percent: e.target.value }))} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">UOM:</label>
                   <select className="erp-form-select" value={modalData.uom || 'Each'} onChange={e => setModalData(p => ({ ...p, uom: e.target.value }))}>

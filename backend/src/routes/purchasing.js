@@ -672,4 +672,29 @@ router.get('/dashboard', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// ============ VENDOR ITEMS BY VENDOR (for PO line auto-fill) ============
+router.get('/vendor-items-by-vendor/:vendorId', authenticate, async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT iv.*, i.item_number, i.description as item_description, i.standard_cost, i.uom
+      FROM item_vendors iv
+      JOIN items i ON iv.item_id = i.id
+      WHERE iv.vendor_id = ? AND i.is_active = TRUE
+      ORDER BY iv.is_preferred DESC, i.item_number`, [req.params.vendorId]);
+    res.json(rows);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Get vendor-item info for a specific item+vendor combo (for PO line auto-fill)
+router.get('/vendor-item-info/:vendorId/:itemId', authenticate, async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT iv.vendor_item_number, iv.vendor_description, iv.unit_cost, iv.lead_time_days, iv.min_order_qty
+      FROM item_vendors iv
+      WHERE iv.vendor_id = ? AND iv.item_id = ?`, [req.params.vendorId, req.params.itemId]);
+    if (rows.length === 0) return res.json(null);
+    res.json(rows[0]);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 module.exports = router;
