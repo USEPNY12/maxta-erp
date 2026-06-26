@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ScanPanel from '../../components/ScanPanel';
 import { formatDate } from '../../utils/formatDate';
 
 function WorkOrders() {
@@ -453,7 +454,7 @@ function WorkOrders() {
 
             {/* Tabs */}
             <div className="border-b flex px-2">
-              {['Routing', 'Materials', 'Labor', 'Files & CNC', 'Tracking', 'QC', 'Recuts', 'Receipts'].map(tab => (
+              {['Routing', 'Materials', 'Labor', 'Files & CNC', 'Tracking', 'QC', 'Recuts', 'Receipts', 'Scan Station'].map(tab => (
                 <button key={tab} className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${activeTab === tab ? 'border-blue-600 text-blue-700 bg-blue-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`} onClick={() => setActiveTab(tab)}>{tab}</button>
               ))}
             </div>
@@ -536,6 +537,28 @@ function WorkOrders() {
                   {(!selected.receipts || selected.receipts.length === 0) && <tr><td colSpan="5" className="text-center text-gray-500 py-8">No receipts recorded</td></tr>}</tbody></table>
                 </div>
               )}
+              {activeTab === 'Scan Station' && (
+                <div style={{padding:'16px', backgroundColor:'#1a1a2e', borderRadius:'8px'}}>
+                  <ScanPanel 
+                    mode="production" 
+                    title="Production Station Scanner" 
+                    context={{ station: 'general', action: 'complete' }}
+                    onScanResult={(r) => { console.log('Production scan:', r); }}
+                  />
+                  <div style={{marginTop:'12px', display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'8px'}}>
+                    <button onClick={() => {}} style={{padding:'8px', backgroundColor:'#1565c0', color:'#fff', border:'none', borderRadius:'4px', fontSize:'11px', fontWeight:'bold'}}>Cutting Table</button>
+                    <button onClick={() => {}} style={{padding:'8px', backgroundColor:'#2e7d32', color:'#fff', border:'none', borderRadius:'4px', fontSize:'11px', fontWeight:'bold'}}>CNC Machine</button>
+                    <button onClick={() => {}} style={{padding:'8px', backgroundColor:'#e65100', color:'#fff', border:'none', borderRadius:'4px', fontSize:'11px', fontWeight:'bold'}}>Edging / Polish</button>
+                    <button onClick={() => {}} style={{padding:'8px', backgroundColor:'#6a1b9a', color:'#fff', border:'none', borderRadius:'4px', fontSize:'11px', fontWeight:'bold'}}>Tempering</button>
+                    <button onClick={() => {}} style={{padding:'8px', backgroundColor:'#00838f', color:'#fff', border:'none', borderRadius:'4px', fontSize:'11px', fontWeight:'bold'}}>QC / Inspection</button>
+                    <button onClick={() => {}} style={{padding:'8px', backgroundColor:'#4e342e', color:'#fff', border:'none', borderRadius:'4px', fontSize:'11px', fontWeight:'bold'}}>Packaging</button>
+                  </div>
+                  <div style={{color:'#888', fontSize:'11px', marginTop:'8px'}}>
+                    Select your station above, then scan work order barcodes as pieces complete at your station. Each scan logs the piece as completed at that production step.
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         </div>

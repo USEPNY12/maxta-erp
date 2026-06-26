@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ScanPanel from '../../components/ScanPanel';
 function POReceipts() {
   const [receipts, setReceipts] = useState([]);
   const [search, setSearch] = useState('');
@@ -85,7 +86,7 @@ function POReceipts() {
                 </fieldset>
               </div>
               <div className="erp-tabs">
-                {['Lines', 'Lots & Inventory', 'Labels', 'AP Invoice'].map(tab => (
+                {['Lines', 'Lots & Inventory', 'Labels', 'AP Invoice', 'Scan Receive'].map(tab => (
                   <div key={tab} className={`erp-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>{tab}</div>
                 ))}
               </div>
@@ -161,6 +162,20 @@ function POReceipts() {
                     )}
                   </div>
                 )}
+                {activeTab === 'Scan Receive' && (
+                  <div style={{padding:'16px'}}>
+                    <ScanPanel 
+                      mode="receive" 
+                      title="Scan to Receive Items" 
+                      context={{ po_id: selected?.po_id || null }}
+                      onScanResult={(r) => { toast.success('Item received: ' + (r.data?.item_number || r.message || '')); }}
+                    />
+                    <div style={{color:'#666', fontSize:'12px', marginTop:'8px'}}>
+                      Scan item barcodes to receive them against the PO. Set quantity before scanning. Items are automatically received into inventory.
+                    </div>
+                  </div>
+                )}
+
               </div>
             </div>
             <div className="erp-modal-footer">

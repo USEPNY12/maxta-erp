@@ -2,6 +2,7 @@ import DocumentActions from '../../components/DocumentActions';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ScanPanel from '../../components/ScanPanel';
 
 function Shipments() {
   const [shipments, setShipments] = useState([]);
@@ -150,7 +151,7 @@ function Shipments() {
               </div>
 
               <div className="erp-tabs">
-                {['Items', 'Delivery'].map(tab => (
+                {['Items', 'Delivery', 'Scan Verify'].map(tab => (
                   <div key={tab} className={`erp-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>{tab}</div>
                 ))}
               </div>
@@ -191,6 +192,20 @@ function Shipments() {
                     </div>
                   </div>
                 )}
+                {activeTab === 'Scan Verify' && (
+                  <div style={{padding:'16px'}}>
+                    <ScanPanel 
+                      mode="ship" 
+                      title="Scan to Verify Shipment" 
+                      context={{ so_id: selected?.sales_order_id || selected?.id || null }}
+                      onScanResult={(r) => { toast.success('Verified: ' + (r.data?.item_number || r.message || '')); }}
+                    />
+                    <div style={{color:'#666', fontSize:'12px', marginTop:'8px'}}>
+                      Scan each item barcode to verify it matches the sales order before shipping. Ensures correct items are packed.
+                    </div>
+                  </div>
+                )}
+
               </div>
             </div>
             <div className="erp-modal-footer">

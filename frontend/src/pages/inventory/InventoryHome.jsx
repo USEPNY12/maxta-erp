@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ScanPanel from '../../components/ScanPanel';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 
@@ -44,9 +45,9 @@ function InventoryHome() {
         <button onClick={() => navigate('/inventory/physical-count')} className="px-3 py-1.5 bg-pink-600 text-white rounded text-sm hover:bg-pink-700">Physical Count</button>
       </div>
       <div className="flex border-b border-gray-400 mb-3">
-        {['stock','lots','adjustments','transfers'].map(t => (
+        {['stock','lots','adjustments','transfers','scan-count','scan-transfer','scan-lookup'].map(t => (
           <button key={t} onClick={() => setActiveTab(t)} className={`px-4 py-2 text-sm font-medium ${activeTab === t ? 'border-b-2 border-blue-600 text-blue-700' : 'text-gray-600 hover:text-gray-800'}`}>
-            {t === 'stock' ? 'Stock Status' : t === 'lots' ? 'Lot Tracking' : t === 'adjustments' ? 'Adjustments' : 'Transfers'}
+            {t === 'stock' ? 'Stock Status' : t === 'lots' ? 'Lot Tracking' : t === 'adjustments' ? 'Adjustments' : t === 'transfers' ? 'Transfers' : t === 'scan-count' ? '\u{1F4CB} Scan Count' : t === 'scan-transfer' ? '\u{1F504} Scan Transfer' : '\u{1F50D} Scan Lookup'}
           </button>
         ))}
       </div>
@@ -109,6 +110,31 @@ function InventoryHome() {
       )}
       {activeTab === 'adjustments' && <AdjustmentsPanel />}
       {activeTab === 'transfers' && <TransfersPanel />}
+      {activeTab === 'scan-count' && (
+        <div className="bg-gray-900 rounded shadow p-4">
+          <ScanPanel mode="count" title="Inventory Count Scanner" context={{}} onScanResult={(r) => console.log('Count scan:', r)} />
+          <p style={{color:'#aaa', fontSize:'12px', marginTop:'8px'}}>
+            Select a Physical Count first, then scan items to record quantities. Each scan records the item and quantity to the active count.
+          </p>
+        </div>
+      )}
+      {activeTab === 'scan-transfer' && (
+        <div className="bg-gray-900 rounded shadow p-4">
+          <ScanPanel mode="transfer" title="Inventory Transfer Scanner" context={{}} onScanResult={(r) => console.log('Transfer scan:', r)} />
+          <p style={{color:'#aaa', fontSize:'12px', marginTop:'8px'}}>
+            Set From and To locations, then scan items to transfer between locations. Each scan moves the specified quantity.
+          </p>
+        </div>
+      )}
+      {activeTab === 'scan-lookup' && (
+        <div className="bg-gray-900 rounded shadow p-4">
+          <ScanPanel mode="lookup" title="Item / Location Lookup" context={{}} onScanResult={(r) => console.log('Lookup scan:', r)} />
+          <p style={{color:'#aaa', fontSize:'12px', marginTop:'8px'}}>
+            Scan any barcode to look up item details, location contents, or work order information.
+          </p>
+        </div>
+      )}
+
     </div>
   );
 }
