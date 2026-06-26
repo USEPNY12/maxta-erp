@@ -1,3 +1,4 @@
+import TemplateManager from '../components/TemplateManager';
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 
@@ -37,6 +38,10 @@ const NAV_SECTIONS = [
   ]},
   { group: 'Purchasing', icon: '🛒', items: [
     { key: 'vendor-types', label: 'Vendor Types' }
+  ]},
+    { group: 'Documents & Email', icon: '📄', items: [
+    { key: 'templates', label: 'Document Templates' },
+    { key: 'email-config', label: 'Email Configuration' }
   ]},
   { group: 'Accounting', icon: '📊', items: [
     { key: 'banks', label: 'Banks' },
@@ -90,7 +95,8 @@ export default function SystemSetup() {
         {activeSection === 'roles' && <RolesSection />}
         {activeSection === 'permissions' && <PermissionsMatrix />}
         {activeSection === 'company' && <CompanyInfo />}
-        {!['users', 'roles', 'permissions', 'company'].includes(activeSection) && <GenericSetupTable tableKey={activeSection} />}
+        {(activeSection === 'templates' || activeSection === 'email-config') && <TemplateManager />}
+        {!['users', 'roles', 'permissions', 'company', 'templates', 'email-config'].includes(activeSection) && <GenericSetupTable tableKey={activeSection} />}
       </div>
 
       <style>{`

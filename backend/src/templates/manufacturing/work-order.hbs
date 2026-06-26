@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #333; line-height: 1.4; padding: 15px; }
+    .document { max-width: 8in; margin: 0 auto; }
+    
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; padding-bottom: 12px; border-bottom: 3px solid #c05621; }
+    .company-info { flex: 1; }
+    .company-name { font-size: 18px; font-weight: 700; color: #c05621; margin-bottom: 2px; }
+    .company-details { font-size: 8px; color: #555; }
+    .doc-title-block { text-align: right; }
+    .doc-title { font-size: 20px; font-weight: 700; color: #c05621; letter-spacing: 1px; }
+    .doc-subtitle { font-size: 10px; color: #718096; }
+    .doc-number { font-size: 16px; color: #1a202c; font-weight: 700; margin-top: 3px; }
+    .priority { display: inline-block; padding: 2px 10px; border-radius: 3px; font-size: 9px; font-weight: 700; text-transform: uppercase; margin-top: 5px; }
+    .priority.high { background: #fed7d7; color: #742a2a; }
+    .priority.normal { background: #bee3f8; color: #2a4365; }
+    .priority.rush { background: #e53e3e; color: white; }
+    
+    .product-banner { background: #fffaf0; border: 2px solid #c05621; border-radius: 4px; padding: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+    .product-info { }
+    .product-item { font-size: 16px; font-weight: 700; color: #1a202c; }
+    .product-desc { font-size: 11px; color: #4a5568; margin-top: 2px; }
+    .product-qty { text-align: right; }
+    .qty-label { font-size: 9px; color: #718096; text-transform: uppercase; }
+    .qty-value { font-size: 28px; font-weight: 700; color: #c05621; }
+    
+    .info-grid { display: flex; gap: 15px; margin-bottom: 15px; }
+    .info-box { flex: 1; border: 1px solid #e2e8f0; border-radius: 4px; padding: 10px; }
+    .info-box-title { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #718096; margin-bottom: 6px; letter-spacing: 0.5px; }
+    .info-row { display: flex; margin-bottom: 3px; }
+    .info-label { font-weight: 600; color: #4a5568; min-width: 80px; font-size: 9px; }
+    .info-value { color: #1a202c; font-size: 9px; }
+    
+    .specs-grid { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+    .spec-chip { background: #edf2f7; border: 1px solid #cbd5e0; border-radius: 4px; padding: 6px 12px; text-align: center; }
+    .spec-label { font-size: 8px; color: #718096; text-transform: uppercase; }
+    .spec-value { font-size: 12px; font-weight: 700; color: #1a202c; }
+    
+    .section-title { font-size: 11px; font-weight: 700; color: #c05621; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #fed7d7; text-transform: uppercase; letter-spacing: 0.5px; }
+    
+    .routing-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+    .routing-table thead { background: #c05621; }
+    .routing-table th { color: white; padding: 6px 5px; text-align: left; font-size: 8px; font-weight: 600; text-transform: uppercase; }
+    .routing-table th.center { text-align: center; }
+    .routing-table td { padding: 8px 5px; border-bottom: 1px solid #e2e8f0; font-size: 9px; }
+    .routing-table td.center { text-align: center; }
+    .routing-table tbody tr:nth-child(even) { background: #fffaf0; }
+    .signoff-box { width: 60px; height: 20px; border: 1px solid #cbd5e0; border-radius: 2px; }
+    
+    .materials-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+    .materials-table thead { background: #4a5568; }
+    .materials-table th { color: white; padding: 6px 5px; text-align: left; font-size: 8px; font-weight: 600; text-transform: uppercase; }
+    .materials-table th.center { text-align: center; }
+    .materials-table td { padding: 6px 5px; border-bottom: 1px solid #e2e8f0; font-size: 9px; }
+    .materials-table td.center { text-align: center; }
+    
+    .qc-section { border: 2px solid #38a169; border-radius: 4px; padding: 12px; margin-bottom: 15px; }
+    .qc-title { font-size: 10px; font-weight: 700; color: #22543d; margin-bottom: 8px; }
+    .qc-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .qc-item { display: flex; align-items: center; font-size: 9px; width: 48%; }
+    .qc-checkbox { width: 13px; height: 13px; border: 1.5px solid #38a169; border-radius: 2px; margin-right: 6px; flex-shrink: 0; }
+    
+    .notes-section { margin-bottom: 12px; padding: 8px; background: #f7fafc; border-radius: 4px; border-left: 3px solid #c05621; }
+    .notes-title { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #718096; margin-bottom: 4px; }
+    .notes-text { font-size: 9px; color: #4a5568; }
+    
+    .footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; }
+    .footer-left { font-size: 8px; color: #a0aec0; }
+    .footer-right { font-size: 8px; color: #a0aec0; }
+  </style>
+</head>
+<body>
+  <div class="document">
+    <div class="header">
+      <div class="company-info">
+        <div class="company-name">{{company.name}}</div>
+        <div class="company-details">{{company.address}}, {{company.city}}, {{company.state}} {{company.zip}} | {{company.phone}}</div>
+      </div>
+      <div class="doc-title-block">
+        <div class="doc-title">WORK ORDER</div>
+        <div class="doc-subtitle">Shop Floor Traveler</div>
+        <div class="doc-number">{{wo_number}}</div>
+        {{#if priority}}<div class="priority {{priority}}">{{uppercase priority}}</div>{{/if}}
+      </div>
+    </div>
+
+    <!-- Product Banner -->
+    <div class="product-banner">
+      <div class="product-info">
+        <div class="product-item">{{item_number}} - {{item_description}}</div>
+        <div class="product-desc">
+          {{#if order_number}}Sales Order: {{order_number}} | {{/if}}
+          {{#if customer_name}}Customer: {{customer_name}}{{/if}}
+        </div>
+      </div>
+      <div class="product-qty">
+        <div class="qty-label">Quantity</div>
+        <div class="qty-value">{{quantity}}</div>
+      </div>
+    </div>
+
+    <!-- Info & Specs -->
+    <div class="info-grid">
+      <div class="info-box">
+        <div class="info-box-title">Schedule</div>
+        <div class="info-row"><div class="info-label">Start Date:</div><div class="info-value">{{formatDate start_date}}</div></div>
+        <div class="info-row"><div class="info-label">Due Date:</div><div class="info-value">{{formatDate due_date}}</div></div>
+        <div class="info-row"><div class="info-label">Status:</div><div class="info-value">{{uppercase status}}</div></div>
+      </div>
+      <div class="info-box">
+        <div class="info-box-title">Glass Specifications</div>
+        {{#if glass_type}}<div class="info-row"><div class="info-label">Type:</div><div class="info-value">{{glass_type}}</div></div>{{/if}}
+        {{#if thickness}}<div class="info-row"><div class="info-label">Thickness:</div><div class="info-value">{{thickness}}mm</div></div>{{/if}}
+        {{#if width}}<div class="info-row"><div class="info-label">Size:</div><div class="info-value">{{width}}" x {{height}}"</div></div>{{/if}}
+        {{#if edge_type}}<div class="info-row"><div class="info-label">Edge:</div><div class="info-value">{{edge_type}}</div></div>{{/if}}
+      </div>
+    </div>
+
+    <!-- Routing / Operations -->
+    {{#if routing.length}}
+    <div class="section-title">Routing / Operations</div>
+    <table class="routing-table">
+      <thead>
+        <tr>
+          <th style="width:35px">Step</th>
+          <th>Operation</th>
+          <th>Work Center</th>
+          <th class="center" style="width:55px">Setup</th>
+          <th class="center" style="width:55px">Run</th>
+          <th class="center" style="width:55px">Status</th>
+          <th class="center" style="width:70px">Operator</th>
+          <th class="center" style="width:70px">Sign-Off</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each routing}}
+        <tr>
+          <td><strong>{{step}}</strong></td>
+          <td>{{operation}}</td>
+          <td>{{work_center}}</td>
+          <td class="center">{{setup_time}}</td>
+          <td class="center">{{run_time}}</td>
+          <td class="center">{{status}}</td>
+          <td class="center"><div class="signoff-box"></div></td>
+          <td class="center"><div class="signoff-box"></div></td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+    {{/if}}
+
+    <!-- Materials -->
+    {{#if materials.length}}
+    <div class="section-title">Bill of Materials</div>
+    <table class="materials-table">
+      <thead>
+        <tr>
+          <th style="width:100px">Item #</th>
+          <th>Description</th>
+          <th class="center" style="width:70px">Required</th>
+          <th class="center" style="width:70px">Issued</th>
+          <th class="center" style="width:60px">Check</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each materials}}
+        <tr>
+          <td><strong>{{item_number}}</strong></td>
+          <td>{{description}}</td>
+          <td class="center">{{quantity_required}}</td>
+          <td class="center">{{quantity_issued}}</td>
+          <td class="center">&#9744;</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+    {{/if}}
+
+    <!-- QC Checklist -->
+    <div class="qc-section">
+      <div class="qc-title">&#10003; Quality Control Checklist</div>
+      <div class="qc-grid">
+        <div class="qc-item"><div class="qc-checkbox"></div>Dimensions within tolerance</div>
+        <div class="qc-item"><div class="qc-checkbox"></div>Edge quality acceptable</div>
+        <div class="qc-item"><div class="qc-checkbox"></div>No chips or cracks</div>
+        <div class="qc-item"><div class="qc-checkbox"></div>Surface quality (no scratches)</div>
+        <div class="qc-item"><div class="qc-checkbox"></div>Tempering/coating verified</div>
+        <div class="qc-item"><div class="qc-checkbox"></div>Correct quantity produced</div>
+        <div class="qc-item"><div class="qc-checkbox"></div>Properly labeled</div>
+        <div class="qc-item"><div class="qc-checkbox"></div>Ready for packaging</div>
+      </div>
+    </div>
+
+    {{#if notes}}
+    <div class="notes-section">
+      <div class="notes-title">Special Instructions</div>
+      <div class="notes-text">{{notes}}</div>
+    </div>
+    {{/if}}
+
+    <div class="footer">
+      <div class="footer-left">{{company.name}} | {{wo_number}} | Item: {{item_number}}</div>
+      <div class="footer-right">Generated {{today}} | SHOP FLOOR COPY</div>
+    </div>
+  </div>
+</body>
+</html>

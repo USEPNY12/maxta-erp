@@ -1,3 +1,4 @@
+import DocumentActions from '../../components/DocumentActions';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
@@ -562,7 +563,7 @@ function PurchaseOrders() {
                   {['open', 'sent', 'partial'].includes(selected.status) && <button className="erp-btn" style={{ background: '#059669', color: 'white' }} onClick={openReceiveModal}>Receive Materials</button>}
                   {(selected.receipts || []).length > 0 && !(selected.invoices || []).length && <button className="erp-btn" style={{ background: '#d97706', color: 'white' }} onClick={handleCreateInvoice}>Create AP Invoice</button>}
                   <button className="erp-btn" onClick={handleCopyPO}>Copy PO</button>
-                  <button className="erp-btn" onClick={printPO}>Print</button>
+                  <DocumentActions documentType="purchase_order" documentId={selected.id} recipientEmail={selected.vendor_email} recipientName={selected.vendor_name} onEmailSent={() => openDetail(selected)} compact />
                   {canEdit(selected.status) && <button className="erp-btn" style={{ background: '#dc2626', color: 'white' }} onClick={selected.status === 'draft' ? handleCancelPO : handleClosePO}>{selected.status === 'draft' ? 'Cancel PO' : 'Close PO'}</button>}
                   <button className="erp-btn" onClick={() => setShowDetail(false)}>Close</button>
                 </>

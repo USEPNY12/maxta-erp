@@ -1,3 +1,4 @@
+import DocumentActions from '../../components/DocumentActions';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
@@ -189,8 +190,8 @@ function Invoices() {
             <div className="erp-modal-footer">
               {selected.status === 'draft' && <button className="erp-btn erp-btn-primary" onClick={handlePostInvoice}>✓ Post Invoice</button>}
               <button className="erp-btn" onClick={() => { setPaymentForm({ amount: selected.balance || selected.balance_due || '', payment_method: 'check', reference_number: '', payment_date: new Date().toISOString().split('T')[0] }); setShowPayment(true); }}>💰 Record Payment</button>
-              <button className="erp-btn" onClick={() => { setEmailTo(selected.customer_email || ''); setShowEmailDialog(true); }}>✉ Email</button>
-              <button className="erp-btn" onClick={() => window.print()}>🖨 Print</button>
+              
+              <DocumentActions documentType="ar_invoice" documentId={selected.id} recipientEmail={selected.customer_email} recipientName={selected.customer_name} compact />
               <button className="erp-btn" onClick={() => setShowCreditMemo(true)}>Credit Memo</button>
               <button className="erp-btn" onClick={() => setShowDetail(false)}>Close</button>
             </div>

@@ -1,3 +1,4 @@
+import DocumentActions from '../../components/DocumentActions';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
@@ -278,6 +279,7 @@ function SalesOrders() {
               {hasPendingLines && <button className="erp-btn" style={{ background: '#e67e22', color: 'white' }} onClick={() => setShowReleaseDialog(true)}>🏭 Release to Production</button>}
               {hasShippableLines && <button className="erp-btn" style={{ background: '#2980b9', color: 'white' }} onClick={openShipDialog}>🚚 Create Shipment</button>}
               <button className="erp-btn" onClick={() => setShowDepositDialog(true)}>💰 Deposit</button>
+              <DocumentActions documentType="sales_order" documentId={selected.id} recipientEmail={selected.customer_email} recipientName={selected.customer_name} compact />
               <button className="erp-btn" onClick={() => setShowDetail(false)}>Close</button>
             </div>
           </div>

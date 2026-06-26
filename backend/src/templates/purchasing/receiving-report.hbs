@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #333; line-height: 1.4; padding: 20px; }
+    .document { max-width: 8in; margin: 0 auto; }
+    
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 3px solid #2b6cb0; }
+    .company-info { flex: 1; }
+    .company-name { font-size: 22px; font-weight: 700; color: #2b6cb0; margin-bottom: 3px; }
+    .company-details { font-size: 9px; color: #555; line-height: 1.5; }
+    .doc-title-block { text-align: right; }
+    .doc-title { font-size: 22px; font-weight: 700; color: #2b6cb0; letter-spacing: 1px; }
+    .doc-number { font-size: 14px; color: #e53e3e; font-weight: 600; margin-top: 3px; }
+    
+    .info-grid { display: flex; gap: 20px; margin-bottom: 20px; }
+    .info-box { flex: 1; border: 1px solid #e2e8f0; border-radius: 4px; padding: 12px; }
+    .info-box-title { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #718096; margin-bottom: 8px; letter-spacing: 0.5px; }
+    .info-row { display: flex; margin-bottom: 4px; }
+    .info-label { font-weight: 600; color: #4a5568; min-width: 90px; font-size: 10px; }
+    .info-value { color: #1a202c; font-size: 10px; }
+    
+    .lines-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .lines-table thead { background: #2b6cb0; }
+    .lines-table th { color: white; padding: 8px 6px; text-align: left; font-size: 9px; font-weight: 600; text-transform: uppercase; }
+    .lines-table th.right { text-align: right; }
+    .lines-table th.center { text-align: center; }
+    .lines-table td { padding: 7px 6px; border-bottom: 1px solid #e2e8f0; font-size: 10px; }
+    .lines-table td.right { text-align: right; }
+    .lines-table td.center { text-align: center; }
+    .lines-table tbody tr:nth-child(even) { background: #ebf8ff; }
+    
+    .inspection-section { border: 1px solid #e2e8f0; border-radius: 4px; padding: 12px; margin-bottom: 15px; }
+    .inspection-title { font-size: 10px; font-weight: 700; color: #2b6cb0; margin-bottom: 8px; }
+    .inspection-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .inspection-item { display: flex; align-items: center; font-size: 9px; width: 48%; }
+    .checkbox { width: 13px; height: 13px; border: 1.5px solid #2b6cb0; border-radius: 2px; margin-right: 6px; flex-shrink: 0; }
+    
+    .signature-section { display: flex; gap: 30px; margin-top: 25px; }
+    .signature-block { flex: 1; }
+    .signature-line { border-bottom: 1px solid #333; margin-top: 35px; margin-bottom: 5px; }
+    .signature-label { font-size: 9px; color: #718096; }
+    
+    .footer { margin-top: 25px; padding-top: 15px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; }
+    .footer-left { font-size: 8px; color: #a0aec0; }
+    .footer-right { font-size: 8px; color: #a0aec0; }
+  </style>
+</head>
+<body>
+  <div class="document">
+    <div class="header">
+      <div class="company-info">
+        <div class="company-name">{{company.name}}</div>
+        <div class="company-details">
+          {{company.address}}<br>
+          {{company.city}}, {{company.state}} {{company.zip}}<br>
+          Phone: {{company.phone}}
+        </div>
+      </div>
+      <div class="doc-title-block">
+        <div class="doc-title">RECEIVING REPORT</div>
+        <div class="doc-number">{{receipt_number}}</div>
+      </div>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-box">
+        <div class="info-box-title">Vendor</div>
+        <div class="info-row"><div class="info-value" style="font-weight:600; font-size:12px;">{{vendor_name}}</div></div>
+      </div>
+      <div class="info-box">
+        <div class="info-box-title">Receipt Details</div>
+        <div class="info-row"><div class="info-label">PO #:</div><div class="info-value">{{po_number}}</div></div>
+        <div class="info-row"><div class="info-label">Received:</div><div class="info-value">{{formatDate received_date}}</div></div>
+        {{#if received_by}}<div class="info-row"><div class="info-label">Received By:</div><div class="info-value">{{received_by}}</div></div>{{/if}}
+      </div>
+    </div>
+
+    <table class="lines-table">
+      <thead>
+        <tr>
+          <th style="width:30px">#</th>
+          <th style="width:90px">Item #</th>
+          <th>Description</th>
+          <th class="center" style="width:70px">Ordered</th>
+          <th class="center" style="width:70px">Received</th>
+          <th style="width:80px">Lot #</th>
+          <th style="width:80px">Location</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#each lines}}
+        <tr>
+          <td>{{line_num}}</td>
+          <td><strong>{{item_number}}</strong></td>
+          <td>{{description}}</td>
+          <td class="center">{{quantity_ordered}}</td>
+          <td class="center"><strong>{{quantity_received}}</strong></td>
+          <td>{{lot_number}}</td>
+          <td>{{location}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+
+    <div class="inspection-section">
+      <div class="inspection-title">Receiving Inspection</div>
+      <div class="inspection-grid">
+        <div class="inspection-item"><div class="checkbox"></div>Packaging intact</div>
+        <div class="inspection-item"><div class="checkbox"></div>Correct quantities</div>
+        <div class="inspection-item"><div class="checkbox"></div>No visible damage</div>
+        <div class="inspection-item"><div class="checkbox"></div>Matches PO specs</div>
+        <div class="inspection-item"><div class="checkbox"></div>COC/cert received</div>
+        <div class="inspection-item"><div class="checkbox"></div>Stored in correct location</div>
+      </div>
+    </div>
+
+    <div class="signature-section">
+      <div class="signature-block">
+        <div class="signature-line"></div>
+        <div class="signature-label">Received By</div>
+      </div>
+      <div class="signature-block">
+        <div class="signature-line"></div>
+        <div class="signature-label">Inspected By</div>
+      </div>
+      <div class="signature-block">
+        <div class="signature-line"></div>
+        <div class="signature-label">Date</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="footer-left">{{company.name}} | {{receipt_number}} | PO: {{po_number}}</div>
+      <div class="footer-right">Generated {{today}}</div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,3 +1,4 @@
+import DocumentActions from '../../components/DocumentActions';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
@@ -195,7 +196,7 @@ function Shipments() {
             <div className="erp-modal-footer">
               {selected.status === 'pending' && <button className="erp-btn erp-btn-primary" onClick={handleMarkShipped}>📦 Mark as Shipped</button>}
               {['pending', 'shipped'].includes(selected.status) && <button className="erp-btn" style={{ background: '#8e44ad', color: 'white' }} onClick={() => handleCreateInvoice()}>💰 Create Invoice</button>}
-              <button className="erp-btn" onClick={() => window.print()}>🖨 Print Packing List</button>
+              <DocumentActions documentType="packing_slip" documentId={selected.id} recipientEmail={selected.customer_email} recipientName={selected.customer_name} compact />
               <button className="erp-btn" onClick={() => setShowDetail(false)}>Close</button>
             </div>
           </div>

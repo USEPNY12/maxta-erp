@@ -1,3 +1,4 @@
+import DocumentActions from '../../components/DocumentActions';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
@@ -209,8 +210,8 @@ function Quotes() {
               {['draft', 'sent', 'accepted'].includes(selected.status) && selected.status !== 'converted' && (
                 <button className="erp-btn" style={{ background: '#8e44ad', color: 'white' }} onClick={() => setShowConvertDialog(true)}>⟹ Convert to Order</button>
               )}
-              <button className="erp-btn" onClick={() => { setEmailTo(selected.customer_email || ''); setShowEmailDialog(true); }}>✉ Email</button>
-              <button className="erp-btn" onClick={() => window.print()}>🖨 Print</button>
+              
+              <DocumentActions documentType="quote" documentId={selected.id} recipientEmail={selected.customer_email} recipientName={selected.customer_name} compact />
               <button className="erp-btn" onClick={() => setShowDetail(false)}>Close</button>
             </div>
           </div>
