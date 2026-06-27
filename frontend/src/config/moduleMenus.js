@@ -53,6 +53,7 @@ export const manufacturingMenu = {
     { label: 'Labor', path: '/manufacturing/labor', icon: '👷' },
     { label: 'Recuts', path: '/manufacturing/recuts', icon: '⚠️' },
     { label: 'Cutting', path: '/manufacturing/cutting-optimization', icon: '✂️' },
+    { label: 'Fab Charges', path: '/setup?tab=fabrication-charges', icon: '💲' },
     { label: 'Work Centers', path: '/manufacturing/work-centers', icon: '⚙️' },
     { label: 'Routing', path: '/manufacturing/routing-templates', icon: '🔄' },
   ],
