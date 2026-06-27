@@ -72,6 +72,9 @@ const GanttSchedule = lazy(() => import('./pages/GanttSchedule'));
 const Notifications = lazy(() => import('./pages/Notifications'));
 const DocManagement = lazy(() => import('./pages/DocManagement'));
 const Lamination = lazy(() => import('./pages/Lamination'));
+const ApprovalQueue = lazy(() => import('./pages/ApprovalQueue'));
+const Commissions = lazy(() => import('./pages/Commissions'));
+const PricingMatrix = lazy(() => import('./pages/PricingMatrix'));
 
 export const AuthContext = createContext(null);
 
@@ -190,6 +193,9 @@ function App() {
           <Route path="sales/shipments" element={<ProtectedModule module="sales" permissions={permissions}><Shipments /></ProtectedModule>} />
           <Route path="sales/invoices" element={<ProtectedModule module="sales" permissions={permissions}><Invoices /></ProtectedModule>} />
           <Route path="sales/fabrication-charges" element={<ProtectedModule module="sales" permissions={permissions}><SalesFabricationCharges /></ProtectedModule>} />
+          <Route path="sales/approvals" element={<ProtectedModule module="sales" permissions={permissions}><ApprovalQueue /></ProtectedModule>} />
+          <Route path="sales/commissions" element={<ProtectedModule module="sales" permissions={permissions}><Commissions /></ProtectedModule>} />
+          <Route path="sales/pricing-matrix" element={<ProtectedModule module="sales" permissions={permissions}><PricingMatrix /></ProtectedModule>} />
           {/* Manufacturing */}
           <Route path="manufacturing" element={<ProtectedModule module="manufacturing" permissions={permissions}><ManufacturingHome /></ProtectedModule>} />
           <Route path="manufacturing/work-orders" element={<ProtectedModule module="manufacturing" permissions={permissions}><WorkOrders /></ProtectedModule>} />
