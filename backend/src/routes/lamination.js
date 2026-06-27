@@ -619,9 +619,10 @@ router.get('/layup-queue', authenticate, async (req, res) => {
   try {
     // Find WOs where current routing step is at Lamination Line (work_center_id=7)
     const [queue] = await pool.query(`
-      SELECT DISTINCT wo.id, wo.order_number, wo.item_id, wo.product_type, wo.quantity,
+      SELECT wo.id, wo.order_number, wo.item_id, wo.product_type, wo.quantity,
         wo.width, wo.height, wo.thickness, wo.glass_type, wo.interlayer_type,
         wo.status, wo.priority, wo.wo_category, wo.parent_wo_id,
+        wo.start_date,
         wr.id as routing_step_id, wr.status as routing_status,
         wr.operation_description, wc.name as work_center_name
       FROM work_orders wo
