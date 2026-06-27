@@ -66,8 +66,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error', message: err.message });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`Max TA Group ERP Server v3.0 running on port ${PORT}`);
+  try { const migrate = require('./migrate'); await migrate(); } catch(e) { console.log('Migration:', e.message); }
 });
 
 module.exports = app;
