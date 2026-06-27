@@ -7,6 +7,22 @@ const { authenticate } = require('../middleware/auth');
 // LAMINATION MODULE - Complete API
 // ============================================================
 
+// --- FIX SCHEMA (one-time migration helper) ---
+router.post('/fix-schema', authenticate, async (req, res) => {
+  try {
+    const alterStatements = [
+      "ALTER TABLE work_orders ADD COLUMN parent_wo_id INT DEFAULT NULL",
+      "ALTER TABLE work_orders ADD COLUMN wo_category ENUM('standard','assembly','glass_component','interlayer_component') DEFAULT 'standard'"
+    ];
+    const results = [];
+    for (const sql of alterStatements) {
+      try { await pool.query(sql); results.push({ sql: sql.substring(0, 60), status: 'added' }); }
+      catch(e) { results.push({ sql: sql.substring(0, 60), status: 'exists', error: e.message.substring(0, 50) }); }
+    }
+    res.json({ success: true, results });
+  } catch(err) { res.status(500).json({ error: err.message }); }
+});
+
 // --- DASHBOARD ---
 router.get('/dashboard', authenticate, async (req, res) => {
   try {
