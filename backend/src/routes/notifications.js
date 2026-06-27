@@ -5,6 +5,15 @@ const { authenticate } = require('../middleware/auth');
 
 router.use(authenticate);
 
+// POST /api/notifications/fix-schema - One-time fix for missing columns
+router.post('/fix-schema', async (req, res) => {
+  try {
+    await pool.query('DROP TABLE IF EXISTS notifications');
+    await pool.query(`CREATE TABLE notifications (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, title VARCHAR(255), message TEXT, category VARCHAR(50) DEFAULT 'general', priority ENUM('low','normal','high','urgent') DEFAULT 'normal', reference_type VARCHAR(50), reference_id INT, is_read BOOLEAN DEFAULT FALSE, is_dismissed BOOLEAN DEFAULT FALSE, read_at DATETIME, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+    res.json({ success: true, message: 'Notifications table recreated with is_dismissed column' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/notifications - Get user's notifications
 router.get('/', async (req, res) => {
   try {
