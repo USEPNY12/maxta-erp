@@ -369,6 +369,7 @@ router.post('/orders', authenticate, async (req, res) => {
 
 // ============ RELEASE TO PRODUCTION ============
 // This is the KEY action: creates Work Orders from Sales Order lines
+// Fixes: populates wo_routing, detects product_type from item, explodes BOM into materials, creates child WOs
 router.post('/orders/:id/release-to-production', authenticate, async (req, res) => {
   try {
     const [orders] = await pool.query('SELECT * FROM sales_orders WHERE id = ?', [req.params.id]);
@@ -386,41 +387,149 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
     
     if (lines.length === 0) return res.status(400).json({ error: 'No lines available to release (all already in production or no pending lines)' });
     
+    // Helper: map item_type_id to routing product_type
+    const itemTypeToProductType = {
+      8: 'tempered_panel',   // Tempered Glass
+      9: 'laminated',        // Laminated Glass
+      7: null,               // Raw Glass - no routing
+      11: 'custom'           // Finished Good
+    };
+    
     const createdWOs = [];
     for (const line of lines) {
+      // === FIX BUG 2: Detect product_type from item's item_type_id ===
+      let productType = line.product_type; // Use SO line product_type if explicitly set
+      if (!productType && line.item_id) {
+        const [itemRows] = await pool.query('SELECT item_type_id FROM items WHERE id = ?', [line.item_id]);
+        if (itemRows.length > 0 && itemRows[0].item_type_id) {
+          productType = itemTypeToProductType[itemRows[0].item_type_id] || 'custom';
+        }
+      }
+      if (!productType) productType = 'tempered_panel'; // Final fallback
+      
       // Create Work Order for each line
       const woNumber = await getNextNumber('work_order');
-      const productType = line.product_type || 'tempered_panel';
-      
       const [woResult] = await pool.query(
         `INSERT INTO work_orders (order_number, sales_order_id, sales_order_line_id, item_id, product_type, quantity, 
          glass_type, thickness, width, height, edge_type, interlayer_type, has_holes,
-         status, priority, start_date, notes)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURDATE(),?)`,
+         status, priority, start_date, notes, wo_category)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURDATE(),?,?)`,
         [woNumber, req.params.id, line.id, line.item_id, productType, line.quantity_ordered,
          line.glass_type, line.thickness, line.width_inches, line.height_inches, line.edge_type, line.interlayer, line.has_holes || 0,
-         'planned', 'normal', line.manufacturing_notes || line.notes]
+         'planned', 'normal', line.manufacturing_notes || line.notes, 'standard']
       );
+      const woId = woResult.insertId;
       
-      // Auto-assign routing based on product type
+      // Check if CNC should be skipped (no holes/notches) - declare outside template block for reuse
+      const [cncCenter] = await pool.query("SELECT id FROM work_centers WHERE code='CNC'");
+      const cncId = cncCenter.length > 0 ? cncCenter[0].id : null;
+      
+      // === FIX BUG 1: Populate BOTH wo_routing AND shop_floor_tracking ===
       const [templates] = await pool.query(
-        'SELECT id FROM routing_templates WHERE product_type = ? LIMIT 1', [productType]);
+        'SELECT id FROM routing_templates WHERE product_type = ? AND is_active = TRUE LIMIT 1', [productType]);
       if (templates.length > 0) {
         const [operations] = await pool.query(
           'SELECT * FROM routing_template_operations WHERE template_id = ? ORDER BY sequence', [templates[0].id]);
+        
         for (const op of operations) {
+          // Skip CNC if no holes/notches needed
+          if (op.work_center_id === cncId && !line.has_holes && !line.has_notches) continue;
+          
+          // Insert into wo_routing (the proper routing table)
+          const [routingResult] = await pool.query(
+            `INSERT INTO wo_routing (work_order_id, sequence, operation_number, work_center_id, 
+             operation_description, setup_hours_estimated, run_hours_estimated, qc_required, status)
+             VALUES (?,?,?,?,?,?,?,?,?)`,
+            [woId, op.sequence, op.sequence, op.work_center_id,
+             op.operation_description || op.operation_name || op.description,
+             op.setup_time_hours || 0, (op.run_time_per_unit || 0) * line.quantity_ordered,
+             op.qc_required || 0, 'pending']
+          );
+          
+          // Also insert into shop_floor_tracking (for shop floor display)
           await pool.query(
             `INSERT INTO shop_floor_tracking (work_order_id, work_center_id, wo_routing_id, status, notes)
              VALUES (?,?,?,?,?)`,
-            [woResult.insertId, op.work_center_id, null, 'queued', op.operation_name || op.description || null]
+            [woId, op.work_center_id, routingResult.insertId, 'queued',
+             op.operation_description || op.operation_name || op.description || null]
           );
+        }
+        
+        // Set current_station_id to first routing step
+        const [firstOp] = await pool.query('SELECT work_center_id FROM wo_routing WHERE work_order_id = ? ORDER BY sequence LIMIT 1', [woId]);
+        if (firstOp.length > 0) {
+          await pool.query('UPDATE work_orders SET current_station_id = ? WHERE id = ?', [firstOp[0].work_center_id, woId]);
+        }
+      }
+      
+      // === FIX BUG 3 & 5: Explode BOM into WO materials and create child WOs ===
+      if (line.item_id) {
+        const [bomHeaders] = await pool.query(
+          'SELECT id FROM bom_headers WHERE item_id = ? AND is_active = 1 ORDER BY id DESC LIMIT 1', [line.item_id]);
+        if (bomHeaders.length > 0) {
+          const [bomLines] = await pool.query(
+            'SELECT * FROM bom_lines WHERE bom_id = ? ORDER BY sequence', [bomHeaders[0].id]);
+          
+          let lineNum = 1;
+          for (const bom of bomLines) {
+            // Calculate quantity needed (quantity_per * WO quantity + waste)
+            const wasteMult = 1 + ((bom.waste_percent || 0) / 100);
+            const qtyRequired = bom.quantity_per * line.quantity_ordered;
+            const totalQty = qtyRequired * wasteMult;
+            
+            // Get item cost
+            const [compItem] = await pool.query('SELECT standard_cost, description FROM items WHERE id = ?', [bom.component_item_id]);
+            const unitCost = compItem.length > 0 ? compItem[0].standard_cost || 0 : 0;
+            
+            // Insert WO material line
+            await pool.query(
+              `INSERT INTO wo_materials (work_order_id, line_number, item_id, description, 
+               quantity_required, waste_percent, total_qty, unit_cost, total_cost, notes)
+               VALUES (?,?,?,?,?,?,?,?,?,?)`,
+              [woId, lineNum++, bom.component_item_id,
+               compItem.length > 0 ? compItem[0].description : null,
+               qtyRequired, bom.waste_percent || 0, totalQty,
+               unitCost, totalQty * unitCost, bom.notes]
+            );
+            
+            // Create child WO for glass lites that need cutting
+            if (bom.component_type === 'glass_lite') {
+              const childWoNumber = await getNextNumber('work_order');
+              const [childResult] = await pool.query(
+                `INSERT INTO work_orders (order_number, sales_order_id, item_id, product_type, quantity,
+                 width, height, thickness, status, priority, start_date, notes, wo_category, parent_wo_id)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,CURDATE(),?,?,?)`,
+                [childWoNumber, req.params.id, bom.component_item_id, 'tempered_panel',
+                 line.quantity_ordered, line.width_inches, line.height_inches, line.thickness,
+                 'planned', 'normal', `Glass lite cutting for ${woNumber}`, 'glass_component', woId]
+              );
+              // Add cutting routing to child WO (just glass cutting + edge work)
+              const [cutTemplate] = await pool.query(
+                'SELECT id FROM routing_templates WHERE product_type = ? AND is_active = TRUE LIMIT 1', ['tempered_panel']);
+              if (cutTemplate.length > 0) {
+                const [cutOps] = await pool.query(
+                  'SELECT * FROM routing_template_operations WHERE template_id = ? AND sequence <= 20 ORDER BY sequence', [cutTemplate[0].id]);
+                for (const cop of cutOps) {
+                  if (cop.work_center_id === cncId && !line.has_holes && !line.has_notches) continue;
+                  await pool.query(
+                    `INSERT INTO wo_routing (work_order_id, sequence, operation_number, work_center_id,
+                     operation_description, setup_hours_estimated, run_hours_estimated, qc_required, status)
+                     VALUES (?,?,?,?,?,?,?,?,?)`,
+                    [childResult.insertId, cop.sequence, cop.sequence, cop.work_center_id,
+                     cop.operation_description || cop.operation_name, cop.setup_time_hours || 0,
+                     (cop.run_time_per_unit || 0) * line.quantity_ordered, cop.qc_required || 0, 'pending']
+                  );
+                }
+              }
+            }
+          }
         }
       }
       
       // Update SO line status
-      await pool.query("UPDATE sales_order_lines SET production_status = 'released', work_order_id = ? WHERE id = ?", [woResult.insertId, line.id]);
+      await pool.query("UPDATE sales_order_lines SET production_status = 'released', work_order_id = ? WHERE id = ?", [woId, line.id]);
       
-      createdWOs.push({ id: woResult.insertId, order_number: woNumber, line_number: line.line_number, description: line.description });
+      createdWOs.push({ id: woId, order_number: woNumber, line_number: line.line_number, description: line.description, product_type: productType });
     }
     
     // Update SO status
@@ -432,7 +541,7 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
     
     await req.audit('sales_orders', req.params.id, 'RELEASE_TO_PRODUCTION', null, { work_orders: createdWOs.map(w => w.order_number) });
     res.status(201).json({ message: `${createdWOs.length} Work Order(s) created`, work_orders: createdWOs });
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) { console.error('Release to production error:', error); res.status(500).json({ error: error.message }); }
 });
 
 // Record deposit on Sales Order

@@ -37,7 +37,8 @@ module.exports = async () => {
   const alterStatements = [
     "ALTER TABLE work_orders ADD COLUMN parent_wo_id INT DEFAULT NULL",
     "ALTER TABLE work_orders ADD COLUMN wo_category ENUM('standard','assembly','glass_component','interlayer_component') DEFAULT 'standard'",
-    "ALTER TABLE notifications ADD COLUMN is_dismissed BOOLEAN DEFAULT FALSE"
+    "ALTER TABLE notifications ADD COLUMN is_dismissed BOOLEAN DEFAULT FALSE",
+    "ALTER TABLE sales_order_lines ADD COLUMN has_notches TINYINT(1) DEFAULT 0"
   ];
   for (const sql of alterStatements) {
     try { await pool.query(sql); } catch(e) { /* column already exists - ignore */ }
@@ -97,4 +98,40 @@ module.exports = async () => {
     }
     console.log('Lamination seed: verified');
   } catch(e) { console.log('Lamination seed:', e.message); }
+
+  // Fix item_type_ids and seed BOM data
+  try {
+    // Ensure item_type_ids are correct
+    await pool.query("UPDATE items SET item_type_id = 8 WHERE item_number = 'TG-001' AND (item_type_id IS NULL OR item_type_id != 8)");
+    await pool.query("UPDATE items SET item_type_id = 7 WHERE item_number = 'RG-001' AND (item_type_id IS NULL OR item_type_id != 7)");
+    await pool.query("UPDATE items SET item_type_id = 9 WHERE item_number = 'LG-001' AND (item_type_id IS NULL OR item_type_id != 9)");
+    
+    // Create PVB interlayer item if not exists
+    const [pvbCheck] = await pool.query("SELECT id FROM items WHERE item_number = 'PVB-076'");
+    if (pvbCheck.length === 0) {
+      await pool.query(`INSERT INTO items (item_number, description, item_type_id, uom, is_purchased, is_material, standard_cost, qty_on_hand)
+        VALUES ('PVB-076', 'PVB Interlayer Film 0.76mm', 6, 'SqFt', 1, 1, 2.50, 5000.0000)`);
+    }
+    
+    // Create BOM for Laminated Glass (item LG-001) if not exists
+    const [lgItem] = await pool.query("SELECT id FROM items WHERE item_number = 'LG-001'");
+    if (lgItem.length > 0) {
+      const [bomCheck] = await pool.query('SELECT id FROM bom_headers WHERE item_id = ? AND is_active = 1', [lgItem[0].id]);
+      if (bomCheck.length === 0) {
+        const [bomResult] = await pool.query(`INSERT INTO bom_headers (item_id, revision, description, batch_size, is_active)
+          VALUES (?, 'A', 'Laminated Safety Glass BOM - 2 lites + PVB interlayer', 1.0000, 1)`, [lgItem[0].id]);
+        const bomId = bomResult.insertId;
+        const [rgItem] = await pool.query("SELECT id FROM items WHERE item_number = 'RG-001'");
+        const [pvbItem] = await pool.query("SELECT id FROM items WHERE item_number = 'PVB-076'");
+        if (rgItem.length > 0 && pvbItem.length > 0) {
+          await pool.query(`INSERT INTO bom_lines (bom_id, sequence, component_item_id, quantity_per, waste_percent, uom, operation_sequence, component_type, consumed_at_operation, notes) VALUES
+            (?, 10, ?, 1.000000, 5.00, 'Sheet', 10, 'glass_lite', 10, 'Outer glass lite - cut to size'),
+            (?, 20, ?, 1.000000, 5.00, 'Sheet', 10, 'glass_lite', 10, 'Inner glass lite - cut to size'),
+            (?, 30, ?, 1.000000, 3.00, 'SqFt', 40, 'interlayer', 40, 'PVB 0.76mm interlayer - cut in clean room')`,
+            [bomId, rgItem[0].id, bomId, rgItem[0].id, bomId, pvbItem[0].id]);
+        }
+      }
+    }
+    console.log('BOM seed: verified');
+  } catch(e) { console.log('BOM seed:', e.message); }
 };

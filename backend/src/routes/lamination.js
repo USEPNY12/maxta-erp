@@ -42,8 +42,13 @@ router.get('/dashboard', authenticate, async (req, res) => {
       FROM lami_autoclave_batches`);
     
     const [pendingWOs] = await pool.query(`SELECT COUNT(*) as count FROM work_orders 
-      WHERE wo_category = 'assembly' AND status IN ('planned','scheduled','released','in_progress')
-      AND (product_type LIKE '%lami%' OR interlayer_type IS NOT NULL)`);
+      WHERE status IN ('planned','scheduled','released','in_progress')
+      AND (wo_category = 'assembly' OR product_type = 'laminated' OR product_type LIKE '%lami%' OR interlayer_type IS NOT NULL)`);
+    
+    const [layupQueue] = await pool.query(`SELECT COUNT(DISTINCT wo.id) as count FROM work_orders wo
+      JOIN wo_routing wr ON wr.work_order_id = wo.id
+      WHERE wr.work_center_id = 7 AND wr.status IN ('pending','in_progress')
+      AND wo.status NOT IN ('complete','completed','cancelled')`);
     
     const [layups] = await pool.query(`SELECT 
       COUNT(*) as total,
@@ -61,6 +66,7 @@ router.get('/dashboard', authenticate, async (req, res) => {
       batches: batches[0],
       pending_assembly_wos: pendingWOs[0].count,
       pending_component_wos: childWOs[0].count,
+      layup_queue_count: layupQueue[0].count,
       layups: layups[0],
       active_cleanroom: cleanroom[0] || null
     });
@@ -605,6 +611,27 @@ router.post('/autoclave/batches/:id/complete', authenticate, async (req, res) =>
     }
     
     res.json({ message: 'Autoclave batch completed' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// --- LAYUP QUEUE: WOs currently at Lamination work center (id=7) based on wo_routing ---
+router.get('/layup-queue', authenticate, async (req, res) => {
+  try {
+    // Find WOs where current routing step is at Lamination Line (work_center_id=7)
+    const [queue] = await pool.query(`
+      SELECT DISTINCT wo.id, wo.order_number, wo.item_id, wo.product_type, wo.quantity,
+        wo.width, wo.height, wo.thickness, wo.glass_type, wo.interlayer_type,
+        wo.status, wo.priority, wo.wo_category, wo.parent_wo_id,
+        wr.id as routing_step_id, wr.status as routing_status,
+        wr.operation_description, wc.name as work_center_name
+      FROM work_orders wo
+      JOIN wo_routing wr ON wr.work_order_id = wo.id
+      JOIN work_centers wc ON wr.work_center_id = wc.id
+      WHERE wr.work_center_id = 7
+        AND wr.status IN ('pending', 'in_progress')
+        AND wo.status NOT IN ('complete', 'completed', 'cancelled')
+      ORDER BY wo.priority DESC, wo.start_date ASC`);
+    res.json(queue);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
