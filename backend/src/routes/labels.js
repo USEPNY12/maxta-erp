@@ -507,20 +507,84 @@ router.post('/scan/receive', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Scan production tracking - log piece at a station
+// Scan production tracking - log piece at a station + advance WO routing
 router.post('/scan/production', authenticate, async (req, res) => {
   try {
     const { barcode, station, status = 'completed', notes } = req.body;
 
-    const [wos] = await pool.query(`SELECT id, wo_number, order_number, status as wo_status FROM work_orders WHERE wo_number = ? OR order_number = ?`, [barcode, barcode]);
+    const [wos] = await pool.query(`SELECT id, wo_number, order_number, status as wo_status, current_station_id FROM work_orders WHERE wo_number = ? OR order_number = ?`, [barcode, barcode]);
     if (!wos.length) return res.status(404).json({ error: `Work order not found: ${barcode}` });
+    const wo = wos[0];
 
+    // Record the scan
     await pool.query(
       `INSERT INTO production_scans (work_order_id, station, status, notes, scanned_by, scanned_at) VALUES (?, ?, ?, ?, ?, NOW())`,
-      [wos[0].id, station, status, notes || null, req.user.id]
+      [wo.id, station, status, notes || null, req.user.id]
     );
 
-    res.json({ success: true, wo: barcode, station, status, timestamp: new Date().toISOString() });
+    // Advance WO routing when station scan is marked completed
+    let routingAdvanced = false;
+    let nextStation = null;
+    if (status === 'completed') {
+      // Find the current (first pending/in_progress) routing step
+      const [currentSteps] = await pool.query(
+        `SELECT wr.id, wr.step_number, wr.work_center_id, wc.name as wc_name
+         FROM wo_routing wr
+         LEFT JOIN work_centers wc ON wr.work_center_id = wc.id
+         WHERE wr.work_order_id = ? AND wr.status IN ('pending','in_progress')
+         ORDER BY wr.step_number ASC LIMIT 1`, [wo.id]);
+
+      if (currentSteps.length > 0) {
+        const currentStep = currentSteps[0];
+        // Mark current step as completed
+        await pool.query(
+          `UPDATE wo_routing SET status = 'completed', actual_end = NOW() WHERE id = ?`,
+          [currentStep.id]);
+
+        // Find next step
+        const [nextSteps] = await pool.query(
+          `SELECT wr.id, wr.step_number, wr.work_center_id, wc.name as wc_name
+           FROM wo_routing wr
+           LEFT JOIN work_centers wc ON wr.work_center_id = wc.id
+           WHERE wr.work_order_id = ? AND wr.step_number > ? AND wr.status = 'pending'
+           ORDER BY wr.step_number ASC LIMIT 1`,
+          [wo.id, currentStep.step_number]);
+
+        if (nextSteps.length > 0) {
+          // Advance to next step
+          await pool.query(
+            `UPDATE wo_routing SET status = 'in_progress', actual_start = NOW() WHERE id = ?`,
+            [nextSteps[0].id]);
+          await pool.query(
+            `UPDATE work_orders SET current_station_id = ? WHERE id = ?`,
+            [nextSteps[0].work_center_id, wo.id]);
+          nextStation = nextSteps[0].wc_name;
+          routingAdvanced = true;
+        } else {
+          // All routing steps completed
+          await pool.query(
+            `UPDATE work_orders SET status = 'completed', current_station_id = NULL WHERE id = ? AND status != 'completed'`,
+            [wo.id]);
+          nextStation = 'COMPLETED';
+          routingAdvanced = true;
+        }
+      }
+
+      // Also log to shop_floor_tracking
+      try {
+        await pool.query(
+          `INSERT INTO shop_floor_tracking (work_order_id, station, action, scanned_by, scanned_at)
+           VALUES (?, ?, 'scan_complete', ?, NOW())`,
+          [wo.id, station, req.user.id]);
+      } catch (e) { /* ignore if shop_floor_tracking has different schema */ }
+    }
+
+    res.json({
+      success: true, wo: barcode, station, status,
+      routing_advanced: routingAdvanced,
+      next_station: nextStation,
+      timestamp: new Date().toISOString()
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

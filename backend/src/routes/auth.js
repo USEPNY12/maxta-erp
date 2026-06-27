@@ -20,13 +20,20 @@ router.post('/login', async (req, res) => {
 
     await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
 
+    // Look up role_id from roles table for granular permission checks
+    let role_id = 1;
+    try {
+      const [roles] = await pool.query('SELECT id FROM roles WHERE name = ?', [user.role]);
+      if (roles.length) role_id = roles[0].id;
+    } catch(e) { /* use default admin */ }
+
     const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role, name: `${user.first_name} ${user.last_name}` },
+      { id: user.id, username: user.username, role: user.role, role_id, name: `${user.first_name} ${user.last_name}` },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
     );
 
-    res.json({ token, user: { id: user.id, username: user.username, role: user.role, name: `${user.first_name} ${user.last_name}` } });
+    res.json({ token, user: { id: user.id, username: user.username, role: user.role, role_id, name: `${user.first_name} ${user.last_name}` } });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

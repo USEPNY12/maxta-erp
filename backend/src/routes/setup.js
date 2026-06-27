@@ -2,7 +2,10 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
 const bcrypt = require('bcryptjs');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireModuleAccess, requirePermission } = require('../middleware/auth');
+
+router.use(authenticate);
+router.use(requireModuleAccess('system_setup'));
 
 // ============ COMPANY SETTINGS ============
 router.get('/company', authenticate, async (req, res) => {

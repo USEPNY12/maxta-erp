@@ -1,8 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireModuleAccess, requirePermission } = require('../middleware/auth');
 const { getNextNumber } = require('../utils/sequence');
+
+router.use(authenticate);
+router.use(requireModuleAccess('inventory'));
 const GLService = require('../services/glService');
 
 // ============ ITEMS ============

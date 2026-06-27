@@ -174,4 +174,149 @@ router.put('/stops/:id/deliver', async (req, res) => {
   }
 });
 
+// ==================== RACK SLOTS ====================
+
+// GET /api/dispatch/racks/:id/slots - Get all slots for a rack
+router.get('/racks/:id/slots', async (req, res) => {
+  try {
+    const [slots] = await pool.query(
+      `SELECT rs.*, wo.order_number as wo_number, c.company_name as customer_name
+       FROM rack_slots rs
+       LEFT JOIN work_orders wo ON rs.work_order_id = wo.id
+       LEFT JOIN sales_orders so ON rs.sales_order_id = so.id
+       LEFT JOIN customers c ON so.customer_id = c.id
+       WHERE rs.rack_id = ?
+       ORDER BY rs.slot_number`, [req.params.id]);
+    const [rack] = await pool.query('SELECT * FROM racks WHERE id = ?', [req.params.id]);
+    res.json({ rack: rack[0] || null, slots });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/dispatch/racks/:id/slots/load - Load a piece into a specific slot
+router.post('/racks/:id/slots/load', async (req, res) => {
+  try {
+    const { slot_number, work_order_id, sales_order_id, item_description, width, height, thickness, piece_count, notes } = req.body;
+    if (!slot_number) return res.status(400).json({ error: 'slot_number is required' });
+
+    // Check slot is available
+    const [existing] = await pool.query(
+      "SELECT * FROM rack_slots WHERE rack_id = ? AND slot_number = ? AND status IN ('empty','reserved')",
+      [req.params.id, slot_number]);
+    if (existing.length === 0) {
+      return res.status(400).json({ error: 'Slot is not available (occupied or damaged)' });
+    }
+
+    await pool.query(
+      `UPDATE rack_slots SET status = 'occupied', work_order_id = ?, sales_order_id = ?,
+       item_description = ?, width = ?, height = ?, thickness = ?, piece_count = ?,
+       loaded_at = NOW(), loaded_by = ?, notes = ?
+       WHERE rack_id = ? AND slot_number = ?`,
+      [work_order_id || null, sales_order_id || null, item_description, width, height, thickness,
+       piece_count || 1, req.user.id, notes, req.params.id, slot_number]);
+
+    // Update rack active_loads count
+    await pool.query(
+      "UPDATE racks SET active_loads = (SELECT COUNT(*) FROM rack_slots WHERE rack_id = ? AND status = 'occupied') WHERE id = ?",
+      [req.params.id, req.params.id]);
+
+    res.json({ message: `Slot ${slot_number} loaded successfully` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/dispatch/racks/:id/slots/:slotNum/unload - Unload a specific slot
+router.put('/racks/:id/slots/:slotNum/unload', async (req, res) => {
+  try {
+    await pool.query(
+      `UPDATE rack_slots SET status = 'empty', work_order_id = NULL, sales_order_id = NULL,
+       item_description = NULL, width = NULL, height = NULL, thickness = NULL,
+       piece_count = 0, loaded_at = NULL, loaded_by = NULL, reserved_for_shipment_id = NULL, notes = NULL
+       WHERE rack_id = ? AND slot_number = ?`,
+      [req.params.id, req.params.slotNum]);
+
+    // Update rack active_loads count
+    await pool.query(
+      "UPDATE racks SET active_loads = (SELECT COUNT(*) FROM rack_slots WHERE rack_id = ? AND status = 'occupied') WHERE id = ?",
+      [req.params.id, req.params.id]);
+
+    res.json({ message: `Slot ${req.params.slotNum} unloaded` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/dispatch/racks/:id/slots/:slotNum/reserve - Reserve a slot for a shipment
+router.put('/racks/:id/slots/:slotNum/reserve', async (req, res) => {
+  try {
+    const { shipment_id, work_order_id, notes } = req.body;
+    await pool.query(
+      `UPDATE rack_slots SET status = 'reserved', reserved_for_shipment_id = ?,
+       work_order_id = ?, notes = ?
+       WHERE rack_id = ? AND slot_number = ? AND status = 'empty'`,
+      [shipment_id || null, work_order_id || null, notes, req.params.id, req.params.slotNum]);
+    res.json({ message: `Slot ${req.params.slotNum} reserved` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/dispatch/racks/:id/slots/:slotNum/damage - Mark a slot as damaged
+router.put('/racks/:id/slots/:slotNum/damage', async (req, res) => {
+  try {
+    const { notes } = req.body;
+    await pool.query(
+      "UPDATE rack_slots SET status = 'damaged', notes = ? WHERE rack_id = ? AND slot_number = ?",
+      [notes || 'Damaged', req.params.id, req.params.slotNum]);
+    res.json({ message: `Slot ${req.params.slotNum} marked as damaged` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/dispatch/slots/available - Find available slots across all racks
+router.get('/slots/available', async (req, res) => {
+  try {
+    const { min_width, min_height } = req.query;
+    let query = `SELECT rs.*, r.rack_number, r.rack_type, r.current_location
+      FROM rack_slots rs
+      JOIN racks r ON rs.rack_id = r.id
+      WHERE rs.status = 'empty' AND r.status != 'out-of-service'`;
+    const params = [];
+    query += ' ORDER BY r.rack_number, rs.slot_number';
+    const [slots] = await pool.query(query, params);
+    res.json({ available_slots: slots });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/dispatch/racks/:id/slots/generate - Generate slots for a rack
+router.post('/racks/:id/slots/generate', async (req, res) => {
+  try {
+    const { total_slots } = req.body;
+    const numSlots = total_slots || 10;
+    const [rack] = await pool.query('SELECT rack_number FROM racks WHERE id = ?', [req.params.id]);
+    if (!rack.length) return res.status(404).json({ error: 'Rack not found' });
+
+    // Delete existing empty slots and recreate
+    await pool.query("DELETE FROM rack_slots WHERE rack_id = ? AND status = 'empty'", [req.params.id]);
+
+    for (let i = 1; i <= numSlots; i++) {
+      await pool.query(
+        'INSERT IGNORE INTO rack_slots (rack_id, slot_number, slot_label) VALUES (?, ?, ?)',
+        [req.params.id, i, `${rack[0].rack_number}-${String(i).padStart(2, '0')}`]);
+    }
+
+    // Update rack total_slots
+    await pool.query('UPDATE racks SET total_slots = ? WHERE id = ?', [numSlots, req.params.id]);
+
+    res.json({ message: `${numSlots} slots generated for rack ${rack[0].rack_number}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

@@ -189,4 +189,38 @@ router.put('/preferences', async (req, res) => {
   }
 });
 
+// GET /api/notifications/alerts - Get active system alerts (low stock, overdue, etc.)
+router.get('/alerts', async (req, res) => {
+  try {
+    const notifService = require('../services/notificationService');
+    const alerts = await notifService.getActiveAlerts();
+    res.json({ alerts });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/notifications/log - Get notification history log
+router.get('/log', async (req, res) => {
+  try {
+    const { limit = 50 } = req.query;
+    const notifService = require('../services/notificationService');
+    const log = await notifService.getNotifications(parseInt(limit));
+    res.json({ log });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/notifications/run-checks - Manually trigger all notification checks
+router.post('/run-checks', async (req, res) => {
+  try {
+    const notifService = require('../services/notificationService');
+    await notifService.runAllChecks();
+    res.json({ message: 'All notification checks completed' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

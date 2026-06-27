@@ -70,6 +70,8 @@ app.use((err, req, res, next) => {
 app.listen(PORT, '0.0.0.0', async () => {
   console.log(`Max TA Group ERP Server v3.0 running on port ${PORT}`);
   try { const migrate = require('./migrate'); await migrate(); } catch(e) { console.log('Migration:', e.message); }
+  // Start automated notification checks (low stock, overdue invoices, WO delays)
+  try { const notifService = require('./services/notificationService'); notifService.start(); } catch(e) { console.log('NotificationService:', e.message); }
 });
 
 module.exports = app;
