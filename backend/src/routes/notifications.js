@@ -10,7 +10,11 @@ router.post('/fix-schema', async (req, res) => {
   try {
     await pool.query('DROP TABLE IF EXISTS notifications');
     await pool.query(`CREATE TABLE notifications (id INT AUTO_INCREMENT PRIMARY KEY, user_id INT, title VARCHAR(255), message TEXT, category VARCHAR(50) DEFAULT 'general', priority ENUM('low','normal','high','urgent') DEFAULT 'normal', reference_type VARCHAR(50), reference_id INT, is_read BOOLEAN DEFAULT FALSE, is_dismissed BOOLEAN DEFAULT FALSE, read_at DATETIME, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
-    res.json({ success: true, message: 'Notifications table recreated with is_dismissed column' });
+    // Also fix work_orders table for lamination
+    const alterResults = [];
+    try { await pool.query("ALTER TABLE work_orders ADD COLUMN parent_wo_id INT DEFAULT NULL"); alterResults.push("parent_wo_id added"); } catch(e) { alterResults.push("parent_wo_id exists"); }
+    try { await pool.query("ALTER TABLE work_orders ADD COLUMN wo_category ENUM('standard','assembly','glass_component','interlayer_component') DEFAULT 'standard'"); alterResults.push("wo_category added"); } catch(e) { alterResults.push("wo_category exists"); }
+    res.json({ success: true, message: "Schema fixed", alterResults });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
