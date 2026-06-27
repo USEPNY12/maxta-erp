@@ -120,6 +120,219 @@ module.exports = async () => {
     console.log('Lamination seed: verified');
   } catch(e) { console.log('Lamination seed:', e.message); }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // PHASE 2: CPQ, Approvals, Commissions, Exchange Rates
+  // ═══════════════════════════════════════════════════════════════════
+  const phase2Tables = [
+    `CREATE TABLE IF NOT EXISTS pricing_matrix (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      glass_type VARCHAR(100) NOT NULL,
+      thickness VARCHAR(20) NOT NULL,
+      price_per_sqft DECIMAL(10,2) NOT NULL,
+      min_sqft DECIMAL(10,2) DEFAULT 3.00,
+      min_charge DECIMAL(10,2) DEFAULT 0.00,
+      markup_percent DECIMAL(5,2) DEFAULT 0.00,
+      cost_per_sqft DECIMAL(10,2) DEFAULT 0.00,
+      is_active TINYINT(1) DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_glass_thickness (glass_type, thickness)
+    )`,
+    `CREATE TABLE IF NOT EXISTS fabrication_charges (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      category VARCHAR(50) NOT NULL,
+      name VARCHAR(100) NOT NULL,
+      default_rate DECIMAL(10,2) NOT NULL,
+      pricing_method ENUM('per_linear_foot','per_sq_ft','per_hole','per_piece','flat') NOT NULL DEFAULT 'per_piece',
+      cost DECIMAL(10,2) DEFAULT 0.00,
+      is_active TINYINT(1) DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS quantity_breaks (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      min_qty INT NOT NULL,
+      max_qty INT NOT NULL,
+      discount_percent DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+      is_active TINYINT(1) DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS approval_workflows (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      document_type VARCHAR(50) NOT NULL,
+      condition_field VARCHAR(50) NOT NULL,
+      condition_operator VARCHAR(10) NOT NULL,
+      condition_value DECIMAL(15,2) NOT NULL,
+      condition_value2 DECIMAL(15,2) DEFAULT NULL,
+      approver_role VARCHAR(50) DEFAULT 'manager',
+      approver_user_id INT DEFAULT NULL,
+      priority INT DEFAULT 1,
+      is_active TINYINT(1) DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS approval_queue (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      workflow_id INT,
+      document_type VARCHAR(50) NOT NULL,
+      document_id INT NOT NULL,
+      document_number VARCHAR(50),
+      requested_by INT,
+      approver_id INT,
+      trigger_reason TEXT,
+      trigger_value DECIMAL(15,2),
+      status ENUM('pending','approved','rejected') DEFAULT 'pending',
+      comments TEXT,
+      requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      decision_at TIMESTAMP NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS exchange_rates (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      from_currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+      to_currency VARCHAR(3) NOT NULL,
+      rate DECIMAL(12,6) NOT NULL,
+      effective_date DATE NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uk_currency_date (from_currency, to_currency, effective_date)
+    )`,
+    `CREATE TABLE IF NOT EXISTS commission_rules (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      salesperson_id INT DEFAULT NULL,
+      customer_type VARCHAR(100),
+      min_revenue DECIMAL(15,2) DEFAULT 0,
+      max_revenue DECIMAL(15,2) DEFAULT 999999999,
+      commission_rate DECIMAL(5,2) NOT NULL,
+      is_active TINYINT(1) DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS commissions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      salesperson_id INT NOT NULL,
+      invoice_id INT,
+      invoice_number VARCHAR(50),
+      invoice_amount DECIMAL(15,2),
+      commission_rate DECIMAL(5,2),
+      commission_amount DECIMAL(15,2),
+      status ENUM('pending','approved','paid') DEFAULT 'pending',
+      paid_date DATE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS salespeople (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255),
+      phone VARCHAR(50),
+      user_id INT,
+      commission_rate DECIMAL(5,2) DEFAULT 5.00,
+      is_active TINYINT(1) DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`
+  ];
+  for (const sql of phase2Tables) {
+    try { await pool.query(sql); } catch(e) { console.log('Phase2 table:', e.message.substring(0, 80)); }
+  }
+  console.log('Phase 2 tables: verified');
+
+  // Phase 2 seed data
+  try {
+    const [pm] = await pool.query('SELECT COUNT(*) as cnt FROM pricing_matrix');
+    if (pm[0].cnt === 0) {
+      await pool.query(`INSERT INTO pricing_matrix (glass_type, thickness, price_per_sqft, min_sqft, min_charge, markup_percent, cost_per_sqft) VALUES
+        ('Clear Annealed', '1/8"', 6.00, 3.00, 18.00, 0, 2.50),
+        ('Clear Annealed', '3/16"', 7.00, 3.00, 21.00, 0, 3.00),
+        ('Clear Annealed', '1/4"', 8.50, 3.00, 25.50, 0, 3.50),
+        ('Clear Annealed', '3/8"', 12.00, 3.00, 36.00, 0, 5.00),
+        ('Clear Annealed', '1/2"', 16.00, 3.00, 48.00, 0, 7.00),
+        ('Clear Annealed', '3/4"', 24.00, 4.00, 96.00, 0, 10.00),
+        ('Clear Tempered', '1/8"', 9.00, 3.00, 27.00, 0, 4.00),
+        ('Clear Tempered', '3/16"', 10.50, 3.00, 31.50, 0, 4.50),
+        ('Clear Tempered', '1/4"', 12.50, 3.00, 37.50, 0, 5.50),
+        ('Clear Tempered', '3/8"', 17.00, 3.00, 51.00, 0, 7.50),
+        ('Clear Tempered', '1/2"', 22.00, 3.00, 66.00, 0, 10.00),
+        ('Clear Tempered', '3/4"', 32.00, 4.00, 128.00, 0, 14.00),
+        ('Laminated', '1/4"', 15.00, 3.00, 45.00, 0, 6.50),
+        ('Laminated', '3/8"', 20.00, 3.00, 60.00, 0, 9.00),
+        ('Laminated', '1/2"', 26.00, 3.00, 78.00, 0, 12.00),
+        ('Low-E', '1/4"', 14.00, 3.00, 42.00, 0, 6.00),
+        ('Low-E', '3/8"', 18.00, 3.00, 54.00, 0, 8.00),
+        ('Low-E', '1/2"', 24.00, 3.00, 72.00, 0, 11.00),
+        ('Mirror', '1/8"', 8.00, 3.00, 24.00, 0, 3.50),
+        ('Mirror', '3/16"', 9.50, 3.00, 28.50, 0, 4.00),
+        ('Mirror', '1/4"', 11.00, 3.00, 33.00, 0, 5.00),
+        ('Starphire', '1/4"', 16.00, 3.00, 48.00, 0, 7.00),
+        ('Starphire', '3/8"', 22.00, 3.00, 66.00, 0, 10.00),
+        ('Starphire', '1/2"', 28.00, 3.00, 84.00, 0, 13.00),
+        ('Tinted Bronze', '1/4"', 10.00, 3.00, 30.00, 0, 4.50),
+        ('Tinted Gray', '1/4"', 10.00, 3.00, 30.00, 0, 4.50),
+        ('Tinted Green', '1/4"', 10.00, 3.00, 30.00, 0, 4.50)`);
+    }
+    const [fc] = await pool.query('SELECT COUNT(*) as cnt FROM fabrication_charges');
+    if (fc[0].cnt === 0) {
+      await pool.query(`INSERT INTO fabrication_charges (category, name, default_rate, pricing_method, cost) VALUES
+        ('Edgework', 'Seamed Edge', 2.00, 'per_linear_foot', 0.80),
+        ('Edgework', 'Flat Polish', 4.50, 'per_linear_foot', 1.80),
+        ('Edgework', 'Pencil Polish', 3.50, 'per_linear_foot', 1.40),
+        ('Edgework', 'Beveled Edge', 8.00, 'per_linear_foot', 3.20),
+        ('Edgework', 'Mitered Edge', 6.00, 'per_linear_foot', 2.40),
+        ('Edgework', 'OG Edge', 5.50, 'per_linear_foot', 2.20),
+        ('Holes', 'Standard Round Hole', 12.00, 'per_hole', 4.00),
+        ('Holes', 'Large Hole', 18.00, 'per_hole', 6.00),
+        ('Holes', 'Countersink', 22.00, 'per_hole', 8.00),
+        ('Cutouts', 'Standard Notch', 35.00, 'per_piece', 12.00),
+        ('Cutouts', 'L-Shape Cutout', 45.00, 'per_piece', 16.00),
+        ('Cutouts', 'U-Shape Cutout', 55.00, 'per_piece', 20.00),
+        ('Coating', 'Hydrophobic Coating', 3.00, 'per_sq_ft', 1.20),
+        ('Coating', 'Low-E Coating', 5.00, 'per_sq_ft', 2.00),
+        ('Coating', 'Acid Etch', 4.00, 'per_sq_ft', 1.60),
+        ('Tempering', 'Standard Temper', 4.50, 'per_sq_ft', 2.00),
+        ('Tempering', 'Heat Strengthened', 3.50, 'per_sq_ft', 1.50),
+        ('Shape', 'Custom Shape Cut', 50.00, 'per_piece', 20.00)`);
+    }
+    const [qb] = await pool.query('SELECT COUNT(*) as cnt FROM quantity_breaks');
+    if (qb[0].cnt === 0) {
+      await pool.query(`INSERT INTO quantity_breaks (name, min_qty, max_qty, discount_percent) VALUES
+        ('Single Piece', 1, 4, 0.00),
+        ('Small Batch (5-9)', 5, 9, 3.00),
+        ('Medium Batch (10-24)', 10, 24, 5.00),
+        ('Large Batch (25-49)', 25, 49, 8.00),
+        ('Production Run (50-99)', 50, 99, 12.00),
+        ('Bulk Order (100+)', 100, 999999, 15.00)`);
+    }
+    const [aw] = await pool.query('SELECT COUNT(*) as cnt FROM approval_workflows');
+    if (aw[0].cnt === 0) {
+      await pool.query(`INSERT INTO approval_workflows (name, document_type, condition_field, condition_operator, condition_value, approver_role, priority) VALUES
+        ('High Value Quote', 'quote', 'total', 'gt', 10000.00, 'manager', 1),
+        ('Large Discount', 'quote', 'max_discount_percent', 'gt', 15.00, 'manager', 2),
+        ('Low Margin Alert', 'quote', 'min_margin_percent', 'lt', 20.00, 'director', 3),
+        ('High Value PO', 'purchase_order', 'total', 'gt', 25000.00, 'manager', 1),
+        ('Large Sales Order', 'sales_order', 'total', 'gt', 50000.00, 'director', 1)`);
+    }
+    const [cr] = await pool.query('SELECT COUNT(*) as cnt FROM commission_rules');
+    if (cr[0].cnt === 0) {
+      await pool.query(`INSERT INTO commission_rules (name, salesperson_id, customer_type, min_revenue, max_revenue, commission_rate) VALUES
+        ('Default Commission', NULL, NULL, 0, 999999999, 5.00),
+        ('High Value Orders (>10K)', NULL, NULL, 10000, 999999999, 7.50),
+        ('New Customer Bonus', NULL, 'new', 0, 999999999, 8.00)`);
+    }
+    const [er] = await pool.query('SELECT COUNT(*) as cnt FROM exchange_rates');
+    if (er[0].cnt === 0) {
+      await pool.query(`INSERT INTO exchange_rates (from_currency, to_currency, rate, effective_date) VALUES
+        ('USD', 'CAD', 1.3600, CURDATE()),
+        ('USD', 'EUR', 0.9200, CURDATE()),
+        ('USD', 'GBP', 0.7900, CURDATE()),
+        ('USD', 'MXN', 17.2000, CURDATE())`);
+    }
+    const [sp] = await pool.query('SELECT COUNT(*) as cnt FROM salespeople');
+    if (sp[0].cnt === 0) {
+      await pool.query(`INSERT INTO salespeople (name, email, commission_rate) VALUES
+        ('John Smith', 'john@maxtagroup.com', 5.00),
+        ('Sarah Johnson', 'sarah@maxtagroup.com', 6.00),
+        ('Mike Williams', 'mike@maxtagroup.com', 5.50)`);
+    }
+    console.log('Phase 2 seed: verified');
+  } catch(e) { console.log('Phase2 seed:', e.message); }
+
   // Fix item_type_ids and seed BOM data
   try {
     // Ensure item_type_ids are correct
