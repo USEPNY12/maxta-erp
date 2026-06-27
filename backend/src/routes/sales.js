@@ -416,7 +416,7 @@ router.get('/invoices', authenticate, async (req, res) => {
   try {
     const { status, customer_id, search } = req.query;
     let query = `SELECT i.*, c.company_name as customer_name,
-                 (i.total_amount - COALESCE(i.amount_paid,0)) as balance_due
+                 (i.total - COALESCE(i.amount_paid,0)) as balance_due
                  FROM ar_invoices i JOIN customers c ON i.customer_id = c.id WHERE 1=1`;
     const params = [];
     if (status && status !== 'all') { query += ' AND i.status = ?'; params.push(status); }
@@ -430,7 +430,7 @@ router.get('/invoices', authenticate, async (req, res) => {
 
 router.get('/invoices/:id', authenticate, async (req, res) => {
   try {
-    const [invoices] = await pool.query(`SELECT i.*, c.company_name, c.email as customer_email, (i.total_amount - COALESCE(i.amount_paid,0)) as balance_due FROM ar_invoices i JOIN customers c ON i.customer_id = c.id WHERE i.id = ?`, [req.params.id]);
+    const [invoices] = await pool.query(`SELECT i.*, c.company_name, c.email as customer_email, (i.total - COALESCE(i.amount_paid,0)) as balance_due FROM ar_invoices i JOIN customers c ON i.customer_id = c.id WHERE i.id = ?`, [req.params.id]);
     if (!invoices.length) return res.status(404).json({ error: 'Invoice not found' });
     const [lines] = await pool.query('SELECT * FROM ar_invoice_lines WHERE invoice_id = ? ORDER BY line_number', [req.params.id]);
     const [payments] = await pool.query('SELECT pa.*, cp.payment_number FROM payment_applications pa LEFT JOIN customer_payments cp ON pa.payment_id = cp.id WHERE pa.invoice_id = ?', [req.params.id]);
@@ -450,7 +450,7 @@ router.post('/invoices', authenticate, async (req, res) => {
     const totalAmount = subtotal + taxAmount;
 
     const [result] = await pool.query(
-      `INSERT INTO ar_invoices (invoice_number, customer_id, sales_order_id, shipment_id, invoice_date, due_date, payment_terms, subtotal, tax_amount, total_amount, amount_paid, status, notes, created_by)
+      `INSERT INTO ar_invoices (invoice_number, customer_id, sales_order_id, shipment_id, invoice_date, due_date, payment_terms, subtotal, tax_amount, total, amount_paid, status, notes, created_by)
        VALUES (?,?,?,?,?,?,?,?,?,?,0,'draft',?,?)`,
       [invoiceNumber, customer_id, sales_order_id, shipment_id, invoice_date || new Date(), due_date, payment_terms || 'Net 30', subtotal, taxAmount, totalAmount, notes, req.user.id]
     );
@@ -550,8 +550,8 @@ router.post('/credit-memos/:id/post', authenticate, async (req, res) => {
     if (memos[0].invoice_id) {
       await pool.query('UPDATE ar_invoices SET amount_paid = COALESCE(amount_paid,0) + ? WHERE id = ?', [memos[0].amount, memos[0].invoice_id]);
       // Check if invoice is now fully paid
-      const [inv] = await pool.query('SELECT total_amount, amount_paid FROM ar_invoices WHERE id = ?', [memos[0].invoice_id]);
-      if (inv.length && inv[0].amount_paid >= inv[0].total_amount) {
+      const [inv] = await pool.query('SELECT total, amount_paid FROM ar_invoices WHERE id = ?', [memos[0].invoice_id]);
+      if (inv.length && inv[0].amount_paid >= inv[0].total) {
         await pool.query("UPDATE ar_invoices SET status = 'paid' WHERE id = ?", [memos[0].invoice_id]);
       } else {
         await pool.query("UPDATE ar_invoices SET status = 'partial' WHERE id = ?", [memos[0].invoice_id]);
@@ -592,7 +592,7 @@ router.get('/dashboard', authenticate, async (req, res) => {
     const [openOrders] = await pool.query("SELECT COUNT(*) as count FROM sales_orders WHERE status IN ('open','partial')");
     const [mtdSales] = await pool.query("SELECT COALESCE(SUM(total),0) as total FROM sales_orders WHERE MONTH(order_date) = MONTH(NOW()) AND YEAR(order_date) = YEAR(NOW())");
     const [ytdSales] = await pool.query("SELECT COALESCE(SUM(total),0) as total FROM sales_orders WHERE YEAR(order_date) = YEAR(NOW())");
-    const [overdueInvoices] = await pool.query("SELECT COUNT(*) as count, COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE due_date < CURDATE() AND status IN ('posted','partial')");
+    const [overdueInvoices] = await pool.query("SELECT COUNT(*) as count, COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE due_date < CURDATE() AND status IN ('posted','partial')");
     const [topCustomers] = await pool.query(`
       SELECT c.company_name, SUM(so.total) as total_sales FROM sales_orders so 
       JOIN customers c ON so.customer_id = c.id WHERE YEAR(so.order_date) = YEAR(NOW()) 

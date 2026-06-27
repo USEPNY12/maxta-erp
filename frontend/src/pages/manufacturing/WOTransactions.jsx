@@ -12,7 +12,7 @@ function WOTransactions() {
   const fetchReceipts = async () => {
     try {
       const res = await api.get('/api/manufacturing/receipts', { params: filter });
-      setReceipts(res.data);
+      setReceipts(Array.isArray(res.data) ? res.data : []);
     } catch { setReceipts([]); }
   };
 

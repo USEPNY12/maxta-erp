@@ -15,16 +15,16 @@ function APInvoices() {
   useEffect(() => { fetchInvoices(); }, []);
 
   const fetchInvoices = async () => {
-    try { const res = await api.get('/api/purchasing/ap-invoices'); setInvoices(res.data); } catch { setInvoices([]); }
+    try { const res = await api.get('/api/purchasing/ap-invoices'); setInvoices(Array.isArray(res.data) ? res.data : []); } catch { setInvoices([]); }
   };
 
   const fetchVendors = async () => {
-    try { const res = await api.get('/api/purchasing/vendors'); setVendors(res.data); } catch { setVendors([]); }
+    try { const res = await api.get('/api/purchasing/vendors'); setVendors(Array.isArray(res.data) ? res.data : res.data.vendors || []); } catch { setVendors([]); }
   };
 
   const fetchPOs = async (vendorId) => {
     if (!vendorId) { setPurchaseOrders([]); return; }
-    try { const res = await api.get('/api/purchasing/purchase-orders', { params: { vendor_id: vendorId } }); setPurchaseOrders(res.data); } catch { setPurchaseOrders([]); }
+    try { const res = await api.get('/api/purchasing/purchase-orders', { params: { vendor_id: vendorId } }); setPurchaseOrders(Array.isArray(res.data) ? res.data : res.data.orders || []); } catch { setPurchaseOrders([]); }
   };
 
   const handleNew = () => {

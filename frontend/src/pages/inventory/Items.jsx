@@ -16,7 +16,7 @@ function Items() {
     setLoading(true);
     try {
       const res = await api.get('/api/inventory/items', { params: { search: query } });
-      setItems(res.data);
+      setItems(Array.isArray(res.data) ? res.data : res.data.items || []);
     } catch (err) {
       setItems([]);
     }

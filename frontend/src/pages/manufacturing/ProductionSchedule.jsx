@@ -11,11 +11,11 @@ function ProductionSchedule() {
   useEffect(() => { fetchSchedule(); fetchWorkCenters(); }, []);
 
   const fetchSchedule = async () => {
-    try { const res = await api.get('/api/manufacturing/work-orders', { params: { status: 'scheduled,in_progress,planned' } }); setWorkOrders(res.data); } catch { setWorkOrders([]); }
+    try { const res = await api.get('/api/manufacturing/work-orders', { params: { status: 'scheduled,in_progress,planned' } }); setWorkOrders(Array.isArray(res.data) ? res.data : []); } catch { setWorkOrders([]); }
   };
 
   const fetchWorkCenters = async () => {
-    try { const res = await api.get('/api/manufacturing/work-centers'); setWorkCenters(res.data); } catch { setWorkCenters([]); }
+    try { const res = await api.get('/api/manufacturing/work-centers'); setWorkCenters(Array.isArray(res.data) ? res.data : []); } catch { setWorkCenters([]); }
   };
 
   const getStatusColor = (status) => {

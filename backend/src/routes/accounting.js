@@ -226,8 +226,8 @@ router.post('/customer-payments', authenticate, async (req, res) => {
         );
         await pool.query('UPDATE ar_invoices SET amount_paid = COALESCE(amount_paid,0) + ? WHERE id = ?', [ai.amount, ai.invoice_id]);
         // Check if fully paid
-        const [inv] = await pool.query('SELECT total_amount, COALESCE(amount_paid,0) as amount_paid FROM ar_invoices WHERE id = ?', [ai.invoice_id]);
-        if (inv.length && inv[0].amount_paid >= inv[0].total_amount) {
+        const [inv] = await pool.query('SELECT total, COALESCE(amount_paid,0) as amount_paid FROM ar_invoices WHERE id = ?', [ai.invoice_id]);
+        if (inv.length && inv[0].amount_paid >= inv[0].total) {
           await pool.query("UPDATE ar_invoices SET status = 'paid' WHERE id = ?", [ai.invoice_id]);
         } else {
           await pool.query("UPDATE ar_invoices SET status = 'partial' WHERE id = ?", [ai.invoice_id]);
@@ -351,18 +351,18 @@ router.post('/bank-reconciliation', authenticate, async (req, res) => {
 // ============ DASHBOARD ============
 router.get('/dashboard', authenticate, async (req, res) => {
   try {
-    const [openAR] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial')");
+    const [openAR] = await pool.query("SELECT COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial')");
     const [openAP] = await pool.query("SELECT COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ap_invoices WHERE status IN ('open','posted','partial')");
     const [bankBalance] = await pool.query("SELECT COALESCE(SUM(current_balance),0) as total FROM bank_accounts WHERE is_active = TRUE");
-    const [mtdRevenue] = await pool.query("SELECT COALESCE(SUM(total_amount),0) as total FROM ar_invoices WHERE MONTH(invoice_date) = MONTH(NOW()) AND YEAR(invoice_date) = YEAR(NOW()) AND status != 'void'");
-    const [ytdRevenue] = await pool.query("SELECT COALESCE(SUM(total_amount),0) as total FROM ar_invoices WHERE YEAR(invoice_date) = YEAR(NOW()) AND status != 'void'");
-    const [overdueAR] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE due_date < CURDATE() AND status IN ('posted','partial')");
+    const [mtdRevenue] = await pool.query("SELECT COALESCE(SUM(total),0) as total FROM ar_invoices WHERE MONTH(invoice_date) = MONTH(NOW()) AND YEAR(invoice_date) = YEAR(NOW()) AND status != 'void'");
+    const [ytdRevenue] = await pool.query("SELECT COALESCE(SUM(total),0) as total FROM ar_invoices WHERE YEAR(invoice_date) = YEAR(NOW()) AND status != 'void'");
+    const [overdueAR] = await pool.query("SELECT COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE due_date < CURDATE() AND status IN ('posted','partial')");
     
     // AR Aging
-    const [arCurrent] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) <= 0");
-    const [ar30] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) BETWEEN 1 AND 30");
-    const [ar60] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) BETWEEN 31 AND 60");
-    const [ar90] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) > 60");
+    const [arCurrent] = await pool.query("SELECT COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) <= 0");
+    const [ar30] = await pool.query("SELECT COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) BETWEEN 1 AND 30");
+    const [ar60] = await pool.query("SELECT COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) BETWEEN 31 AND 60");
+    const [ar90] = await pool.query("SELECT COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) > 60");
 
     res.json({
       open_ar: openAR[0].total, open_ap: openAP[0].total, bank_balance: bankBalance[0].total,

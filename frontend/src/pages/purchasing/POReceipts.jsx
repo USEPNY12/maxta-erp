@@ -14,11 +14,11 @@ function POReceipts() {
   useEffect(() => { fetchReceipts(); }, []);
 
   const fetchReceipts = async () => {
-    try { const res = await api.get('/api/purchasing/receipts'); setReceipts(res.data); } catch { setReceipts([]); }
+    try { const res = await api.get('/api/purchasing/receipts'); setReceipts(Array.isArray(res.data) ? res.data : []); } catch { setReceipts([]); }
   };
 
   const fetchPOs = async () => {
-    try { const res = await api.get('/api/purchasing/purchase-orders', { params: { status: 'approved' } }); setPurchaseOrders(res.data); } catch { setPurchaseOrders([]); }
+    try { const res = await api.get('/api/purchasing/purchase-orders', { params: { status: 'approved' } }); setPurchaseOrders(Array.isArray(res.data) ? res.data : res.data.orders || []); } catch { setPurchaseOrders([]); }
   };
 
   const handlePOChange = async (poId) => {

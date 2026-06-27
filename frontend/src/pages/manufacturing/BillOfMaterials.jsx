@@ -15,7 +15,7 @@ function BillOfMaterials() {
   const fetchItems = async () => {
     try {
       const res = await api.get('/api/inventory/items', { params: { search, manufactured: true } });
-      setItems(res.data);
+      setItems(Array.isArray(res.data) ? res.data : res.data.items || []);
     } catch { setItems([]); }
   };
 

@@ -14,11 +14,11 @@ function ARInvoices() {
   useEffect(() => { fetchInvoices(); }, []);
 
   const fetchInvoices = async () => {
-    try { const res = await api.get('/api/accounting/ar-invoices'); setInvoices(res.data); } catch { setInvoices([]); }
+    try { const res = await api.get('/api/sales/invoices'); setInvoices(res.data); } catch { setInvoices([]); }
   };
 
   const fetchCustomers = async () => {
-    try { const res = await api.get('/api/sales/customers'); setCustomers(res.data); } catch { setCustomers([]); }
+    try { const res = await api.get('/api/sales/customers'); setCustomers(Array.isArray(res.data) ? res.data : res.data.customers || []); } catch { setCustomers([]); }
   };
 
   const handleNew = () => {
@@ -30,7 +30,7 @@ function ARInvoices() {
   const handleSave = async () => {
     const total = (parseFloat(form.subtotal) || 0) + (parseFloat(form.tax_amount) || 0) + (parseFloat(form.freight) || 0);
     try {
-      await api.post('/api/accounting/ar-invoices', { ...form, total });
+      await api.post('/api/sales/invoices', { ...form, total });
       toast.success('AR Invoice created');
       setShowModal(false);
       fetchInvoices();
