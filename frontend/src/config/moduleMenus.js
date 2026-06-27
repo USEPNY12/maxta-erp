@@ -26,6 +26,7 @@ export const salesMenu = {
     { label: 'Shipments', path: '/sales/shipments', icon: '🚚' },
     { label: 'A/R Invoices', path: '/sales/invoices', icon: '💰' },
     { label: 'Customers', path: '/sales/customers', icon: '👥' },
+    { label: 'Fab Charges', path: '/setup?tab=fabrication-charges', icon: '💲' },
   ],
   reports: {
     type: 'Sales',
@@ -53,7 +54,6 @@ export const manufacturingMenu = {
     { label: 'Labor', path: '/manufacturing/labor', icon: '👷' },
     { label: 'Recuts', path: '/manufacturing/recuts', icon: '⚠️' },
     { label: 'Cutting', path: '/manufacturing/cutting-optimization', icon: '✂️' },
-    { label: 'Fab Charges', path: '/setup?tab=fabrication-charges', icon: '💲' },
     { label: 'Work Centers', path: '/manufacturing/work-centers', icon: '⚙️' },
     { label: 'Routing', path: '/manufacturing/routing-templates', icon: '🔄' },
   ],

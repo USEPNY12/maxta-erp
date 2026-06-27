@@ -28,7 +28,8 @@ const NAV_SECTIONS = [
     { key: 'customer-types', label: 'Customer Types' },
     { key: 'tax-groups', label: 'Tax Groups' },
     { key: 'price-lists', label: 'Price Lists' },
-    { key: 'salespeople', label: 'Salespeople' }
+    { key: 'salespeople', label: 'Salespeople' },
+    { key: 'fabrication-charges', label: 'Fabrication Charges' }
   ]},
   { group: 'Inventory', icon: '📦', items: [
     { key: 'item-types', label: 'Item Types' },
@@ -38,8 +39,7 @@ const NAV_SECTIONS = [
     { key: 'scrap-codes', label: 'Scrap Codes' }
   ]},
   { group: 'Manufacturing', icon: '🏭', items: [
-    { key: 'work-centers', label: 'Work Centers' },
-    { key: 'fabrication-charges', label: 'Fabrication Charges' }
+    { key: 'work-centers', label: 'Work Centers' }
   ]},
   { group: 'Purchasing', icon: '🛒', items: [
     { key: 'vendor-types', label: 'Vendor Types' }
