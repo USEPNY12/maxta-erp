@@ -99,6 +99,9 @@ try { app.use('/api/manufacturing-advanced', require('./routes/manufacturingAdva
 // Phase 5 routes - Shipping & Logistics (Routes, Rack Loading, Drivers, POD, Freight)
 try { app.use('/api/shipping', require('./routes/shipping')); } catch(e) { console.log('Shipping routes not loaded:', e.message); }
 
+// Phase 7 routes - Advanced Accounting & Finance (Multi-currency, Bank Recon, Budgets, Cash Flow, Tax)
+try { app.use('/api/accounting-advanced', require('./routes/accountingAdvanced')); } catch(e) { console.log('Accounting Advanced routes not loaded:', e.message); }
+
 // Static uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 

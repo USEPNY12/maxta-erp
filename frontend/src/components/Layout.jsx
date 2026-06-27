@@ -32,6 +32,11 @@ const navItems = [
   { path: '/shipping/rack-loading', label: 'Rack Loading', icon: FaBoxes, module: null, group: 'shipping' },
   { path: '/shipping/fleet', label: 'Fleet & Drivers', icon: FaTruck, module: null, group: 'shipping' },
   { path: '/shipping/freight', label: 'Freight Costs', icon: FaDollarSign, module: null, group: 'shipping' },
+  // Phase 7 - Finance
+  { path: '/accounting/financial-dashboard', label: 'Finance Dashboard', icon: FaChartBar, module: 'accounting', group: 'finance' },
+  { path: '/accounting/budget-manager', label: 'Budgets', icon: FaCalculator, module: 'accounting', group: 'finance' },
+  { path: '/accounting/cash-flow', label: 'Cash Flow', icon: FaDollarSign, module: 'accounting', group: 'finance' },
+  { path: '/accounting/tax-reporting', label: 'Tax Reporting', icon: FaFileAlt, module: 'accounting', group: 'finance' },
   { path: '/setup', label: 'Setup', icon: FaCog, module: 'system_setup', group: 'admin' },
 ];
 
@@ -86,6 +91,8 @@ function Layout() {
   const groupedItems = {
     main: visibleNavItems.filter(i => i.group === 'main'),
     production: visibleNavItems.filter(i => i.group === 'production'),
+    shipping: visibleNavItems.filter(i => i.group === 'shipping'),
+    finance: visibleNavItems.filter(i => i.group === 'finance'),
     tools: visibleNavItems.filter(i => i.group === 'tools'),
     admin: visibleNavItems.filter(i => i.group === 'admin'),
   };
@@ -200,6 +207,22 @@ function Layout() {
                 </div>
               ))}
             </div>
+
+            {groupedItems.finance.length > 0 && (
+              <div className="mobile-menu-section">
+                <div className="mobile-menu-section-title">Finance</div>
+                {groupedItems.finance.map(item => (
+                  <div
+                    key={item.path}
+                    className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
+                    onClick={() => navigate(item.path)}
+                  >
+                    <item.icon size={18} />
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {groupedItems.admin.length > 0 && (
               <div className="mobile-menu-section">

@@ -66,6 +66,11 @@ const APInvoices = lazy(() => import('./pages/accounting/APInvoices'));
 const CustomerPayments = lazy(() => import('./pages/accounting/CustomerPayments'));
 const VendorPayments = lazy(() => import('./pages/accounting/VendorPayments'));
 const BankReconciliation = lazy(() => import('./pages/accounting/BankReconciliation'));
+// Phase 7 - Advanced Accounting & Finance
+const BudgetManager = lazy(() => import('./pages/accounting/BudgetManager'));
+const CashFlowDashboard = lazy(() => import('./pages/accounting/CashFlowDashboard'));
+const TaxReporting = lazy(() => import('./pages/accounting/TaxReporting'));
+const FinancialDashboard = lazy(() => import('./pages/accounting/FinancialDashboard'));
 
 // Other modules
 const Reports = lazy(() => import('./pages/Reports'));
@@ -247,6 +252,11 @@ function App() {
           <Route path="accounting/customer-payments" element={<ProtectedModule module="accounting" permissions={permissions}><CustomerPayments /></ProtectedModule>} />
           <Route path="accounting/vendor-payments" element={<ProtectedModule module="accounting" permissions={permissions}><VendorPayments /></ProtectedModule>} />
           <Route path="accounting/bank-recon" element={<ProtectedModule module="accounting" permissions={permissions}><BankReconciliation /></ProtectedModule>} />
+          {/* Phase 7 - Advanced Accounting */}
+          <Route path="accounting/budget-manager" element={<ProtectedModule module="accounting" permissions={permissions}><BudgetManager /></ProtectedModule>} />
+          <Route path="accounting/cash-flow" element={<ProtectedModule module="accounting" permissions={permissions}><CashFlowDashboard /></ProtectedModule>} />
+          <Route path="accounting/tax-reporting" element={<ProtectedModule module="accounting" permissions={permissions}><TaxReporting /></ProtectedModule>} />
+          <Route path="accounting/financial-dashboard" element={<ProtectedModule module="accounting" permissions={permissions}><FinancialDashboard /></ProtectedModule>} />
           {/* Reports & Setup */}
           <Route path="reports" element={<ProtectedModule module="reports" permissions={permissions}><Reports /></ProtectedModule>} />
           <Route path="setup" element={<ProtectedModule module="system_setup" permissions={permissions}><SystemSetup /></ProtectedModule>} />

@@ -183,9 +183,13 @@ export const accountingMenu = {
     { label: 'Customer Payments', path: '/accounting/customer-payments', icon: '💳' },
     { label: 'Vendor Payments', path: '/accounting/vendor-payments', icon: '🏦' },
     { label: 'Bank Recon', path: '/accounting/bank-recon', icon: '🏛️' },
+    { label: 'Finance Dashboard', path: '/accounting/financial-dashboard', icon: '📈' },
+    { label: 'Budget Manager', path: '/accounting/budget-manager', icon: '📋' },
+    { label: 'Cash Flow', path: '/accounting/cash-flow', icon: '💵' },
+    { label: 'Tax Reporting', path: '/accounting/tax-reporting', icon: '🏢' },
   ],
   reports: {
     type: 'Accounting',
-    options: ['Trial Balance', 'Income Statement', 'Balance Sheet', 'GL Detail', 'AP Aging', 'AR Aging'],
+    options: ['Trial Balance', 'Income Statement', 'Balance Sheet', 'GL Detail', 'AP Aging', 'AR Aging', 'Budget Variance', 'Cash Flow Projection'],
   },
 };

@@ -952,4 +952,204 @@ module.exports = async () => {
     try { await pool.query(sql); } catch(e) { /* ignore - column may already exist or MySQL < 8.0.19 */ }
   }
   console.log('Phase 5 ALTER TABLE fixes applied');
+
+  // ═══════════════════════════════════════════════════════════════
+  // PHASE 7 - Advanced Accounting & Finance
+  // ═══════════════════════════════════════════════════════════════
+  try {
+    // Multi-currency support on transactions
+    await pool.query(`CREATE TABLE IF NOT EXISTS currency_transactions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      transaction_type ENUM('ar_invoice','ap_invoice','customer_payment','vendor_payment','quote','sales_order','purchase_order') NOT NULL,
+      transaction_id INT NOT NULL,
+      currency_code VARCHAR(3) NOT NULL DEFAULT 'USD',
+      exchange_rate DECIMAL(12,6) NOT NULL DEFAULT 1.000000,
+      original_amount DECIMAL(14,2) NOT NULL,
+      base_amount DECIMAL(14,2) NOT NULL,
+      realized_gain_loss DECIMAL(14,2) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // Bank statement imports
+    await pool.query(`CREATE TABLE IF NOT EXISTS bank_statements (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      bank_id INT NOT NULL,
+      statement_date DATE NOT NULL,
+      opening_balance DECIMAL(14,2) NOT NULL,
+      closing_balance DECIMAL(14,2) NOT NULL,
+      total_deposits DECIMAL(14,2) DEFAULT 0,
+      total_withdrawals DECIMAL(14,2) DEFAULT 0,
+      transaction_count INT DEFAULT 0,
+      imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      imported_by INT,
+      file_name VARCHAR(255),
+      status ENUM('imported','in_progress','reconciled') DEFAULT 'imported'
+    )`);
+
+    // Bank statement lines for auto-matching
+    await pool.query(`CREATE TABLE IF NOT EXISTS bank_statement_lines (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      statement_id INT NOT NULL,
+      transaction_date DATE NOT NULL,
+      description VARCHAR(500),
+      reference VARCHAR(100),
+      amount DECIMAL(14,2) NOT NULL,
+      type ENUM('deposit','withdrawal') NOT NULL,
+      matched_voucher_id INT,
+      matched_payment_id INT,
+      match_confidence DECIMAL(5,2),
+      match_status ENUM('unmatched','auto_matched','manual_matched','confirmed') DEFAULT 'unmatched',
+      category VARCHAR(50),
+      notes TEXT
+    )`);
+
+    // Budget management (enhanced)
+    await pool.query(`CREATE TABLE IF NOT EXISTS budgets (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      fiscal_year INT NOT NULL,
+      budget_type ENUM('annual','quarterly','monthly') DEFAULT 'annual',
+      status ENUM('draft','approved','active','closed') DEFAULT 'draft',
+      total_amount DECIMAL(14,2) DEFAULT 0,
+      approved_by INT,
+      approved_at DATETIME,
+      notes TEXT,
+      created_by INT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS budget_lines (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      budget_id INT NOT NULL,
+      gl_account_id INT NOT NULL,
+      period_1 DECIMAL(14,2) DEFAULT 0,
+      period_2 DECIMAL(14,2) DEFAULT 0,
+      period_3 DECIMAL(14,2) DEFAULT 0,
+      period_4 DECIMAL(14,2) DEFAULT 0,
+      period_5 DECIMAL(14,2) DEFAULT 0,
+      period_6 DECIMAL(14,2) DEFAULT 0,
+      period_7 DECIMAL(14,2) DEFAULT 0,
+      period_8 DECIMAL(14,2) DEFAULT 0,
+      period_9 DECIMAL(14,2) DEFAULT 0,
+      period_10 DECIMAL(14,2) DEFAULT 0,
+      period_11 DECIMAL(14,2) DEFAULT 0,
+      period_12 DECIMAL(14,2) DEFAULT 0,
+      annual_total DECIMAL(14,2) DEFAULT 0,
+      notes VARCHAR(255)
+    )`);
+
+    // Cash flow categories
+    await pool.query(`CREATE TABLE IF NOT EXISTS cash_flow_categories (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      category_type ENUM('operating','investing','financing') NOT NULL,
+      gl_account_id INT,
+      is_inflow TINYINT(1) DEFAULT 1,
+      sort_order INT DEFAULT 0
+    )`);
+
+    // Cash flow projections
+    await pool.query(`CREATE TABLE IF NOT EXISTS cash_flow_projections (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      projection_date DATE NOT NULL,
+      category_id INT,
+      source_type VARCHAR(50),
+      source_id INT,
+      description VARCHAR(255),
+      projected_amount DECIMAL(14,2) NOT NULL,
+      actual_amount DECIMAL(14,2),
+      confidence_level ENUM('high','medium','low') DEFAULT 'medium',
+      status ENUM('projected','realized','cancelled') DEFAULT 'projected',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // Tax jurisdictions
+    await pool.query(`CREATE TABLE IF NOT EXISTS tax_jurisdictions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      jurisdiction_code VARCHAR(20) NOT NULL,
+      jurisdiction_type ENUM('state','county','city','district','federal') NOT NULL,
+      parent_jurisdiction_id INT,
+      tax_rate DECIMAL(6,4) NOT NULL DEFAULT 0,
+      effective_date DATE,
+      expiry_date DATE,
+      is_active TINYINT(1) DEFAULT 1
+    )`);
+
+    // Tax collected/paid tracking
+    await pool.query(`CREATE TABLE IF NOT EXISTS tax_transactions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      transaction_type ENUM('collected','paid','adjustment') NOT NULL,
+      jurisdiction_id INT NOT NULL,
+      document_type VARCHAR(50),
+      document_id INT,
+      document_number VARCHAR(50),
+      customer_id INT,
+      vendor_id INT,
+      taxable_amount DECIMAL(14,2) NOT NULL,
+      tax_rate DECIMAL(6,4) NOT NULL,
+      tax_amount DECIMAL(14,2) NOT NULL,
+      transaction_date DATE NOT NULL,
+      period_id INT,
+      is_remitted TINYINT(1) DEFAULT 0,
+      remitted_date DATE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // Tax return periods
+    await pool.query(`CREATE TABLE IF NOT EXISTS tax_returns (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      jurisdiction_id INT NOT NULL,
+      period_start DATE NOT NULL,
+      period_end DATE NOT NULL,
+      filing_frequency ENUM('monthly','quarterly','annually') NOT NULL,
+      total_taxable_sales DECIMAL(14,2) DEFAULT 0,
+      total_tax_collected DECIMAL(14,2) DEFAULT 0,
+      total_tax_paid DECIMAL(14,2) DEFAULT 0,
+      net_tax_due DECIMAL(14,2) DEFAULT 0,
+      status ENUM('open','filed','paid') DEFAULT 'open',
+      filed_date DATE,
+      payment_date DATE,
+      confirmation_number VARCHAR(50),
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // Seed tax jurisdictions
+    const [tj] = await pool.query('SELECT COUNT(*) as cnt FROM tax_jurisdictions');
+    if (tj[0].cnt === 0) {
+      await pool.query(`INSERT IGNORE INTO tax_jurisdictions (name, jurisdiction_code, jurisdiction_type, tax_rate, effective_date, is_active) VALUES
+        ('Texas State', 'TX', 'state', 6.2500, '2024-01-01', 1),
+        ('Harris County', 'TX-HARRIS', 'county', 0.0000, '2024-01-01', 1),
+        ('Houston City', 'TX-HOU', 'city', 1.0000, '2024-01-01', 1),
+        ('MTA Transit', 'TX-MTA', 'district', 1.0000, '2024-01-01', 1),
+        ('California State', 'CA', 'state', 7.2500, '2024-01-01', 1),
+        ('Los Angeles County', 'CA-LA', 'county', 2.2500, '2024-01-01', 1)`);
+    }
+
+    // Seed cash flow categories
+    const [cfc] = await pool.query('SELECT COUNT(*) as cnt FROM cash_flow_categories');
+    if (cfc[0].cnt === 0) {
+      await pool.query(`INSERT IGNORE INTO cash_flow_categories (name, category_type, is_inflow, sort_order) VALUES
+        ('Customer Collections', 'operating', 1, 1),
+        ('Vendor Payments', 'operating', 0, 2),
+        ('Payroll', 'operating', 0, 3),
+        ('Tax Payments', 'operating', 0, 4),
+        ('Utilities & Rent', 'operating', 0, 5),
+        ('Equipment Purchase', 'investing', 0, 6),
+        ('Equipment Sale', 'investing', 1, 7),
+        ('Loan Proceeds', 'financing', 1, 8),
+        ('Loan Payments', 'financing', 0, 9),
+        ('Owner Distributions', 'financing', 0, 10)`);
+    }
+
+    // Seed a sample budget for 2026
+    const [bg] = await pool.query('SELECT COUNT(*) as cnt FROM budgets');
+    if (bg[0].cnt === 0) {
+      await pool.query(`INSERT IGNORE INTO budgets (name, fiscal_year, budget_type, status, total_amount, notes) VALUES
+        ('FY2026 Operating Budget', 2026, 'annual', 'active', 2400000.00, 'Annual operating budget for fiscal year 2026')`);
+    }
+
+    console.log('Phase 7 tables + seeds: verified');
+  } catch(e) { console.log('Phase7 error:', e.message); }
 };
