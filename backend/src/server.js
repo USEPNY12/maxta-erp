@@ -59,25 +59,61 @@ app.listen(PORT, '0.0.0.0', () => {
 
 module.exports = app;
 
-// DB init endpoint for Coolify deployment
+// DB init endpoint for Coolify deployment (pure Node.js - no shell commands)
 app.get('/api/init-db', async (req, res) => {
   try {
-    const { execSync } = require('child_process');
     const pool = require('./config/database');
+    const https = require('https');
+    const fs = require('fs');
+    
     // Check if tables exist
     const [rows] = await pool.query("SHOW TABLES LIKE 'users'");
     if (rows.length > 0) {
       return res.json({ message: 'Database already initialized', tables: rows.length });
     }
-    // Import the SQL dump
-    console.log('Importing database...');
-    try { execSync('apk add --no-cache mysql-client curl 2>/dev/null || true'); } catch(e) {}
-    const cmd = `curl -sL "https://raw.githubusercontent.com/USEPNY12/maxta-erp/main/database/maxta_erp_dump.sql" | mysql -h ${process.env.DB_HOST || 'localhost'} -u ${process.env.DB_USER || 'maxta_erp'} -p'${process.env.DB_PASSWORD || 'MaxTA_ERP_2026!'}' ${process.env.DB_NAME || 'maxta_erp'}`;
-    execSync(cmd, { stdio: 'inherit' });
+    
+    // Download the SQL dump using Node.js https
+    console.log('Downloading SQL dump...');
+    const sqlContent = await new Promise((resolve, reject) => {
+      https.get('https://raw.githubusercontent.com/USEPNY12/maxta-erp/main/database/maxta_erp_dump.sql', (response) => {
+        let data = '';
+        response.on('data', chunk => data += chunk);
+        response.on('end', () => resolve(data));
+        response.on('error', reject);
+      }).on('error', reject);
+    });
+    
+    console.log(`Downloaded ${sqlContent.length} bytes of SQL`);
+    
+    // Split by semicolons and execute each statement
+    const statements = sqlContent.split(/;\s*\n/).filter(s => s.trim().length > 0);
+    console.log(`Executing ${statements.length} SQL statements...`);
+    
+    const conn = await pool.getConnection();
+    try {
+      await conn.query('SET FOREIGN_KEY_CHECKS = 0');
+      for (let i = 0; i < statements.length; i++) {
+        const stmt = statements[i].trim();
+        if (stmt && !stmt.startsWith('--') && !stmt.startsWith('/*')) {
+          try {
+            await conn.query(stmt);
+          } catch (e) {
+            // Skip errors for individual statements (like DROP IF EXISTS)
+            if (!e.message.includes('already exists') && !e.message.includes("doesn't exist")) {
+              console.log(`Warning on statement ${i}: ${e.message.substring(0, 100)}`);
+            }
+          }
+        }
+      }
+      await conn.query('SET FOREIGN_KEY_CHECKS = 1');
+    } finally {
+      conn.release();
+    }
+    
     console.log('Database imported successfully!');
-    res.json({ message: 'Database imported successfully!' });
+    res.json({ message: 'Database imported successfully!', statements: statements.length });
   } catch (err) {
     console.error('DB init error:', err.message);
-    res.status(500).json({ error: err.message, stdout: err.stdout?.toString(), stderr: err.stderr?.toString() });
+    res.status(500).json({ error: err.message });
   }
 });
