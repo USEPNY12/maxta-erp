@@ -70,7 +70,7 @@ module.exports = async () => {
   try {
     const [racks] = await pool.query('SELECT COUNT(*) as cnt FROM dispatch_racks');
     if (racks[0].cnt === 0) {
-      await pool.query(`INSERT INTO dispatch_racks (rack_number, rack_type, capacity_slots, status, location) VALUES 
+      await pool.query(`INSERT IGNORE INTO dispatch_racks (rack_number, rack_type, capacity_slots, status, location) VALUES 
         ('RACK-001', 'A-frame', 20, 'available', 'Warehouse Bay 1'),
         ('RACK-002', 'A-frame', 20, 'available', 'Warehouse Bay 2'),
         ('RACK-003', 'L-frame', 15, 'available', 'Warehouse Bay 3'),
@@ -79,7 +79,7 @@ module.exports = async () => {
     }
     const [rules] = await pool.query('SELECT COUNT(*) as cnt FROM notification_rules');
     if (rules[0].cnt === 0) {
-      await pool.query(`INSERT INTO notification_rules (rule_name, event_type, condition_field, condition_operator, condition_value, action_type, message_template, is_active) VALUES 
+      await pool.query(`INSERT IGNORE INTO notification_rules (rule_name, event_type, condition_field, condition_operator, condition_value, action_type, message_template, is_active) VALUES 
         ('Low Stock Alert', 'inventory_change', 'quantity_on_hand', 'less_than', 'reorder_point', 'in-app', 'Item {{item_name}} is below reorder point', TRUE),
         ('Overdue Invoice', 'daily_check', 'due_date', 'less_than', 'today', 'email', 'Invoice {{invoice_number}} is overdue', TRUE),
         ('WO Deadline Warning', 'daily_check', 'due_date', 'within_days', '2', 'in-app', 'Work Order {{wo_number}} is due soon', TRUE),
@@ -88,7 +88,7 @@ module.exports = async () => {
     }
     const [templates] = await pool.query('SELECT COUNT(*) as cnt FROM email_templates');
     if (templates[0].cnt === 0) {
-      await pool.query(`INSERT INTO email_templates (template_name, subject, body, template_type, is_active) VALUES 
+      await pool.query(`INSERT IGNORE INTO email_templates (template_name, subject, body, template_type, is_active) VALUES 
         ('Invoice Email', 'Invoice {{invoice_number}} from Max TA Group', '<p>Dear {{customer_name}},</p><p>Please find attached invoice for {{amount}}. Due: {{due_date}}</p>', 'ar_invoice', TRUE),
         ('Order Confirmation', 'Order Confirmation - {{order_number}}', '<p>Dear {{customer_name}},</p><p>Your order {{order_number}} has been confirmed.</p>', 'sales_order', TRUE),
         ('Shipment Notification', 'Your Order Has Shipped', '<p>Dear {{customer_name}},</p><p>Your order {{order_number}} has been shipped.</p>', 'shipment', TRUE),
@@ -101,7 +101,7 @@ module.exports = async () => {
   try {
     const [recipes] = await pool.query('SELECT COUNT(*) as cnt FROM lami_autoclave_recipes');
     if (recipes[0].cnt === 0) {
-      await pool.query(`INSERT INTO lami_autoclave_recipes (recipe_name, recipe_code, interlayer_type, min_thickness_mm, max_thickness_mm, ramp_rate_c_per_min, target_temperature_c, soak_time_min, max_pressure_bar, cooling_rate_c_per_min, total_cycle_hours, vacuum_required, notes) VALUES
+      await pool.query(`INSERT IGNORE INTO lami_autoclave_recipes (recipe_name, recipe_code, interlayer_type, min_thickness_mm, max_thickness_mm, ramp_rate_c_per_min, target_temperature_c, soak_time_min, max_pressure_bar, cooling_rate_c_per_min, total_cycle_hours, vacuum_required, notes) VALUES
         ('PVB Standard', 'PVB-STD', 'PVB', 6.00, 20.00, 1.5, 135.0, 60, 12.00, 2.0, 3.5, FALSE, 'Standard PVB cycle for 6-20mm total thickness'),
         ('PVB Thick', 'PVB-THK', 'PVB', 20.00, 50.00, 1.0, 140.0, 90, 14.00, 1.5, 5.0, FALSE, 'Extended cycle for thick laminated assemblies'),
         ('SGP Standard', 'SGP-STD', 'SGP', 6.00, 30.00, 2.0, 135.0, 45, 12.50, 2.0, 3.0, FALSE, 'Standard SGP/SentryGlas cycle'),
@@ -110,7 +110,7 @@ module.exports = async () => {
     }
     const [rolls] = await pool.query('SELECT COUNT(*) as cnt FROM lami_interlayer_rolls');
     if (rolls[0].cnt === 0) {
-      await pool.query(`INSERT INTO lami_interlayer_rolls (roll_number, material_type, thickness_mm, width_mm, original_length_m, current_length_m, lot_number, manufacturer, color, received_date, expiry_date, cost_per_sqm, status) VALUES
+      await pool.query(`INSERT IGNORE INTO lami_interlayer_rolls (roll_number, material_type, thickness_mm, width_mm, original_length_m, current_length_m, lot_number, manufacturer, color, received_date, expiry_date, cost_per_sqm, status) VALUES
         ('PVB-R001', 'PVB', 0.76, 2500, 100.00, 78.50, 'LOT-2024-A1', 'Eastman', 'Clear', '2024-06-01', '2026-06-01', 8.50, 'in_use'),
         ('PVB-R002', 'PVB', 1.52, 2500, 100.00, 100.00, 'LOT-2024-A2', 'Eastman', 'Clear', '2024-06-15', '2026-06-15', 14.00, 'sealed'),
         ('SGP-R001', 'SGP', 1.52, 1830, 50.00, 42.30, 'LOT-2024-B1', 'Kuraray', 'Clear', '2024-05-01', '2026-05-01', 45.00, 'in_use'),
@@ -238,7 +238,7 @@ module.exports = async () => {
   try {
     const [pm] = await pool.query('SELECT COUNT(*) as cnt FROM pricing_matrix');
     if (pm[0].cnt === 0) {
-      await pool.query(`INSERT INTO pricing_matrix (glass_type, thickness, price_per_sqft, min_sqft, min_charge, markup_percent, cost_per_sqft) VALUES
+      await pool.query(`INSERT IGNORE INTO pricing_matrix (glass_type, thickness, price_per_sqft, min_sqft, min_charge, markup_percent, cost_per_sqft) VALUES
         ('Clear Annealed', '1/8"', 6.00, 3.00, 18.00, 0, 2.50),
         ('Clear Annealed', '3/16"', 7.00, 3.00, 21.00, 0, 3.00),
         ('Clear Annealed', '1/4"', 8.50, 3.00, 25.50, 0, 3.50),
@@ -269,7 +269,7 @@ module.exports = async () => {
     }
     const [fc] = await pool.query('SELECT COUNT(*) as cnt FROM fabrication_charges');
     if (fc[0].cnt === 0) {
-      await pool.query(`INSERT INTO fabrication_charges (category, name, default_rate, pricing_method, cost) VALUES
+      await pool.query(`INSERT IGNORE INTO fabrication_charges (category, name, default_rate, pricing_method, cost) VALUES
         ('Edgework', 'Seamed Edge', 2.00, 'per_linear_foot', 0.80),
         ('Edgework', 'Flat Polish', 4.50, 'per_linear_foot', 1.80),
         ('Edgework', 'Pencil Polish', 3.50, 'per_linear_foot', 1.40),
@@ -291,7 +291,7 @@ module.exports = async () => {
     }
     const [qb] = await pool.query('SELECT COUNT(*) as cnt FROM quantity_breaks');
     if (qb[0].cnt === 0) {
-      await pool.query(`INSERT INTO quantity_breaks (name, min_qty, max_qty, discount_percent) VALUES
+      await pool.query(`INSERT IGNORE INTO quantity_breaks (name, min_qty, max_qty, discount_percent) VALUES
         ('Single Piece', 1, 4, 0.00),
         ('Small Batch (5-9)', 5, 9, 3.00),
         ('Medium Batch (10-24)', 10, 24, 5.00),
@@ -301,7 +301,7 @@ module.exports = async () => {
     }
     const [aw] = await pool.query('SELECT COUNT(*) as cnt FROM approval_workflows');
     if (aw[0].cnt === 0) {
-      await pool.query(`INSERT INTO approval_workflows (name, document_type, condition_field, condition_operator, condition_value, approver_role, priority) VALUES
+      await pool.query(`INSERT IGNORE INTO approval_workflows (name, document_type, condition_field, condition_operator, condition_value, approver_role, priority) VALUES
         ('High Value Quote', 'quote', 'total', 'gt', 10000.00, 'manager', 1),
         ('Large Discount', 'quote', 'max_discount_percent', 'gt', 15.00, 'manager', 2),
         ('Low Margin Alert', 'quote', 'min_margin_percent', 'lt', 20.00, 'director', 3),
@@ -310,14 +310,14 @@ module.exports = async () => {
     }
     const [cr] = await pool.query('SELECT COUNT(*) as cnt FROM commission_rules');
     if (cr[0].cnt === 0) {
-      await pool.query(`INSERT INTO commission_rules (name, salesperson_id, customer_type, min_revenue, max_revenue, commission_rate) VALUES
+      await pool.query(`INSERT IGNORE INTO commission_rules (name, salesperson_id, customer_type, min_revenue, max_revenue, commission_rate) VALUES
         ('Default Commission', NULL, NULL, 0, 999999999, 5.00),
         ('High Value Orders (>10K)', NULL, NULL, 10000, 999999999, 7.50),
         ('New Customer Bonus', NULL, 'new', 0, 999999999, 8.00)`);
     }
     const [er] = await pool.query('SELECT COUNT(*) as cnt FROM exchange_rates');
     if (er[0].cnt === 0) {
-      await pool.query(`INSERT INTO exchange_rates (from_currency, to_currency, rate, effective_date) VALUES
+      await pool.query(`INSERT IGNORE INTO exchange_rates (from_currency, to_currency, rate, effective_date) VALUES
         ('USD', 'CAD', 1.3600, CURDATE()),
         ('USD', 'EUR', 0.9200, CURDATE()),
         ('USD', 'GBP', 0.7900, CURDATE()),
@@ -325,7 +325,7 @@ module.exports = async () => {
     }
     const [sp] = await pool.query('SELECT COUNT(*) as cnt FROM salespeople');
     if (sp[0].cnt === 0) {
-      await pool.query(`INSERT INTO salespeople (name, email, commission_rate) VALUES
+      await pool.query(`INSERT IGNORE INTO salespeople (name, email, commission_rate) VALUES
         ('John Smith', 'john@maxtagroup.com', 5.00),
         ('Sarah Johnson', 'sarah@maxtagroup.com', 6.00),
         ('Mike Williams', 'mike@maxtagroup.com', 5.50)`);
@@ -437,7 +437,7 @@ module.exports = async () => {
   try {
     const [cb] = await pool.query('SELECT COUNT(*) as cnt FROM company_branding');
     if (cb[0].cnt === 0) {
-      await pool.query(`INSERT INTO company_branding (setting_key, setting_value) VALUES
+      await pool.query(`INSERT IGNORE INTO company_branding (setting_key, setting_value) VALUES
         ('company_name', 'Max TA Group'),
         ('company_address', '123 Glass Industry Blvd, Suite 100'),
         ('company_city', 'Houston'),
@@ -469,7 +469,7 @@ module.exports = async () => {
     // Create PVB interlayer item if not exists
     const [pvbCheck] = await pool.query("SELECT id FROM items WHERE item_number = 'PVB-076'");
     if (pvbCheck.length === 0) {
-      await pool.query(`INSERT INTO items (item_number, description, item_type_id, uom, is_purchased, is_material, standard_cost, qty_on_hand)
+      await pool.query(`INSERT IGNORE INTO items (item_number, description, item_type_id, uom, is_purchased, is_material, standard_cost, qty_on_hand)
         VALUES ('PVB-076', 'PVB Interlayer Film 0.76mm', 6, 'SqFt', 1, 1, 2.50, 5000.0000)`);
     }
     
@@ -478,13 +478,13 @@ module.exports = async () => {
     if (lgItem.length > 0) {
       const [bomCheck] = await pool.query('SELECT id FROM bom_headers WHERE item_id = ? AND is_active = 1', [lgItem[0].id]);
       if (bomCheck.length === 0) {
-        const [bomResult] = await pool.query(`INSERT INTO bom_headers (item_id, revision, description, batch_size, is_active)
+        const [bomResult] = await pool.query(`INSERT IGNORE INTO bom_headers (item_id, revision, description, batch_size, is_active)
           VALUES (?, 'A', 'Laminated Safety Glass BOM - 2 lites + PVB interlayer', 1.0000, 1)`, [lgItem[0].id]);
         const bomId = bomResult.insertId;
         const [rgItem] = await pool.query("SELECT id FROM items WHERE item_number = 'RG-001'");
         const [pvbItem] = await pool.query("SELECT id FROM items WHERE item_number = 'PVB-076'");
         if (rgItem.length > 0 && pvbItem.length > 0) {
-          await pool.query(`INSERT INTO bom_lines (bom_id, sequence, component_item_id, quantity_per, waste_percent, uom, operation_sequence, component_type, consumed_at_operation, notes) VALUES
+          await pool.query(`INSERT IGNORE INTO bom_lines (bom_id, sequence, component_item_id, quantity_per, waste_percent, uom, operation_sequence, component_type, consumed_at_operation, notes) VALUES
             (?, 10, ?, 1.000000, 5.00, 'Sheet', 10, 'glass_lite', 10, 'Outer glass lite - cut to size'),
             (?, 20, ?, 1.000000, 5.00, 'Sheet', 10, 'glass_lite', 10, 'Inner glass lite - cut to size'),
             (?, 30, ?, 1.000000, 3.00, 'SqFt', 40, 'interlayer', 40, 'PVB 0.76mm interlayer - cut in clean room')`,
@@ -638,7 +638,7 @@ module.exports = async () => {
   try {
     const [qccp] = await pool.query('SELECT COUNT(*) as cnt FROM qc_checkpoints');
     if (qccp[0].cnt === 0) {
-      await pool.query(`INSERT INTO qc_checkpoints (work_center_id, checkpoint_name, checkpoint_code, inspection_type, measurement_type, target_value, min_value, max_value, unit_of_measure, is_critical, sequence, instructions) VALUES
+      await pool.query(`INSERT IGNORE INTO qc_checkpoints (work_center_id, checkpoint_name, checkpoint_code, inspection_type, measurement_type, target_value, min_value, max_value, unit_of_measure, is_critical, sequence, instructions) VALUES
         (1, 'Cut Size Accuracy', 'CUT-001', 'measurement', 'range', NULL, -0.5, 0.5, 'mm', 1, 10, 'Measure cut dimensions vs spec. Tolerance +/- 0.5mm'),
         (1, 'Edge Chip Check', 'CUT-002', 'visual', 'pass_fail', NULL, NULL, NULL, NULL, 1, 20, 'Inspect all edges for chips > 1mm'),
         (1, 'Glass Clarity', 'CUT-003', 'visual', 'pass_fail', NULL, NULL, NULL, NULL, 0, 30, 'Check for scratches, inclusions, or distortion'),
@@ -664,7 +664,7 @@ module.exports = async () => {
     // Seed scheduling constraints
     const [sc] = await pool.query('SELECT COUNT(*) as cnt FROM scheduling_constraints');
     if (sc[0].cnt === 0) {
-      await pool.query(`INSERT INTO scheduling_constraints (work_center_id, constraint_type, constraint_value, constraint_unit, notes) VALUES
+      await pool.query(`INSERT IGNORE INTO scheduling_constraints (work_center_id, constraint_type, constraint_value, constraint_unit, notes) VALUES
         (1, 'max_concurrent', 2, 'tables', 'Max 2 cutting tables running simultaneously'),
         (6, 'min_batch', 4, 'pieces', 'Minimum 4 pieces per tempering run for efficiency'),
         (6, 'requires_preheat', 30, 'minutes', 'Oven requires 30min preheat before first batch'),
@@ -894,14 +894,14 @@ module.exports = async () => {
   try {
     const [dr] = await pool.query('SELECT COUNT(*) as cnt FROM drivers');
     if (dr[0].cnt === 0) {
-      await pool.query(`INSERT INTO drivers (employee_name, employee_id, phone, email, license_number, license_expiry, license_class, home_zip) VALUES
+      await pool.query(`INSERT IGNORE INTO drivers (employee_name, employee_id, phone, email, license_number, license_expiry, license_class, home_zip) VALUES
         ('Carlos Rodriguez', 'DRV-001', '(713) 555-0201', 'carlos@maxtagroup.com', 'TX12345678', '2027-08-15', 'Class B', '77001'),
         ('James Wilson', 'DRV-002', '(713) 555-0202', 'james.w@maxtagroup.com', 'TX87654321', '2028-03-22', 'Class B', '77002'),
         ('David Chen', 'DRV-003', '(713) 555-0203', 'david.c@maxtagroup.com', 'TX11223344', '2027-11-30', 'Class A', '77003')`);
     }
     const [vh] = await pool.query('SELECT COUNT(*) as cnt FROM vehicles');
     if (vh[0].cnt === 0) {
-      await pool.query(`INSERT INTO vehicles (vehicle_number, vehicle_type, make, model, year, license_plate, max_weight_lbs, max_rack_count, fuel_type, mpg_estimate, odometer_miles) VALUES
+      await pool.query(`INSERT IGNORE INTO vehicles (vehicle_number, vehicle_type, make, model, year, license_plate, max_weight_lbs, max_rack_count, fuel_type, mpg_estimate, odometer_miles) VALUES
         ('TRK-001', 'flatbed', 'Ford', 'F-550', 2023, 'TX-GLZ-001', 15000, 3, 'diesel', 12.5, 45230),
         ('TRK-002', 'flatbed', 'International', 'MV607', 2022, 'TX-GLZ-002', 22000, 4, 'diesel', 10.0, 67890),
         ('VAN-001', 'van', 'Mercedes', 'Sprinter 3500', 2024, 'TX-GLZ-003', 5500, 1, 'diesel', 18.0, 12450),
@@ -909,7 +909,7 @@ module.exports = async () => {
     }
     const [rc] = await pool.query('SELECT COUNT(*) as cnt FROM rack_configurations');
     if (rc[0].cnt === 0) {
-      await pool.query(`INSERT INTO rack_configurations (rack_code, rack_type, max_weight_lbs, max_pieces, width_inches, height_inches, depth_inches, slot_count, slot_width_inches) VALUES
+      await pool.query(`INSERT IGNORE INTO rack_configurations (rack_code, rack_type, max_weight_lbs, max_pieces, width_inches, height_inches, depth_inches, slot_count, slot_width_inches) VALUES
         ('AF-001', 'a_frame', 3000, 25, 96, 84, 48, 12, 2.5),
         ('AF-002', 'a_frame', 3000, 25, 96, 84, 48, 12, 2.5),
         ('AF-003', 'a_frame', 2000, 15, 72, 72, 36, 8, 2.5),
@@ -920,7 +920,7 @@ module.exports = async () => {
     }
     const [dz] = await pool.query('SELECT COUNT(*) as cnt FROM delivery_zones');
     if (dz[0].cnt === 0) {
-      await pool.query(`INSERT INTO delivery_zones (zone_name, zone_code, base_delivery_fee, per_mile_rate, min_order_free_delivery, estimated_transit_days, max_pieces_per_trip) VALUES
+      await pool.query(`INSERT IGNORE INTO delivery_zones (zone_name, zone_code, base_delivery_fee, per_mile_rate, min_order_free_delivery, estimated_transit_days, max_pieces_per_trip) VALUES
         ('Houston Metro', 'HOU-METRO', 75.00, 2.50, 2500.00, 0, 100),
         ('Houston Suburbs', 'HOU-BURBS', 125.00, 3.00, 5000.00, 1, 75),
         ('Gulf Coast', 'GULF', 250.00, 3.50, 10000.00, 1, 50),
