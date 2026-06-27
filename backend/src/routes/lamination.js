@@ -86,7 +86,7 @@ router.get('/rolls/:id', authenticate, async (req, res) => {
     const [rolls] = await pool.query('SELECT * FROM lami_interlayer_rolls WHERE id = ?', [req.params.id]);
     if (!rolls.length) return res.status(404).json({ error: 'Roll not found' });
     const [usage] = await pool.query(`SELECT lr.*, wo.order_number FROM lami_layup_records lr 
-      LEFT JOIN work_orders wo ON lr.work_order_id = wo.id WHERE lr.roll_id = ? ORDER BY lr.layup_time DESC LIMIT 20`, [req.params.id]);
+      LEFT JOIN work_orders wo ON lr.work_order_id = wo.id WHERE lr.roll_id = ? ORDER BY lr.created_at DESC LIMIT 20`, [req.params.id]);
     res.json({ ...rolls[0], usage_history: usage });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -450,7 +450,7 @@ router.get('/layups', authenticate, async (req, res) => {
       LEFT JOIN lami_interlayer_rolls r ON lr.roll_id = r.id`;
     const params = [];
     if (status) { query += ' WHERE lr.status = ?'; params.push(status); }
-    query += ' ORDER BY lr.layup_time DESC';
+    query += ' ORDER BY lr.created_at DESC';
     const [layups] = await pool.query(query, params);
     res.json(layups);
   } catch (error) { res.status(500).json({ error: error.message }); }
