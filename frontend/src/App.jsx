@@ -83,6 +83,13 @@ const PricingMatrix = lazy(() => import('./pages/PricingMatrix'));
 const DocumentCenter = lazy(() => import('./components/DocumentCenter'));
 const CustomerPortal = lazy(() => import('./components/CustomerPortal'));
 
+// Shipping & Logistics (Phase 5)
+const ShippingDashboard = lazy(() => import('./pages/shipping/ShippingDashboard'));
+const DeliveryPlanner = lazy(() => import('./pages/shipping/DeliveryPlanner'));
+const RackLoading = lazy(() => import('./pages/shipping/RackLoading'));
+const DriverView = lazy(() => import('./pages/shipping/DriverView'));
+const FreightCosts = lazy(() => import('./pages/shipping/FreightCosts'));
+
 export const AuthContext = createContext(null);
 
 // Loading fallback for lazy-loaded modules
@@ -252,6 +259,12 @@ function App() {
           <Route path="documents" element={<DocManagement />} />
           <Route path="lamination" element={<ProtectedModule module="manufacturing" permissions={permissions}><Lamination /></ProtectedModule>} />
           <Route path="document-center" element={<DocumentCenter />} />
+          {/* Shipping & Logistics (Phase 5) */}
+          <Route path="shipping" element={<ShippingDashboard />} />
+          <Route path="shipping/routes" element={<DeliveryPlanner />} />
+          <Route path="shipping/rack-loading" element={<RackLoading />} />
+          <Route path="shipping/fleet" element={<DriverView />} />
+          <Route path="shipping/freight" element={<FreightCosts />} />
         </Route>
         {/* Customer Portal - public route (no auth required) */}
         <Route path="/portal/:token" element={<CustomerPortal />} />

@@ -34,7 +34,7 @@ module.exports = async () => {
   }
 
   // Add columns to work_orders for lamination parent/child WO support
-  const alterStatements = [
+  const phase5AlterStatements = [
     "ALTER TABLE work_orders ADD COLUMN parent_wo_id INT DEFAULT NULL",
     "ALTER TABLE work_orders ADD COLUMN wo_category ENUM('standard','assembly','glass_component','interlayer_component') DEFAULT 'standard'",
     "ALTER TABLE notifications ADD COLUMN is_dismissed BOOLEAN DEFAULT FALSE",
@@ -42,7 +42,7 @@ module.exports = async () => {
     "ALTER TABLE inventory_transactions MODIFY COLUMN transaction_type ENUM('receipt','issue','adjustment','transfer','return','scrap','wo_receipt','wo_issue','po_receipt','shipment') NOT NULL",
     "ALTER TABLE wo_receipts ADD COLUMN notes TEXT NULL"
   ];
-  for (const sql of alterStatements) {
+  for (const sql of phase5AlterStatements) {
     try { await pool.query(sql); } catch(e) { /* column already exists - ignore */ }
   }
 
@@ -681,4 +681,275 @@ module.exports = async () => {
 
     console.log('Phase 4 tables + seeds: verified');
   } catch(e) { console.log('Phase4 seed:', e.message); }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // PHASE 5: Shipping & Logistics
+  // ═══════════════════════════════════════════════════════════════════
+  const phase5Tables = [
+    `CREATE TABLE IF NOT EXISTS delivery_routes (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      route_number VARCHAR(30) UNIQUE,
+      route_name VARCHAR(255) NOT NULL,
+      route_date DATE NOT NULL,
+      driver_id INT,
+      vehicle_id INT,
+      status ENUM('planning','confirmed','in_progress','completed','cancelled') DEFAULT 'planning',
+      total_stops INT DEFAULT 0,
+      total_distance_miles DECIMAL(8,2) DEFAULT 0,
+      estimated_duration_hours DECIMAL(5,2) DEFAULT 0,
+      actual_start_time DATETIME,
+      actual_end_time DATETIME,
+      actual_distance_miles DECIMAL(8,2),
+      notes TEXT,
+      created_by INT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_route_date (route_date),
+      INDEX idx_route_driver (driver_id),
+      INDEX idx_route_status (status)
+    )`,
+    `CREATE TABLE IF NOT EXISTS delivery_stops (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      route_id INT NOT NULL,
+      stop_sequence INT NOT NULL,
+      shipment_id INT,
+      customer_id INT NOT NULL,
+      delivery_address TEXT NOT NULL,
+      city VARCHAR(100),
+      state VARCHAR(50),
+      zip VARCHAR(20),
+      latitude DECIMAL(10,7),
+      longitude DECIMAL(10,7),
+      scheduled_arrival DATETIME,
+      actual_arrival DATETIME,
+      actual_departure DATETIME,
+      status ENUM('pending','en_route','arrived','delivered','failed','skipped') DEFAULT 'pending',
+      delivery_notes TEXT,
+      special_instructions TEXT,
+      pieces_count INT DEFAULT 0,
+      weight_lbs DECIMAL(10,2) DEFAULT 0,
+      INDEX idx_stop_route (route_id),
+      INDEX idx_stop_shipment (shipment_id),
+      INDEX idx_stop_status (status)
+    )`,
+    `CREATE TABLE IF NOT EXISTS delivery_proof (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      delivery_stop_id INT NOT NULL,
+      shipment_id INT,
+      signed_by VARCHAR(255),
+      signature_data TEXT,
+      photo_urls JSON,
+      delivery_condition ENUM('perfect','minor_damage','major_damage','refused') DEFAULT 'perfect',
+      damage_notes TEXT,
+      received_pieces INT,
+      refused_pieces INT DEFAULT 0,
+      customer_comments TEXT,
+      gps_latitude DECIMAL(10,7),
+      gps_longitude DECIMAL(10,7),
+      delivered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_pod_stop (delivery_stop_id),
+      INDEX idx_pod_shipment (shipment_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS rack_configurations (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      rack_code VARCHAR(50) UNIQUE NOT NULL,
+      rack_type ENUM('a_frame','l_frame','flat_bed','custom') NOT NULL,
+      max_weight_lbs DECIMAL(10,2) NOT NULL,
+      max_pieces INT NOT NULL,
+      width_inches DECIMAL(8,2),
+      height_inches DECIMAL(8,2),
+      depth_inches DECIMAL(8,2),
+      slot_count INT DEFAULT 10,
+      slot_width_inches DECIMAL(6,2) DEFAULT 2.00,
+      is_active BOOLEAN DEFAULT TRUE,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS rack_loads (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      rack_id INT NOT NULL,
+      route_id INT,
+      load_date DATE NOT NULL,
+      status ENUM('planning','loading','loaded','in_transit','unloading','empty') DEFAULT 'planning',
+      total_pieces INT DEFAULT 0,
+      total_weight_lbs DECIMAL(10,2) DEFAULT 0,
+      loaded_by INT,
+      verified_by INT,
+      loaded_at DATETIME,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_rackload_rack (rack_id),
+      INDEX idx_rackload_route (route_id),
+      INDEX idx_rackload_date (load_date)
+    )`,
+    `CREATE TABLE IF NOT EXISTS rack_load_items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      rack_load_id INT NOT NULL,
+      slot_number INT NOT NULL,
+      work_order_id INT,
+      shipment_id INT,
+      item_description VARCHAR(255),
+      width_inches DECIMAL(8,2),
+      height_inches DECIMAL(8,2),
+      thickness_mm DECIMAL(5,2),
+      weight_lbs DECIMAL(8,2),
+      glass_type VARCHAR(100),
+      delivery_stop_id INT,
+      load_sequence INT,
+      unload_sequence INT,
+      status ENUM('planned','loaded','in_transit','delivered','damaged') DEFAULT 'planned',
+      notes TEXT,
+      INDEX idx_rli_load (rack_load_id),
+      INDEX idx_rli_wo (work_order_id),
+      INDEX idx_rli_stop (delivery_stop_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS drivers (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      employee_name VARCHAR(255) NOT NULL,
+      employee_id VARCHAR(50),
+      phone VARCHAR(30),
+      email VARCHAR(255),
+      license_number VARCHAR(50),
+      license_expiry DATE,
+      license_class VARCHAR(20),
+      is_active BOOLEAN DEFAULT TRUE,
+      max_hours_per_day DECIMAL(4,2) DEFAULT 10.00,
+      home_zip VARCHAR(20),
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS vehicles (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      vehicle_number VARCHAR(50) UNIQUE NOT NULL,
+      vehicle_type ENUM('flatbed','box_truck','van','trailer','pickup') NOT NULL,
+      make VARCHAR(100),
+      model VARCHAR(100),
+      year INT,
+      license_plate VARCHAR(30),
+      vin VARCHAR(50),
+      max_weight_lbs DECIMAL(10,2),
+      max_rack_count INT DEFAULT 2,
+      fuel_type ENUM('diesel','gasoline','electric','hybrid') DEFAULT 'diesel',
+      mpg_estimate DECIMAL(5,2),
+      is_active BOOLEAN DEFAULT TRUE,
+      last_service_date DATE,
+      next_service_date DATE,
+      odometer_miles INT,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS freight_costs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      route_id INT,
+      shipment_id INT,
+      cost_type ENUM('fuel','labor','tolls','maintenance','insurance','other') NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      description VARCHAR(255),
+      cost_date DATE NOT NULL,
+      vehicle_id INT,
+      driver_id INT,
+      miles_driven DECIMAL(8,2),
+      fuel_gallons DECIMAL(8,2),
+      fuel_price_per_gallon DECIMAL(5,3),
+      is_billable BOOLEAN DEFAULT TRUE,
+      billed_to_customer BOOLEAN DEFAULT FALSE,
+      invoice_id INT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_fc_route (route_id),
+      INDEX idx_fc_shipment (shipment_id),
+      INDEX idx_fc_date (cost_date)
+    )`,
+    `CREATE TABLE IF NOT EXISTS delivery_zones (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      zone_name VARCHAR(100) NOT NULL,
+      zone_code VARCHAR(20) UNIQUE NOT NULL,
+      zip_codes TEXT,
+      base_delivery_fee DECIMAL(8,2) DEFAULT 0,
+      per_mile_rate DECIMAL(6,4) DEFAULT 0,
+      min_order_free_delivery DECIMAL(10,2),
+      estimated_transit_days INT DEFAULT 1,
+      max_pieces_per_trip INT DEFAULT 50,
+      is_active BOOLEAN DEFAULT TRUE,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS driver_location_log (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      driver_id INT NOT NULL,
+      route_id INT,
+      latitude DECIMAL(10,7) NOT NULL,
+      longitude DECIMAL(10,7) NOT NULL,
+      speed_mph DECIMAL(5,1),
+      heading DECIMAL(5,1),
+      logged_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_dll_driver (driver_id),
+      INDEX idx_dll_route (route_id),
+      INDEX idx_dll_time (logged_at)
+    )`
+  ];
+  for (const sql of phase5Tables) {
+    try { await pool.query(sql); } catch(e) { console.log('Phase5 table:', e.message.substring(0, 80)); }
+  }
+
+  // Phase 5 seed data
+  try {
+    const [dr] = await pool.query('SELECT COUNT(*) as cnt FROM drivers');
+    if (dr[0].cnt === 0) {
+      await pool.query(`INSERT INTO drivers (employee_name, employee_id, phone, email, license_number, license_expiry, license_class, home_zip) VALUES
+        ('Carlos Rodriguez', 'DRV-001', '(713) 555-0201', 'carlos@maxtagroup.com', 'TX12345678', '2027-08-15', 'Class B', '77001'),
+        ('James Wilson', 'DRV-002', '(713) 555-0202', 'james.w@maxtagroup.com', 'TX87654321', '2028-03-22', 'Class B', '77002'),
+        ('David Chen', 'DRV-003', '(713) 555-0203', 'david.c@maxtagroup.com', 'TX11223344', '2027-11-30', 'Class A', '77003')`);
+    }
+    const [vh] = await pool.query('SELECT COUNT(*) as cnt FROM vehicles');
+    if (vh[0].cnt === 0) {
+      await pool.query(`INSERT INTO vehicles (vehicle_number, vehicle_type, make, model, year, license_plate, max_weight_lbs, max_rack_count, fuel_type, mpg_estimate, odometer_miles) VALUES
+        ('TRK-001', 'flatbed', 'Ford', 'F-550', 2023, 'TX-GLZ-001', 15000, 3, 'diesel', 12.5, 45230),
+        ('TRK-002', 'flatbed', 'International', 'MV607', 2022, 'TX-GLZ-002', 22000, 4, 'diesel', 10.0, 67890),
+        ('VAN-001', 'van', 'Mercedes', 'Sprinter 3500', 2024, 'TX-GLZ-003', 5500, 1, 'diesel', 18.0, 12450),
+        ('TRL-001', 'trailer', 'Utility', 'Glass Hauler', 2021, 'TX-GLZ-004', 30000, 6, 'diesel', 8.0, 89000)`);
+    }
+    const [rc] = await pool.query('SELECT COUNT(*) as cnt FROM rack_configurations');
+    if (rc[0].cnt === 0) {
+      await pool.query(`INSERT INTO rack_configurations (rack_code, rack_type, max_weight_lbs, max_pieces, width_inches, height_inches, depth_inches, slot_count, slot_width_inches) VALUES
+        ('AF-001', 'a_frame', 3000, 25, 96, 84, 48, 12, 2.5),
+        ('AF-002', 'a_frame', 3000, 25, 96, 84, 48, 12, 2.5),
+        ('AF-003', 'a_frame', 2000, 15, 72, 72, 36, 8, 2.5),
+        ('LF-001', 'l_frame', 4000, 30, 96, 96, 36, 15, 2.0),
+        ('LF-002', 'l_frame', 4000, 30, 96, 96, 36, 15, 2.0),
+        ('FB-001', 'flat_bed', 5000, 40, 120, 6, 96, 20, 1.5),
+        ('CUS-001', 'custom', 1500, 10, 60, 60, 30, 5, 3.0)`);
+    }
+    const [dz] = await pool.query('SELECT COUNT(*) as cnt FROM delivery_zones');
+    if (dz[0].cnt === 0) {
+      await pool.query(`INSERT INTO delivery_zones (zone_name, zone_code, base_delivery_fee, per_mile_rate, min_order_free_delivery, estimated_transit_days, max_pieces_per_trip) VALUES
+        ('Houston Metro', 'HOU-METRO', 75.00, 2.50, 2500.00, 0, 100),
+        ('Houston Suburbs', 'HOU-BURBS', 125.00, 3.00, 5000.00, 1, 75),
+        ('Gulf Coast', 'GULF', 250.00, 3.50, 10000.00, 1, 50),
+        ('Central Texas', 'CTX', 400.00, 4.00, 15000.00, 2, 40),
+        ('DFW Metro', 'DFW', 500.00, 4.50, 20000.00, 2, 40),
+        ('Out of State', 'OOS', 750.00, 5.00, 30000.00, 3, 30)`);
+    }
+    console.log('Phase 5 tables + seeds: verified');
+  } catch(e) { console.log('Phase5 seed:', e.message); }
+
+  // Phase 5 - ALTER TABLE fixes for existing databases (adds missing columns)
+  const phase5ColFixes = [
+    "ALTER TABLE rack_loads ADD COLUMN IF NOT EXISTS total_pieces INT DEFAULT 0",
+    "ALTER TABLE rack_loads ADD COLUMN IF NOT EXISTS total_weight_lbs DECIMAL(10,2) DEFAULT 0",
+    "ALTER TABLE rack_loads ADD COLUMN IF NOT EXISTS loaded_by INT",
+    "ALTER TABLE rack_loads ADD COLUMN IF NOT EXISTS verified_by INT",
+    "ALTER TABLE rack_loads ADD COLUMN IF NOT EXISTS loaded_at DATETIME",
+    "ALTER TABLE rack_loads ADD COLUMN IF NOT EXISTS notes TEXT",
+    "ALTER TABLE delivery_routes ADD COLUMN IF NOT EXISTS optimized_sequence TEXT",
+    "ALTER TABLE delivery_routes ADD COLUMN IF NOT EXISTS total_distance_miles DECIMAL(8,2)",
+    "ALTER TABLE delivery_routes ADD COLUMN IF NOT EXISTS total_time_minutes INT",
+    "ALTER TABLE delivery_stops ADD COLUMN IF NOT EXISTS delivery_address TEXT",
+    "ALTER TABLE delivery_stops ADD COLUMN IF NOT EXISTS contact_name VARCHAR(100)",
+    "ALTER TABLE delivery_stops ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(20)",
+    "ALTER TABLE delivery_stops ADD COLUMN IF NOT EXISTS pieces_count INT DEFAULT 0",
+    "ALTER TABLE delivery_stops ADD COLUMN IF NOT EXISTS weight_lbs DECIMAL(10,2) DEFAULT 0"
+  ];
+  for (const sql of phase5ColFixes) {
+    try { await pool.query(sql); } catch(e) { /* ignore - column may already exist or MySQL < 8.0.19 */ }
+  }
+  console.log('Phase 5 ALTER TABLE fixes applied');
 };

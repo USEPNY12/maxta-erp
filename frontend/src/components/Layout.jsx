@@ -27,6 +27,11 @@ const navItems = [
   { path: '/smart-glazier', label: 'Smart Glazier', icon: FaLink, module: null, group: 'tools' },
   { path: '/documents', label: 'Documents', icon: FaFileAlt, module: null, group: 'tools' },
   { path: '/document-center', label: 'Doc Center', icon: FaFileAlt, module: null, group: 'tools' },
+  { path: '/shipping', label: 'Shipping', icon: FaTruck, module: null, group: 'shipping' },
+  { path: '/shipping/routes', label: 'Route Planner', icon: FaCalendarAlt, module: null, group: 'shipping' },
+  { path: '/shipping/rack-loading', label: 'Rack Loading', icon: FaBoxes, module: null, group: 'shipping' },
+  { path: '/shipping/fleet', label: 'Fleet & Drivers', icon: FaTruck, module: null, group: 'shipping' },
+  { path: '/shipping/freight', label: 'Freight Costs', icon: FaDollarSign, module: null, group: 'shipping' },
   { path: '/setup', label: 'Setup', icon: FaCog, module: 'system_setup', group: 'admin' },
 ];
 

@@ -96,6 +96,9 @@ try { app.use('/api/document-center', require('./routes/documentCenter')); } cat
 // Phase 4 routes - Advanced Manufacturing (Scheduling, Utilization, Dashboard, Barcode, QC)
 try { app.use('/api/manufacturing-advanced', require('./routes/manufacturingAdvanced')); } catch(e) { console.log('Manufacturing Advanced routes not loaded:', e.message); }
 
+// Phase 5 routes - Shipping & Logistics (Routes, Rack Loading, Drivers, POD, Freight)
+try { app.use('/api/shipping', require('./routes/shipping')); } catch(e) { console.log('Shipping routes not loaded:', e.message); }
+
 // Static uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
