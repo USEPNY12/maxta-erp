@@ -1,6 +1,7 @@
 import TemplateManager from '../components/TemplateManager';
 import GLDefaults from '../components/GLDefaults';
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import FabricationCharges from './setup/FabricationCharges';
 
@@ -25,6 +26,7 @@ const NAV_SECTIONS = [
   ]},
   { group: 'Sales', icon: '💰', items: [
     { key: 'customer-types', label: 'Customer Types' },
+    { key: 'tax-groups', label: 'Tax Groups' },
     { key: 'price-lists', label: 'Price Lists' },
     { key: 'salespeople', label: 'Salespeople' }
   ]},
@@ -56,9 +58,27 @@ const NAV_SECTIONS = [
 
 // ============ MAIN COMPONENT ============
 export default function SystemSetup() {
-  const [activeSection, setActiveSection] = useState('users');
-  const [expandedGroups, setExpandedGroups] = useState(['Security', 'General']);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeSection, setActiveSection] = useState(tabParam || 'users');
+  const [expandedGroups, setExpandedGroups] = useState(() => {
+    if (tabParam) {
+      const group = NAV_SECTIONS.find(s => s.items.some(i => i.key === tabParam));
+      if (group) return ['Security', 'General', group.group];
+    }
+    return ['Security', 'General'];
+  });
+    const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    if (tabParam) {
+      setActiveSection(tabParam);
+      const group = NAV_SECTIONS.find(s => s.items.some(i => i.key === tabParam));
+      if (group && !expandedGroups.includes(group.group)) {
+        setExpandedGroups(prev => [...prev, group.group]);
+      }
+    }
+  }, [tabParam]);
 
   const toggleGroup = (group) => {
     setExpandedGroups(prev => prev.includes(group) ? prev.filter(g => g !== group) : [...prev, group]);

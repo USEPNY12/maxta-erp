@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 
@@ -6,7 +7,8 @@ function Customers() {
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState('');
   const [showDetail, setShowDetail] = useState(false);
-  const [showNew, setShowNew] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [showNew, setShowNew] = useState(searchParams.get('new') === 'true');
   const [selected, setSelected] = useState(null);
   const [activeTab, setActiveTab] = useState('Orders');
   const [form, setForm] = useState({ customer_number: '', name: '', contact_name: '', phone: '', email: '', address1: '', address2: '', city: '', state: '', zip: '', country: 'US', payment_terms: 'Net 30', credit_limit: '', tax_exempt: false, notes: '' });

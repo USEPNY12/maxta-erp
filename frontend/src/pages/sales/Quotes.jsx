@@ -1,6 +1,7 @@
 import DocumentActions from '../../components/DocumentActions';
 import FileAttachments from '../../components/FileAttachments';
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 
@@ -9,7 +10,8 @@ function Quotes() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('open');
   const [showDetail, setShowDetail] = useState(false);
-  const [showNew, setShowNew] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [showNew, setShowNew] = useState(searchParams.get('new') === 'true');
   const [selected, setSelected] = useState(null);
   const [activeTab, setActiveTab] = useState('Lines');
   const [customers, setCustomers] = useState([]);

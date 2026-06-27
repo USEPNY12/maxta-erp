@@ -456,8 +456,8 @@ router.post('/orders/:id/deposit', authenticate, async (req, res) => {
 router.get('/shipments', authenticate, async (req, res) => {
   try {
     const { status, customer_id, search } = req.query;
-    let query = `SELECT s.*, c.company_name as customer_name, so.order_number as so_number
-                 FROM shipments s JOIN customers c ON s.customer_id = c.id 
+    let query = `SELECT s.*, c.company_name as customer_name, so.order_number as order_number, so.order_number as so_number
+                 FROM shipments s LEFT JOIN customers c ON s.customer_id = c.id 
                  LEFT JOIN sales_orders so ON s.sales_order_id = so.id WHERE 1=1`;
     const params = [];
     if (status === 'open') { query += " AND s.status IN ('draft','shipped')"; }
@@ -472,8 +472,8 @@ router.get('/shipments', authenticate, async (req, res) => {
 
 router.get('/shipments/:id', authenticate, async (req, res) => {
   try {
-    const [shipments] = await pool.query(`SELECT s.*, c.company_name, so.order_number as so_number
-      FROM shipments s JOIN customers c ON s.customer_id = c.id 
+    const [shipments] = await pool.query(`SELECT s.*, c.company_name as customer_name, so.order_number as order_number, so.order_number as so_number
+      FROM shipments s LEFT JOIN customers c ON s.customer_id = c.id 
       LEFT JOIN sales_orders so ON s.sales_order_id = so.id WHERE s.id = ?`, [req.params.id]);
     if (!shipments.length) return res.status(404).json({ error: 'Shipment not found' });
     const [lines] = await pool.query(`SELECT sl.*, sol.description, sol.product_type, sol.glass_type, sol.thickness, 
@@ -622,14 +622,21 @@ router.post('/invoices', authenticate, async (req, res) => {
   try {
     const invoiceNumber = await getNextNumber('ar_invoice');
     const { customer_id, sales_order_id, shipment_id, invoice_date, due_date, payment_terms, notes, lines } = req.body;
+    // Auto-populate customer_id from sales order if not provided
+    let resolvedCustomerId = customer_id;
+    if (!resolvedCustomerId && sales_order_id) {
+      const [soRows] = await pool.query('SELECT customer_id FROM sales_orders WHERE id = ?', [sales_order_id]);
+      if (soRows.length > 0) resolvedCustomerId = soRows[0].customer_id;
+    }
     let subtotal = 0, taxAmount = 0;
     if (lines) lines.forEach(l => { subtotal += ((parseFloat(l.quantity) || 0) * (parseFloat(l.unit_price) || 0)); });
     const totalAmount = subtotal + taxAmount;
     
     // Calculate due date from payment terms
     let calcDueDate = due_date;
-    if (!calcDueDate && payment_terms) {
-      const days = parseInt(payment_terms.replace(/\D/g, '')) || 30;
+    if (!calcDueDate) {
+      const terms = payment_terms || 'Net 30';
+      const days = parseInt(terms.replace(/\D/g, '')) || 30;
       const d = new Date(invoice_date || new Date());
       d.setDate(d.getDate() + days);
       calcDueDate = d.toISOString().split('T')[0];
@@ -639,7 +646,7 @@ router.post('/invoices', authenticate, async (req, res) => {
       `INSERT INTO ar_invoices (invoice_number, customer_id, sales_order_id, shipment_id, invoice_date, due_date, 
        subtotal, tax_amount, total, balance, amount_paid, status, payment_terms, notes, created_by)
        VALUES (?,?,?,?,?,?,?,?,?,?,0,'draft',?,?,?)`,
-      [invoiceNumber, customer_id, sales_order_id || null, shipment_id || null, invoice_date || new Date(), calcDueDate,
+      [invoiceNumber, resolvedCustomerId, sales_order_id || null, shipment_id || null, invoice_date || new Date(), calcDueDate,
        subtotal, taxAmount, totalAmount, totalAmount, payment_terms || 'Net 30', notes, req.user.id]
     );
     

@@ -1,5 +1,6 @@
 import DocumentActions from '../../components/DocumentActions';
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 import ScanPanel from '../../components/ScanPanel';
@@ -11,7 +12,8 @@ function Shipments() {
   const [showDetail, setShowDetail] = useState(false);
   const [selected, setSelected] = useState(null);
   const [activeTab, setActiveTab] = useState('Items');
-  const [showNew, setShowNew] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [showNew, setShowNew] = useState(searchParams.get('new') === 'true');
   const [orders, setOrders] = useState([]);
   const [form, setForm] = useState({ sales_order_id: '', ship_date: new Date().toISOString().split('T')[0], carrier: '', tracking_number: '', ship_via: '', freight_charge: 0, notes: '', lines: [] });
 

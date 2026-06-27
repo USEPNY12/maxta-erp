@@ -58,7 +58,7 @@ class TemplateService {
   // Get or launch Puppeteer browser
   async getBrowser() {
     try {
-      if (this.browser && typeof this.browser.isConnected === 'function' && this.browser.isConnected()) {
+      if (this.browser && this.browser.connected) {
         return this.browser;
       }
     } catch (e) {
