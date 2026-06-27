@@ -1019,17 +1019,17 @@ body {
 
   /* Modal full-width on mobile */
   .erp-modal {
-    min-width: unset;
-    width: 100%;
-    max-width: 100vw;
-    max-height: 100vh;
-    border-radius: 0;
+    min-width: unset !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
   }
   .erp-modal-title {
-    border-radius: 0;
+    border-radius: 0 !important;
   }
   .erp-modal-footer {
-    border-radius: 0;
+    border-radius: 0 !important;
   }
 
   /* KPI cards */
@@ -1054,10 +1054,10 @@ body {
 /* ============ RESPONSIVE - PHONE (max-width: 480px) ============ */
 @media (max-width: 480px) {
   .erp-modal {
-    width: 100vw;
-    height: 100vh;
-    max-height: 100vh;
-    border-radius: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
   }
   .erp-form-input, .erp-form-select {
     padding: 12px 14px;
@@ -2512,6 +2512,195 @@ body {
   .h-screen > .flex-1.overflow-hidden {
     flex: 1;
     overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ============ MOBILE MODAL & FORM COMPLETE FIX ============ */
+@media (max-width: 768px) {
+  /* Modal overlay - full screen on mobile */
+  .erp-modal-overlay {
+    align-items: stretch !important;
+    padding: 0 !important;
+  }
+  
+  /* Modal takes full screen */
+  .erp-modal {
+    min-width: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* Modal body scrollable */
+  .erp-modal-body {
+    flex: 1;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px !important;
+    max-height: none !important;
+  }
+  
+  /* Modal title compact on mobile */
+  .erp-modal-title {
+    padding: 10px 12px !important;
+    font-size: 14px !important;
+    border-radius: 0 !important;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  
+  /* Modal footer sticky at bottom */
+  .erp-modal-footer {
+    border-radius: 0 !important;
+    padding: 10px 12px !important;
+    position: sticky;
+    bottom: 0;
+    background: var(--surface, #fff);
+    z-index: 10;
+  }
+  
+  /* All grids inside modals become single column on mobile */
+  .erp-modal-body .grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  
+  /* Allow 2-column grid for small fields (like date pairs) */
+  .erp-modal-body .grid-cols-2 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  
+  /* Force grid-cols-3, 4, 5, 6+ to be 1 or 2 columns on mobile */
+  .erp-modal-body .grid-cols-3,
+  .erp-modal-body .grid-cols-4,
+  .erp-modal-body .grid-cols-5,
+  .erp-modal-body .grid-cols-6 {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  
+  /* Tables inside modals scroll horizontally */
+  .erp-modal-body table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  
+  .erp-modal-body thead,
+  .erp-modal-body tbody,
+  .erp-modal-body tr {
+    display: table;
+    width: 100%;
+    table-layout: auto;
+  }
+  
+  /* Form inputs full width */
+  .erp-modal-body input,
+  .erp-modal-body select,
+  .erp-modal-body textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+  }
+  
+  /* Fix any inline flex containers that overflow */
+  .erp-modal-body .flex {
+    flex-wrap: wrap !important;
+  }
+  
+  /* Line items table - make it scrollable */
+  .erp-modal-body .overflow-auto,
+  .erp-modal-body .overflow-x-auto {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100vw;
+  }
+  
+  /* Ensure no horizontal overflow from the modal body */
+  .erp-modal-body > * {
+    max-width: 100% !important;
+    overflow-x: hidden;
+  }
+  
+  .erp-modal-body > .overflow-auto,
+  .erp-modal-body > .overflow-x-auto,
+  .erp-modal-body > div > table {
+    overflow-x: auto !important;
+  }
+}
+
+/* Extra small phones */
+@media (max-width: 400px) {
+  .erp-modal-body .grid-cols-2,
+  .erp-modal-body .grid-cols-3,
+  .erp-modal-body .grid-cols-4,
+  .erp-modal-body .grid-cols-5,
+  .erp-modal-body .grid-cols-6 {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .erp-modal-body {
+    padding: 8px !important;
+  }
+  
+  .erp-modal-title {
+    font-size: 13px !important;
+    padding: 8px 10px !important;
+  }
+}
+
+/* ============ MOBILE TABLE SCROLL FIX ============ */
+@media (max-width: 768px) {
+  /* Tables with inline minWidth inside modals should be in a scrollable container */
+  .erp-modal-body .erp-grid {
+    min-width: 0 !important;
+  }
+  
+  /* Wrap tables in scrollable container */
+  .erp-modal-body > div:has(> .erp-grid),
+  .erp-modal-body > div:has(> table) {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Also fix the main page content tables */
+  .module-page-content .erp-grid,
+  .layout-main-content .erp-grid {
+    font-size: 11px;
+  }
+  
+  .module-page-content .erp-grid td,
+  .module-page-content .erp-grid th {
+    padding: 6px 8px;
+    white-space: nowrap;
+  }
+  
+  /* SystemSetup sidebar hidden on mobile */
+  .setup-left-nav {
+    display: none !important;
+  }
+  
+  /* Fix any page-level content that overflows */
+  .module-page-content > div,
+  .layout-main-content > div {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  
+  /* Allow horizontal scroll for table containers */
+  .module-page-content .overflow-auto,
+  .module-page-content .overflow-x-auto,
+  .layout-main-content .overflow-auto {
+    overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
   }
 }
