@@ -2,12 +2,16 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const morgan = require('morgan');
+const http = require('http');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const { auditMiddleware } = require('./middleware/auditLog');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Create HTTP server (needed for WebSocket upgrade)
+const server = http.createServer(app);
 
 // Middleware
 app.use(cors());
@@ -50,7 +54,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', version: '3.0.0', name: 'Max TA Group ERP' });
+  res.json({ status: 'ok', version: '5.0.0', name: 'Max TA Group ERP', websocket: true });
 });
 
 // Serve frontend in production
@@ -67,8 +71,66 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error', message: err.message });
 });
 
-app.listen(PORT, '0.0.0.0', async () => {
-  console.log(`Max TA Group ERP Server v3.0 running on port ${PORT}`);
+// ============ WebSocket Server (Real-time Updates) ============
+let WebSocket, wss;
+try {
+  WebSocket = require('ws');
+  wss = new WebSocket.Server({ server, path: '/ws' });
+
+  const clients = new Set();
+
+  wss.on('connection', (ws, req) => {
+    clients.add(ws);
+    console.log(`[WS] Client connected (${clients.size} total)`);
+
+    // Send welcome message
+    ws.send(JSON.stringify({ type: 'connected', message: 'Real-time updates active', timestamp: new Date().toISOString() }));
+
+    ws.on('close', () => {
+      clients.delete(ws);
+      console.log(`[WS] Client disconnected (${clients.size} total)`);
+    });
+
+    ws.on('error', (err) => {
+      console.error('[WS] Client error:', err.message);
+      clients.delete(ws);
+    });
+
+    // Heartbeat
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
+  });
+
+  // Heartbeat interval to detect dead connections
+  const heartbeat = setInterval(() => {
+    wss.clients.forEach((ws) => {
+      if (!ws.isAlive) return ws.terminate();
+      ws.isAlive = false;
+      ws.ping();
+    });
+  }, 30000);
+
+  wss.on('close', () => clearInterval(heartbeat));
+
+  // Broadcast function - available globally for other modules to emit events
+  global.wsBroadcast = (eventType, data) => {
+    const message = JSON.stringify({ type: eventType, data, timestamp: new Date().toISOString() });
+    clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  };
+
+  console.log('[WS] WebSocket server initialized on /ws');
+} catch (e) {
+  console.log('[WS] WebSocket not available (install ws package):', e.message);
+  global.wsBroadcast = () => {}; // no-op fallback
+}
+
+// ============ Server Start ============
+server.listen(PORT, '0.0.0.0', async () => {
+  console.log(`Max TA Group ERP Server v5.0 running on port ${PORT}`);
   try { const migrate = require('./migrate'); await migrate(); } catch(e) { console.log('Migration:', e.message); }
   // Start automated notification checks (low stock, overdue invoices, WO delays)
   try { const notifService = require('./services/notificationService'); notifService.start(); } catch(e) { console.log('NotificationService:', e.message); }

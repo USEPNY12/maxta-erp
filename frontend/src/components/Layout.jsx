@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../App';
-import { FaHome, FaCog, FaBoxes, FaDollarSign, FaWrench, FaIndustry, FaShoppingCart, FaCalculator, FaChartBar, FaExchangeAlt, FaBarcode, FaLink, FaTruck, FaHandshake, FaCalendarAlt, FaBell, FaFileAlt, FaLayerGroup, FaBars, FaTimes, FaSignOutAlt, FaUser } from 'react-icons/fa';
+import { FaHome, FaCog, FaBoxes, FaDollarSign, FaWrench, FaIndustry, FaShoppingCart, FaCalculator, FaChartBar, FaExchangeAlt, FaBarcode, FaLink, FaTruck, FaHandshake, FaCalendarAlt, FaBell, FaFileAlt, FaLayerGroup, FaBars, FaTimes, FaSignOutAlt, FaUser, FaMoon, FaSun } from 'react-icons/fa';
 import NotificationBell from './NotificationBell';
 import Breadcrumb from './Breadcrumb';
 
@@ -38,6 +38,16 @@ function Layout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('erp_theme');
+    if (saved) return saved === 'dark';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+    localStorage.setItem('erp_theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -70,8 +80,11 @@ function Layout() {
 
   return (
     <div className="layout-container">
+      {/* Skip to main content for keyboard users */}
+      <a href="#main-content" className="skip-to-content">Skip to main content</a>
+
       {/* Top Header Bar */}
-      <header className="layout-header">
+      <header className="layout-header" role="banner" aria-label="Main navigation header">
         <div className="header-left">
           {isMobile && (
             <button className="hamburger-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
@@ -81,6 +94,10 @@ function Layout() {
           <span className="header-brand" onClick={() => navigate('/')}>Max TA Group ERP</span>
         </div>
         <div className="header-right">
+          <button className="theme-toggle" onClick={() => setDarkMode(!darkMode)} title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'} aria-label="Toggle dark mode">
+            {darkMode ? <FaSun size={14} /> : <FaMoon size={14} />}
+            <span className="logout-text">{darkMode ? 'Light' : 'Dark'}</span>
+          </button>
           <NotificationBell />
           <div className="header-user">
             <FaUser size={12} />
@@ -96,13 +113,18 @@ function Layout() {
 
       {/* Desktop Navigation Bar */}
       {!isMobile && (
-        <nav className="erp-navbar">
+        <nav className="erp-navbar" role="navigation" aria-label="Module navigation">
           {visibleNavItems.map(item => (
             <div
               key={item.path}
               className={`erp-nav-item ${isActive(item.path) ? 'active' : ''}`}
               onClick={() => navigate(item.path)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(item.path); } }}
               title={item.label}
+              role="button"
+              tabIndex={0}
+              aria-label={`Navigate to ${item.label}`}
+              aria-current={isActive(item.path) ? 'page' : undefined}
             >
               <item.icon size={14} />
               <span>{item.label}</span>
@@ -191,7 +213,7 @@ function Layout() {
       )}
 
       {/* Main Content */}
-      <main className="layout-main">
+      <main className="layout-main" id="main-content" role="main" aria-label="Main content">
         <Breadcrumb />
         <div className="layout-main-content">
           <Outlet />
@@ -200,12 +222,17 @@ function Layout() {
 
       {/* Mobile Bottom Navigation */}
       {isMobile && (
-        <nav className="mobile-bottom-nav">
+        <nav className="mobile-bottom-nav" role="navigation" aria-label="Quick access navigation">
           {mobileBottomNav.map(item => (
             <div
               key={item.path}
               className={`bottom-nav-item ${isActive(item.path) ? 'active' : ''}`}
               onClick={() => navigate(item.path)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(item.path); } }}
+              role="button"
+              tabIndex={0}
+              aria-label={`Navigate to ${item.label}`}
+              aria-current={isActive(item.path) ? 'page' : undefined}
             >
               <item.icon size={20} />
               <span>{item.label}</span>

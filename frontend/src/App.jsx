@@ -1,63 +1,87 @@
-import React, { useState, useEffect, createContext } from 'react';
+import React, { useState, useEffect, createContext, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './components/Toast';
 import api from './services/api';
 import Login from './pages/Login';
-import Scanner from "./pages/Scanner";
 import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import InventoryHome from './pages/inventory/InventoryHome';
-import Items from './pages/inventory/Items';
-import ItemDetail from './pages/inventory/ItemDetail';
-import MRP from './pages/inventory/MRP';
-import PhysicalCount from './pages/inventory/PhysicalCount';
-import InventoryAdjustments from './pages/inventory/InventoryAdjustments';
-import InventoryTransfers from './pages/inventory/InventoryTransfers';
-import SalesHome from './pages/sales/SalesHome';
-import Customers from './pages/sales/Customers';
-import Quotes from './pages/sales/Quotes';
-import SalesOrders from './pages/sales/SalesOrders';
-import Shipments from './pages/sales/Shipments';
-import Invoices from './pages/sales/Invoices';
-import ManufacturingHome from './pages/manufacturing/ManufacturingHome';
-import WorkOrders from './pages/manufacturing/WorkOrders';
-import BillOfMaterials from './pages/manufacturing/BillOfMaterials';
-import WOTransactions from './pages/manufacturing/WOTransactions';
-import ShopFloor from './pages/manufacturing/ShopFloor';
-import ProductionSchedule from './pages/manufacturing/ProductionSchedule';
-import Labor from './pages/manufacturing/Labor';
-import QualityControl from './pages/manufacturing/QualityControl';
-import WorkCenters from './pages/manufacturing/WorkCenters';
-import RoutingTemplates from './pages/manufacturing/RoutingTemplates';
-import Recuts from './pages/manufacturing/Recuts';
-import CuttingOptimization from './pages/manufacturing/CuttingOptimization';
-import PurchasingHome from './pages/purchasing/PurchasingHome';
-import PurchaseOrders from './pages/purchasing/PurchaseOrders';
-import Vendors from './pages/purchasing/Vendors';
-import POReceipts from './pages/purchasing/POReceipts';
-import VendorItems from './pages/purchasing/VendorItems';
-import BuyForWO from './pages/purchasing/BuyForWO';
-import Locations from './pages/purchasing/Locations';
-import PurchasingAPInvoices from './pages/purchasing/APInvoices';
-import AccountingHome from './pages/accounting/AccountingHome';
-import GLAccounts from './pages/accounting/GLAccounts';
-import JournalVouchers from './pages/accounting/JournalVouchers';
-import ARInvoices from './pages/accounting/ARInvoices';
-import APInvoices from './pages/accounting/APInvoices';
-import CustomerPayments from './pages/accounting/CustomerPayments';
-import VendorPayments from './pages/accounting/VendorPayments';
-import BankReconciliation from './pages/accounting/BankReconciliation';
-import Reports from './pages/Reports';
-import SystemSetup from './pages/SystemSetup';
-import SmartGlazier from './pages/SmartGlazier';
-import Dispatch from './pages/Dispatch';
-import CRM from './pages/CRM';
-import GanttSchedule from './pages/GanttSchedule';
-import Notifications from './pages/Notifications';
-import DocManagement from './pages/DocManagement';
-import Lamination from './pages/Lamination';
+
+// Lazy-loaded modules (code splitting per module)
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Scanner = lazy(() => import('./pages/Scanner'));
+
+// Inventory
+const InventoryHome = lazy(() => import('./pages/inventory/InventoryHome'));
+const Items = lazy(() => import('./pages/inventory/Items'));
+const ItemDetail = lazy(() => import('./pages/inventory/ItemDetail'));
+const MRP = lazy(() => import('./pages/inventory/MRP'));
+const PhysicalCount = lazy(() => import('./pages/inventory/PhysicalCount'));
+const InventoryAdjustments = lazy(() => import('./pages/inventory/InventoryAdjustments'));
+const InventoryTransfers = lazy(() => import('./pages/inventory/InventoryTransfers'));
+
+// Sales
+const SalesHome = lazy(() => import('./pages/sales/SalesHome'));
+const Customers = lazy(() => import('./pages/sales/Customers'));
+const Quotes = lazy(() => import('./pages/sales/Quotes'));
+const SalesOrders = lazy(() => import('./pages/sales/SalesOrders'));
+const Shipments = lazy(() => import('./pages/sales/Shipments'));
+const Invoices = lazy(() => import('./pages/sales/Invoices'));
+
+// Manufacturing
+const ManufacturingHome = lazy(() => import('./pages/manufacturing/ManufacturingHome'));
+const WorkOrders = lazy(() => import('./pages/manufacturing/WorkOrders'));
+const BillOfMaterials = lazy(() => import('./pages/manufacturing/BillOfMaterials'));
+const WOTransactions = lazy(() => import('./pages/manufacturing/WOTransactions'));
+const ShopFloor = lazy(() => import('./pages/manufacturing/ShopFloor'));
+const ProductionSchedule = lazy(() => import('./pages/manufacturing/ProductionSchedule'));
+const Labor = lazy(() => import('./pages/manufacturing/Labor'));
+const QualityControl = lazy(() => import('./pages/manufacturing/QualityControl'));
+const WorkCenters = lazy(() => import('./pages/manufacturing/WorkCenters'));
+const RoutingTemplates = lazy(() => import('./pages/manufacturing/RoutingTemplates'));
+const Recuts = lazy(() => import('./pages/manufacturing/Recuts'));
+const CuttingOptimization = lazy(() => import('./pages/manufacturing/CuttingOptimization'));
+
+// Purchasing
+const PurchasingHome = lazy(() => import('./pages/purchasing/PurchasingHome'));
+const PurchaseOrders = lazy(() => import('./pages/purchasing/PurchaseOrders'));
+const Vendors = lazy(() => import('./pages/purchasing/Vendors'));
+const POReceipts = lazy(() => import('./pages/purchasing/POReceipts'));
+const VendorItems = lazy(() => import('./pages/purchasing/VendorItems'));
+const BuyForWO = lazy(() => import('./pages/purchasing/BuyForWO'));
+const Locations = lazy(() => import('./pages/purchasing/Locations'));
+const PurchasingAPInvoices = lazy(() => import('./pages/purchasing/APInvoices'));
+
+// Accounting
+const AccountingHome = lazy(() => import('./pages/accounting/AccountingHome'));
+const GLAccounts = lazy(() => import('./pages/accounting/GLAccounts'));
+const JournalVouchers = lazy(() => import('./pages/accounting/JournalVouchers'));
+const ARInvoices = lazy(() => import('./pages/accounting/ARInvoices'));
+const APInvoices = lazy(() => import('./pages/accounting/APInvoices'));
+const CustomerPayments = lazy(() => import('./pages/accounting/CustomerPayments'));
+const VendorPayments = lazy(() => import('./pages/accounting/VendorPayments'));
+const BankReconciliation = lazy(() => import('./pages/accounting/BankReconciliation'));
+
+// Other modules
+const Reports = lazy(() => import('./pages/Reports'));
+const SystemSetup = lazy(() => import('./pages/SystemSetup'));
+const SmartGlazier = lazy(() => import('./pages/SmartGlazier'));
+const Dispatch = lazy(() => import('./pages/Dispatch'));
+const CRM = lazy(() => import('./pages/CRM'));
+const GanttSchedule = lazy(() => import('./pages/GanttSchedule'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const DocManagement = lazy(() => import('./pages/DocManagement'));
+const Lamination = lazy(() => import('./pages/Lamination'));
 
 export const AuthContext = createContext(null);
+
+// Loading fallback for lazy-loaded modules
+function ModuleLoader() {
+  return (
+    <div className="module-loader">
+      <div className="module-loader-spinner"></div>
+      <p>Loading module...</p>
+    </div>
+  );
+}
 
 // Permission check helper - can be used by any component via context
 function createPermissionChecker(permissions) {
@@ -136,11 +160,12 @@ function App() {
 
   const permChecker = createPermissionChecker(permissions);
 
-  if (loading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  if (loading) return <div className="module-loader"><div className="module-loader-spinner"></div><p>Loading MaxTA ERP...</p></div>;
 
   return (
     <ToastProvider>
     <AuthContext.Provider value={{ user, login, logout, permissions, permChecker }}>
+      <Suspense fallback={<ModuleLoader />}>
       <Routes>
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
         <Route path="/scanner" element={user ? <Scanner /> : <Navigate to="/login" />} />
@@ -206,6 +231,7 @@ function App() {
           <Route path="lamination" element={<ProtectedModule module="manufacturing" permissions={permissions}><Lamination /></ProtectedModule>} />
         </Route>
       </Routes>
+      </Suspense>
     </AuthContext.Provider>
     </ToastProvider>
   );
