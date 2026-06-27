@@ -89,9 +89,41 @@ export default function SystemSetup() {
     setMobileNavOpen(false);
   };
 
+  // Get current section label for mobile dropdown
+  const currentLabel = NAV_SECTIONS.flatMap(s => s.items).find(i => i.key === activeSection)?.label || 'Users';
+  const currentGroup = NAV_SECTIONS.find(s => s.items.some(i => i.key === activeSection));
+
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
-      {/* Mobile nav toggle */}
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+      {/* Mobile Section Selector - shows as dropdown on mobile */}
+      <div className="setup-mobile-header">
+        <button onClick={() => setMobileNavOpen(!mobileNavOpen)} className="setup-mobile-selector">
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>{currentGroup?.icon}</span>
+            <span style={{ fontWeight: 600 }}>{currentLabel}</span>
+          </span>
+          <span style={{ fontSize: 12 }}>{mobileNavOpen ? '▲' : '▼'}</span>
+        </button>
+        {mobileNavOpen && (
+          <div className="setup-mobile-dropdown">
+            {NAV_SECTIONS.map(section => (
+              <div key={section.group}>
+                <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', background: '#f1f5f9' }}>
+                  {section.icon} {section.group}
+                </div>
+                {section.items.map(item => (
+                  <div key={item.key} onClick={() => handleNavClick(item.key)} style={{ padding: '10px 16px', fontSize: 14, cursor: 'pointer', color: activeSection === item.key ? '#2563eb' : '#334155', background: activeSection === item.key ? '#eff6ff' : '#fff', fontWeight: activeSection === item.key ? 600 : 400, borderLeft: activeSection === item.key ? '3px solid #2563eb' : '3px solid transparent' }}>
+                    {item.label}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {/* Desktop: Flex row with sidebar */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      {/* Mobile nav toggle - FAB button */}
       <button onClick={() => setMobileNavOpen(!mobileNavOpen)} className="mobile-nav-toggle" style={{ display: 'none', position: 'fixed', bottom: 20, right: 20, zIndex: 1000, width: 48, height: 48, borderRadius: '50%', background: '#1976d2', color: '#fff', border: 'none', fontSize: 20, cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>☰</button>
       
       {/* Left Navigation */}
@@ -125,10 +157,44 @@ export default function SystemSetup() {
         {!['users', 'roles', 'permissions', 'company', 'templates', 'email-config', 'gl-defaults', 'fabrication-charges'].includes(activeSection) && <GenericSetupTable tableKey={activeSection} />}
       </div>
 
+      </div>{/* end flex row */}
       <style>{`
+        .setup-mobile-header { display: none; }
         @media (max-width: 768px) {
-          .setup-left-nav { position: fixed !important; left: 0; top: 64px; bottom: 0; z-index: 999; transform: translateX(${mobileNavOpen ? '0' : '-100%'}) !important; }
-          .mobile-nav-toggle { display: block !important; }
+          .setup-mobile-header {
+            display: block;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: #fff;
+            border-bottom: 1px solid #e2e8f0;
+          }
+          .setup-mobile-selector {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 12px 16px;
+            background: #fff;
+            border: none;
+            font-size: 15px;
+            color: #1e293b;
+            cursor: pointer;
+          }
+          .setup-mobile-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-bottom: 2px solid #2563eb;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            max-height: 60vh;
+            overflow-y: auto;
+            z-index: 200;
+          }
+          .setup-left-nav { display: none !important; }
+          .mobile-nav-toggle { display: none !important; }
         }
       `}</style>
     </div>
