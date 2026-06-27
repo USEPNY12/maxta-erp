@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-MaxTA_Root_2026!}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-maxta_erp}
+      MYSQL_USER: ${MYSQL_USER:-maxta_erp}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-MaxTA_ERP_2026!}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/maxta_erp_full.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - erp-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    restart: unless-stopped
+    environment:
+      PORT: 5000
+      DB_HOST: mysql
+      DB_USER: ${MYSQL_USER:-maxta_erp}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-MaxTA_ERP_2026!}
+      DB_NAME: ${MYSQL_DATABASE:-maxta_erp}
+      JWT_SECRET: ${JWT_SECRET:-maxta_erp_jwt_secret_2026_glass_fabrication}
+      JWT_EXPIRES_IN: 24h
+      COMPANY_NAME: Max TA Group LLC
+      NODE_ENV: production
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - erp-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - erp-network
+
+volumes:
+  mysql_data:
+
+networks:
+  erp-network:
+    driver: bridge
