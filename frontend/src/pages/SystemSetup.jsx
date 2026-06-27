@@ -39,7 +39,8 @@ const NAV_SECTIONS = [
     { key: 'scrap-codes', label: 'Scrap Codes' }
   ]},
   { group: 'Manufacturing', icon: '🏭', items: [
-    { key: 'work-centers', label: 'Work Centers' }
+    { key: 'work-centers', label: 'Work Centers' },
+    { key: 'routing-templates', label: 'Routing Templates' }
   ]},
   { group: 'Purchasing', icon: '🛒', items: [
     { key: 'vendor-types', label: 'Vendor Types' }

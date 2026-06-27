@@ -17,6 +17,7 @@ const MRP = lazy(() => import('./pages/inventory/MRP'));
 const PhysicalCount = lazy(() => import('./pages/inventory/PhysicalCount'));
 const InventoryAdjustments = lazy(() => import('./pages/inventory/InventoryAdjustments'));
 const InventoryTransfers = lazy(() => import('./pages/inventory/InventoryTransfers'));
+const InventoryLocations = lazy(() => import('./pages/inventory/Locations'));
 
 // Sales
 const SalesHome = lazy(() => import('./pages/sales/SalesHome'));
@@ -25,6 +26,7 @@ const Quotes = lazy(() => import('./pages/sales/Quotes'));
 const SalesOrders = lazy(() => import('./pages/sales/SalesOrders'));
 const Shipments = lazy(() => import('./pages/sales/Shipments'));
 const Invoices = lazy(() => import('./pages/sales/Invoices'));
+const SalesFabricationCharges = lazy(() => import('./pages/sales/FabricationCharges'));
 
 // Manufacturing
 const ManufacturingHome = lazy(() => import('./pages/manufacturing/ManufacturingHome'));
@@ -179,6 +181,7 @@ function App() {
           <Route path="inventory/physical-count" element={<ProtectedModule module="inventory" permissions={permissions}><PhysicalCount /></ProtectedModule>} />
           <Route path="inventory/adjustments" element={<ProtectedModule module="inventory" permissions={permissions}><InventoryAdjustments /></ProtectedModule>} />
           <Route path="inventory/transfers" element={<ProtectedModule module="inventory" permissions={permissions}><InventoryTransfers /></ProtectedModule>} />
+          <Route path="inventory/locations" element={<ProtectedModule module="inventory" permissions={permissions}><InventoryLocations /></ProtectedModule>} />
           {/* Sales */}
           <Route path="sales" element={<ProtectedModule module="sales" permissions={permissions}><SalesHome /></ProtectedModule>} />
           <Route path="sales/customers" element={<ProtectedModule module="sales" permissions={permissions}><Customers /></ProtectedModule>} />
@@ -186,6 +189,7 @@ function App() {
           <Route path="sales/orders" element={<ProtectedModule module="sales" permissions={permissions}><SalesOrders /></ProtectedModule>} />
           <Route path="sales/shipments" element={<ProtectedModule module="sales" permissions={permissions}><Shipments /></ProtectedModule>} />
           <Route path="sales/invoices" element={<ProtectedModule module="sales" permissions={permissions}><Invoices /></ProtectedModule>} />
+          <Route path="sales/fabrication-charges" element={<ProtectedModule module="sales" permissions={permissions}><SalesFabricationCharges /></ProtectedModule>} />
           {/* Manufacturing */}
           <Route path="manufacturing" element={<ProtectedModule module="manufacturing" permissions={permissions}><ManufacturingHome /></ProtectedModule>} />
           <Route path="manufacturing/work-orders" element={<ProtectedModule module="manufacturing" permissions={permissions}><WorkOrders /></ProtectedModule>} />
@@ -205,7 +209,7 @@ function App() {
           <Route path="purchasing/vendors" element={<ProtectedModule module="purchasing" permissions={permissions}><Vendors /></ProtectedModule>} />
           <Route path="purchasing/receipts" element={<ProtectedModule module="purchasing" permissions={permissions}><POReceipts /></ProtectedModule>} />
           <Route path="purchasing/ap-invoices" element={<ProtectedModule module="purchasing" permissions={permissions}><PurchasingAPInvoices /></ProtectedModule>} />
-          <Route path="purchasing/invoices" element={<ProtectedModule module="purchasing" permissions={permissions}><PurchasingAPInvoices /></ProtectedModule>} />
+          {/* purchasing/invoices removed - duplicate of purchasing/ap-invoices */}
           <Route path="purchasing/vendor-items" element={<ProtectedModule module="purchasing" permissions={permissions}><VendorItems /></ProtectedModule>} />
           <Route path="purchasing/buy-for-wo" element={<ProtectedModule module="purchasing" permissions={permissions}><BuyForWO /></ProtectedModule>} />
           <Route path="purchasing/locations" element={<ProtectedModule module="purchasing" permissions={permissions}><Locations /></ProtectedModule>} />
