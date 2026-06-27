@@ -151,7 +151,10 @@ router.put('/activities/:id', async (req, res) => {
 router.get('/pipeline', async (req, res) => {
   try {
     const [pipeline] = await pool.query('SELECT * FROM crm_pipeline WHERE is_default = 1 LIMIT 1');
-    const stages = pipeline.length ? JSON.parse(pipeline[0].stages) : ['New Lead', 'Initial Contact', 'Qualification', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost'];
+    let stages = ['New Lead', 'Initial Contact', 'Qualification', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost'];
+    if (pipeline.length && pipeline[0].stages) {
+      stages = typeof pipeline[0].stages === 'string' ? JSON.parse(pipeline[0].stages) : pipeline[0].stages;
+    }
     // Map stages to lead statuses
     const statusMap = { 'New Lead': 'new', 'Initial Contact': 'contacted', 'Qualification': 'qualified', 'Proposal Sent': 'proposal', 'Negotiation': 'negotiation', 'Closed Won': 'won', 'Closed Lost': 'lost' };
     const pipelineData = [];

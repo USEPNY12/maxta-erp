@@ -15,9 +15,13 @@ module.exports = async () => {
   const alterations = [
     // work_center_capacity needs max_concurrent_jobs
     'ALTER TABLE work_center_capacity ADD COLUMN max_concurrent_jobs INT DEFAULT 1',
-    // crm_activities needs scheduled_at and status
+    // crm_activities needs scheduled_at, status, contact_name, duration_minutes
     'ALTER TABLE crm_activities ADD COLUMN scheduled_at DATETIME',
-    'ALTER TABLE crm_activities ADD COLUMN status ENUM(\'planned\',\'completed\',\'cancelled\',\'overdue\') DEFAULT \'planned\'',
+    "ALTER TABLE crm_activities ADD COLUMN status ENUM('planned','completed','cancelled','overdue') DEFAULT 'planned'",
+    'ALTER TABLE crm_activities ADD COLUMN contact_name VARCHAR(255)',
+    'ALTER TABLE crm_activities ADD COLUMN duration_minutes INT',
+    // crm_leads needs won_date
+    'ALTER TABLE crm_leads ADD COLUMN won_date DATE',
   ];
 
   // Tables that should exist (IF NOT EXISTS - won't recreate if already there)
