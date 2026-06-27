@@ -1,7 +1,8 @@
 import React, { useContext } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../App';
-import { FaHome, FaCog, FaBoxes, FaDollarSign, FaWrench, FaIndustry, FaShoppingCart, FaCalculator, FaChartBar, FaExchangeAlt, FaBarcode } from 'react-icons/fa';
+import { FaHome, FaCog, FaBoxes, FaDollarSign, FaWrench, FaIndustry, FaShoppingCart, FaCalculator, FaChartBar, FaExchangeAlt, FaBarcode, FaLink, FaTruck, FaHandshake, FaCalendarAlt, FaBell, FaFileAlt } from 'react-icons/fa';
+import NotificationBell from './NotificationBell';
 
 const navItems = [
   { path: '/', label: 'Home', icon: FaHome, module: null },
@@ -13,6 +14,11 @@ const navItems = [
   { path: '/accounting', label: 'Accounting', icon: FaCalculator, module: 'accounting' },
   { path: '/reports', label: 'Reports', icon: FaChartBar, module: 'reports' },
   { path: '/scanner', label: 'Scanner', icon: FaBarcode, module: null },
+  { path: '/smart-glazier', label: 'Smart Glazier', icon: FaLink, module: null },
+  { path: '/dispatch', label: 'Dispatch', icon: FaTruck, module: null },
+  { path: '/crm', label: 'CRM', icon: FaHandshake, module: null },
+  { path: '/gantt-schedule', label: 'Gantt Schedule', icon: FaCalendarAlt, module: null },
+  { path: '/documents', label: 'Documents', icon: FaFileAlt, module: null },
 ];
 
 function Layout() {
@@ -41,7 +47,9 @@ function Layout() {
         <span className="text-gray-600">User: {user?.first_name} {user?.last_name}</span>
         <span className="text-gray-500">|</span>
         <span className="text-gray-600">Role: <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>{user?.role}</span></span>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-3">
+          <NotificationBell />
+          <button onClick={() => navigate('/notifications')} className="text-gray-600 hover:text-amber-600 text-xs">Alerts</button>
           <button onClick={logout} className="text-red-600 hover:text-red-800 text-xs">Logout</button>
         </div>
       </div>
@@ -67,7 +75,7 @@ function Layout() {
 
       {/* Status Bar */}
       <div className="bg-gray-200 border-t border-gray-400 px-4 py-0.5 text-xs text-gray-600 flex justify-between">
-        <span>Max TA Group LLC - Glass Fabrication ERP v2.0</span>
+        <span>Max TA Group LLC - Glass Fabrication ERP v3.0</span>
         <span>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</span>
       </div>
     </div>

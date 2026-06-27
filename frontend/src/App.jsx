@@ -50,6 +50,12 @@ import VendorPayments from './pages/accounting/VendorPayments';
 import BankReconciliation from './pages/accounting/BankReconciliation';
 import Reports from './pages/Reports';
 import SystemSetup from './pages/SystemSetup';
+import SmartGlazier from './pages/SmartGlazier';
+import Dispatch from './pages/Dispatch';
+import CRM from './pages/CRM';
+import GanttSchedule from './pages/GanttSchedule';
+import Notifications from './pages/Notifications';
+import DocManagement from './pages/DocManagement';
 
 export const AuthContext = createContext(null);
 
@@ -190,6 +196,13 @@ function App() {
           {/* Reports & Setup */}
           <Route path="reports" element={<ProtectedModule module="reports" permissions={permissions}><Reports /></ProtectedModule>} />
           <Route path="setup" element={<ProtectedModule module="system_setup" permissions={permissions}><SystemSetup /></ProtectedModule>} />
+          {/* New V3 Modules */}
+          <Route path="smart-glazier" element={<SmartGlazier />} />
+          <Route path="dispatch" element={<Dispatch />} />
+          <Route path="crm" element={<CRM />} />
+          <Route path="gantt-schedule" element={<GanttSchedule />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="documents" element={<DocManagement />} />
         </Route>
       </Routes>
     </AuthContext.Provider>

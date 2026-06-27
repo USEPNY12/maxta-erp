@@ -36,9 +36,20 @@ try { app.use('/api/audit', require('./routes/audit')); } catch(e) { console.log
 try { app.use('/api/labels', require('./routes/labels')); } catch(e) { console.log('Labels routes not loaded:', e.message); }
 try { app.use('/api/files', require('./routes/files')); } catch(e) { console.log('Files routes not loaded:', e.message); }
 
+// V3 routes - New features (Smart Glazier, Dispatch, Notifications, Scheduling, CRM, Doc Management)
+try { app.use('/api/smartglazier', require('./routes/smartglazier')); } catch(e) { console.log('Smart Glazier routes not loaded:', e.message); }
+try { app.use('/api/dispatch', require('./routes/dispatch')); } catch(e) { console.log('Dispatch routes not loaded:', e.message); }
+try { app.use('/api/notifications', require('./routes/notifications')); } catch(e) { console.log('Notifications routes not loaded:', e.message); }
+try { app.use('/api/scheduling', require('./routes/scheduling')); } catch(e) { console.log('Scheduling routes not loaded:', e.message); }
+try { app.use('/api/crm', require('./routes/crm')); } catch(e) { console.log('CRM routes not loaded:', e.message); }
+try { app.use('/api/docmanagement', require('./routes/docmanagement')); } catch(e) { console.log('Doc Management routes not loaded:', e.message); }
+
+// Static uploads
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', version: '2.0.0', name: 'Max TA Group ERP' });
+  res.json({ status: 'ok', version: '3.0.0', name: 'Max TA Group ERP' });
 });
 
 // Serve frontend in production
@@ -56,7 +67,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Max TA Group ERP Server v2.0 running on port ${PORT}`);
+  console.log(`Max TA Group ERP Server v3.0 running on port ${PORT}`);
 });
 
 module.exports = app;
