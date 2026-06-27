@@ -3,15 +3,17 @@ const router = express.Router();
 const pool = require('../config/database');
 const { authenticate } = require('../middleware/auth');
 const { getNextNumber } = require('../utils/sequence');
+const { preventDelete } = require('../middleware/documentLock');
 
 // ============ GL ACCOUNTS (Chart of Accounts) ============
 router.get('/gl-accounts', authenticate, async (req, res) => {
   try {
-    const { account_type, search } = req.query;
+    const { account_type, search, is_active } = req.query;
     let query = 'SELECT * FROM gl_accounts WHERE 1=1';
     const params = [];
     if (account_type) { query += ' AND account_type = ?'; params.push(account_type); }
     if (search) { query += ' AND (account_number LIKE ? OR account_name LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
+    if (is_active !== undefined) { query += ' AND is_active = ?'; params.push(is_active === 'true'); }
     query += ' ORDER BY account_number';
     const [accounts] = await pool.query(query, params);
     res.json(accounts);
@@ -25,7 +27,39 @@ router.post('/gl-accounts', authenticate, async (req, res) => {
       'INSERT INTO gl_accounts (account_number, account_name, account_type, sub_type, parent_account_id, description, is_active) VALUES (?,?,?,?,?,?,?)',
       [account_number, account_name, account_type, sub_type, parent_account_id, description, is_active !== false]
     );
+    await req.audit('gl_accounts', result.insertId, 'INSERT', null, { account_number, account_name, account_type });
     res.status(201).json({ id: result.insertId });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.put('/gl-accounts/:id', authenticate, async (req, res) => {
+  try {
+    const [old] = await pool.query('SELECT * FROM gl_accounts WHERE id = ?', [req.params.id]);
+    const fields = req.body;
+    delete fields.id; delete fields.created_at;
+    const columns = Object.keys(fields);
+    const values = columns.map(k => fields[k]);
+    await pool.query(`UPDATE gl_accounts SET ${columns.map(k => `${k}=?`).join(',')} WHERE id=?`, [...values, req.params.id]);
+    await req.audit('gl_accounts', req.params.id, 'UPDATE', old[0], fields);
+    res.json({ message: 'GL Account updated' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ GL TRANSACTIONS ============
+router.get('/gl-transactions', authenticate, async (req, res) => {
+  try {
+    const { account_id, period, date_from, date_to, source_type } = req.query;
+    let query = `SELECT glt.*, ga.account_number, ga.account_name FROM gl_transactions glt 
+                 JOIN gl_accounts ga ON glt.gl_account_id = ga.id WHERE 1=1`;
+    const params = [];
+    if (account_id) { query += ' AND glt.gl_account_id = ?'; params.push(account_id); }
+    if (period) { query += ' AND glt.period = ?'; params.push(period); }
+    if (date_from) { query += ' AND glt.transaction_date >= ?'; params.push(date_from); }
+    if (date_to) { query += ' AND glt.transaction_date <= ?'; params.push(date_to); }
+    if (source_type) { query += ' AND glt.source_type = ?'; params.push(source_type); }
+    query += ' ORDER BY glt.transaction_date DESC, glt.id DESC LIMIT 500';
+    const [transactions] = await pool.query(query, params);
+    res.json(transactions);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
@@ -35,9 +69,9 @@ router.get('/journal-vouchers', authenticate, async (req, res) => {
     const { status, period } = req.query;
     let query = 'SELECT jv.*, u.first_name, u.last_name FROM journal_vouchers jv LEFT JOIN users u ON jv.created_by = u.id WHERE 1=1';
     const params = [];
-    if (status) { query += ' AND jv.status = ?'; params.push(status); }
+    if (status && status !== 'all') { query += ' AND jv.status = ?'; params.push(status); }
     if (period) { query += ' AND jv.period = ?'; params.push(period); }
-    query += ' ORDER BY jv.voucher_date DESC LIMIT 100';
+    query += ' ORDER BY jv.voucher_date DESC LIMIT 200';
     const [vouchers] = await pool.query(query, params);
     res.json(vouchers);
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -76,17 +110,20 @@ router.post('/journal-vouchers', authenticate, async (req, res) => {
     if (lines && lines.length > 0) {
       for (let i = 0; i < lines.length; i++) {
         const l = lines[i];
+        const accountId = l.gl_account_id || l.account_id;
+        const lineMemo = l.memo || l.description || '';
         await pool.query(
           'INSERT INTO journal_voucher_lines (journal_voucher_id, line_number, gl_account_id, debit, credit, memo) VALUES (?,?,?,?,?,?)',
-          [result.insertId, i + 1, l.gl_account_id, l.debit || 0, l.credit || 0, l.memo]
+          [result.insertId, i + 1, accountId, l.debit || 0, l.credit || 0, lineMemo]
         );
       }
     }
+    await req.audit('journal_vouchers', result.insertId, 'INSERT', null, { voucher_number: voucherNumber, total_debit: totalDebit });
     res.status(201).json({ id: result.insertId, voucher_number: voucherNumber });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Post journal voucher
+// Post journal voucher (locks it and posts to GL)
 router.post('/journal-vouchers/:id/post', authenticate, async (req, res) => {
   try {
     const [vouchers] = await pool.query('SELECT * FROM journal_vouchers WHERE id = ? AND status = "draft"', [req.params.id]);
@@ -102,48 +139,67 @@ router.post('/journal-vouchers/:id/post', authenticate, async (req, res) => {
       );
       // Update account balance
       const netAmount = (line.debit || 0) - (line.credit || 0);
-      await pool.query('UPDATE gl_accounts SET balance = balance + ? WHERE id = ?', [netAmount, line.gl_account_id]);
+      await pool.query('UPDATE gl_accounts SET balance = COALESCE(balance,0) + ? WHERE id = ?', [netAmount, line.gl_account_id]);
     }
 
     await pool.query("UPDATE journal_vouchers SET status = 'posted', posted_date = NOW(), posted_by = ? WHERE id = ?", [req.user.id, req.params.id]);
-    res.json({ message: 'Journal voucher posted successfully' });
+    await req.audit('journal_vouchers', req.params.id, 'POST', { status: 'draft' }, { status: 'posted' });
+    res.json({ message: 'Journal voucher posted successfully. It is now locked.' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// ============ AR INVOICES ============
-router.get('/ar-invoices', authenticate, async (req, res) => {
+// Reverse a posted JV (creates a new reversing JV)
+router.post('/journal-vouchers/:id/reverse', authenticate, async (req, res) => {
   try {
-    const { status, customer_id } = req.query;
-    let query = 'SELECT ari.*, c.company_name as customer_name FROM ar_invoices ari JOIN customers c ON ari.customer_id = c.id WHERE 1=1';
-    const params = [];
-    if (status) { query += ' AND ari.status = ?'; params.push(status); }
-    if (customer_id) { query += ' AND ari.customer_id = ?'; params.push(customer_id); }
-    query += ' ORDER BY ari.invoice_date DESC LIMIT 100';
-    const [invoices] = await pool.query(query, params);
-    res.json(invoices);
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
+    const [vouchers] = await pool.query('SELECT * FROM journal_vouchers WHERE id = ? AND status = "posted"', [req.params.id]);
+    if (vouchers.length === 0) return res.status(400).json({ error: 'Only posted vouchers can be reversed' });
 
-router.post('/ar-invoices', authenticate, async (req, res) => {
-  try {
-    const invoiceNumber = await getNextNumber('ar_invoice');
-    const { customer_id, sales_order_id, shipment_id, invoice_date, due_date, subtotal, tax_amount, freight, total, notes } = req.body;
-    const balance = total || ((subtotal || 0) + (tax_amount || 0) + (freight || 0));
+    const reverseNumber = await getNextNumber('journal_voucher');
+    const [lines] = await pool.query('SELECT * FROM journal_voucher_lines WHERE journal_voucher_id = ?', [req.params.id]);
+
+    // Create reversing JV
     const [result] = await pool.query(
-      `INSERT INTO ar_invoices (invoice_number, customer_id, sales_order_id, shipment_id, invoice_date, due_date, subtotal, tax_amount, freight, total, balance, notes, status, created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,'open',?)`,
-      [invoiceNumber, customer_id, sales_order_id, shipment_id, invoice_date || new Date(), due_date, subtotal, tax_amount || 0, freight || 0, balance, balance, notes, req.user.id]
+      "INSERT INTO journal_vouchers (voucher_number, voucher_date, period, memo, reference, total_debit, total_credit, status, created_by, reversing_id) VALUES (?,NOW(),?,?,?,?,?,'posted',?,?)",
+      [reverseNumber, vouchers[0].period, `Reversal of ${vouchers[0].voucher_number}`, vouchers[0].voucher_number, vouchers[0].total_credit, vouchers[0].total_debit, req.user.id, req.params.id]
     );
-    res.status(201).json({ id: result.insertId, invoice_number: invoiceNumber });
+
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i];
+      await pool.query(
+        'INSERT INTO journal_voucher_lines (journal_voucher_id, line_number, gl_account_id, debit, credit, memo) VALUES (?,?,?,?,?,?)',
+        [result.insertId, i + 1, l.gl_account_id, l.credit, l.debit, `Reversal: ${l.memo || ''}`]
+      );
+      // Post reversal to GL
+      await pool.query(
+        'INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, source_type, source_id, memo, posted_by) VALUES (?,NOW(),?,?,?,?,?,?,?)',
+        [l.gl_account_id, vouchers[0].period, l.credit, l.debit, 'journal_voucher', result.insertId, `Reversal: ${l.memo || ''}`, req.user.id]
+      );
+      const netAmount = (l.credit || 0) - (l.debit || 0);
+      await pool.query('UPDATE gl_accounts SET balance = COALESCE(balance,0) + ? WHERE id = ?', [netAmount, l.gl_account_id]);
+    }
+
+    await pool.query("UPDATE journal_vouchers SET status = 'reversed' WHERE id = ?", [req.params.id]);
+    await req.audit('journal_vouchers', req.params.id, 'REVERSE', { status: 'posted' }, { status: 'reversed', reversing_jv: reverseNumber });
+    res.json({ id: result.insertId, voucher_number: reverseNumber, message: 'Reversal JV created and posted' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
+
+// JVs cannot be deleted
+router.delete('/journal-vouchers/:id', authenticate, preventDelete('journal_vouchers'));
 
 // ============ CUSTOMER PAYMENTS ============
 router.get('/customer-payments', authenticate, async (req, res) => {
   try {
-    const [payments] = await pool.query(`
-      SELECT cp.*, c.company_name as customer_name FROM customer_payments cp 
-      JOIN customers c ON cp.customer_id = c.id ORDER BY cp.payment_date DESC LIMIT 100`);
+    const { customer_id, date_from, date_to, payment_method } = req.query;
+    let query = `SELECT cp.*, c.company_name as customer_name FROM customer_payments cp 
+      JOIN customers c ON cp.customer_id = c.id WHERE 1=1`;
+    const params = [];
+    if (customer_id) { query += ' AND cp.customer_id = ?'; params.push(customer_id); }
+    if (date_from) { query += ' AND cp.payment_date >= ?'; params.push(date_from); }
+    if (date_to) { query += ' AND cp.payment_date <= ?'; params.push(date_to); }
+    if (payment_method) { query += ' AND cp.payment_method = ?'; params.push(payment_method); }
+    query += ' ORDER BY cp.payment_date DESC LIMIT 200';
+    const [payments] = await pool.query(query, params);
     res.json(payments);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
@@ -153,32 +209,117 @@ router.post('/customer-payments', authenticate, async (req, res) => {
     const paymentNumber = await getNextNumber('payment');
     const { customer_id, payment_date, amount, payment_method, reference_number, bank_account_id, notes, applied_invoices } = req.body;
 
+    if (!amount || amount <= 0) return res.status(400).json({ error: 'Payment amount must be greater than 0' });
+
     const [result] = await pool.query(
-      'INSERT INTO customer_payments (payment_number, customer_id, payment_date, amount, payment_method, reference_number, bank_account_id, notes, received_by) VALUES (?,?,?,?,?,?,?,?,?)',
-      [paymentNumber, customer_id, payment_date || new Date(), amount, payment_method, reference_number, bank_account_id, notes, req.user.id]
+      'INSERT INTO customer_payments (payment_number, customer_id, payment_date, amount, payment_method, reference_number, bank_account_id, notes, status, received_by) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      [paymentNumber, customer_id, payment_date || new Date(), amount, payment_method || 'check', reference_number, bank_account_id, notes, 'posted', req.user.id]
     );
 
     // Apply to invoices
+    let totalApplied = 0;
     if (applied_invoices && applied_invoices.length > 0) {
       for (const ai of applied_invoices) {
         await pool.query(
           'INSERT INTO payment_applications (payment_id, ar_invoice_id, amount_applied) VALUES (?,?,?)',
           [result.insertId, ai.invoice_id, ai.amount]
         );
-        await pool.query('UPDATE ar_invoices SET balance = balance - ?, amount_paid = amount_paid + ? WHERE id = ?', [ai.amount, ai.amount, ai.invoice_id]);
+        await pool.query('UPDATE ar_invoices SET amount_paid = COALESCE(amount_paid,0) + ? WHERE id = ?', [ai.amount, ai.invoice_id]);
         // Check if fully paid
-        await pool.query("UPDATE ar_invoices SET status = 'paid' WHERE id = ? AND balance <= 0", [ai.invoice_id]);
+        const [inv] = await pool.query('SELECT total_amount, COALESCE(amount_paid,0) as amount_paid FROM ar_invoices WHERE id = ?', [ai.invoice_id]);
+        if (inv.length && inv[0].amount_paid >= inv[0].total_amount) {
+          await pool.query("UPDATE ar_invoices SET status = 'paid' WHERE id = ?", [ai.invoice_id]);
+        } else {
+          await pool.query("UPDATE ar_invoices SET status = 'partial' WHERE id = ?", [ai.invoice_id]);
+        }
+        totalApplied += ai.amount;
       }
     }
+
+    // Update bank balance
+    if (bank_account_id) {
+      await pool.query('UPDATE bank_accounts SET current_balance = COALESCE(current_balance,0) + ? WHERE id = ?', [amount, bank_account_id]);
+    }
+
+    await req.audit('customer_payments', result.insertId, 'INSERT', null, { payment_number: paymentNumber, customer_id, amount, payment_method, applied: totalApplied });
     res.status(201).json({ id: result.insertId, payment_number: paymentNumber });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
+
+// Customer payments cannot be deleted
+router.delete('/customer-payments/:id', authenticate, preventDelete('customer_payments'));
+
+// ============ VENDOR PAYMENTS ============
+router.get('/vendor-payments', authenticate, async (req, res) => {
+  try {
+    const { vendor_id, date_from, date_to, payment_method, status } = req.query;
+    let query = `SELECT vp.*, v.company_name as vendor_name FROM vendor_payments vp 
+      JOIN vendors v ON vp.vendor_id = v.id WHERE 1=1`;
+    const params = [];
+    if (vendor_id) { query += ' AND vp.vendor_id = ?'; params.push(vendor_id); }
+    if (date_from) { query += ' AND vp.payment_date >= ?'; params.push(date_from); }
+    if (date_to) { query += ' AND vp.payment_date <= ?'; params.push(date_to); }
+    if (payment_method) { query += ' AND vp.payment_method = ?'; params.push(payment_method); }
+    if (status && status !== 'all') { query += ' AND vp.status = ?'; params.push(status); }
+    query += ' ORDER BY vp.payment_date DESC LIMIT 200';
+    const [payments] = await pool.query(query, params);
+    res.json(payments);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/vendor-payments', authenticate, async (req, res) => {
+  try {
+    const paymentNumber = await getNextNumber('vendor_payment');
+    const { vendor_id, payment_date, amount, payment_method, check_number, bank_id, ap_invoice_id, notes } = req.body;
+
+    if (!amount || amount <= 0) return res.status(400).json({ error: 'Payment amount must be greater than 0' });
+
+    const [result] = await pool.query(
+      `INSERT INTO vendor_payments (payment_number, vendor_id, payment_date, amount, payment_method, check_number, bank_id, ap_invoice_id, notes, status, created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,'posted',?)`,
+      [paymentNumber, vendor_id, payment_date || new Date(), amount, payment_method || 'check', check_number, bank_id, ap_invoice_id, notes, req.user.id]
+    );
+
+    // Apply payment to AP invoice
+    if (ap_invoice_id) {
+      await pool.query('UPDATE ap_invoices SET amount_paid = COALESCE(amount_paid,0) + ?, balance = GREATEST(0, balance - ?) WHERE id = ?', [amount, amount, ap_invoice_id]);
+      const [inv] = await pool.query('SELECT total, COALESCE(amount_paid,0) as amount_paid FROM ap_invoices WHERE id = ?', [ap_invoice_id]);
+      if (inv.length && inv[0].amount_paid >= inv[0].total) {
+        await pool.query("UPDATE ap_invoices SET status = 'paid' WHERE id = ?", [ap_invoice_id]);
+      } else {
+        await pool.query("UPDATE ap_invoices SET status = 'partial' WHERE id = ?", [ap_invoice_id]);
+      }
+    }
+
+    // Update bank balance (debit - money going out)
+    if (bank_id) {
+      await pool.query('UPDATE banks SET current_balance = COALESCE(current_balance,0) - ? WHERE id = ?', [amount, bank_id]);
+    }
+
+    await req.audit('vendor_payments', result.insertId, 'INSERT', null, { payment_number: paymentNumber, vendor_id, amount, payment_method });
+    res.status(201).json({ id: result.insertId, payment_number: paymentNumber });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Vendor payments cannot be deleted
+router.delete('/vendor-payments/:id', authenticate, preventDelete('vendor_payments'));
 
 // ============ BANK ACCOUNTS ============
 router.get('/bank-accounts', authenticate, async (req, res) => {
   try {
     const [accounts] = await pool.query('SELECT * FROM bank_accounts WHERE is_active = TRUE ORDER BY account_name');
     res.json(accounts);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/bank-accounts', authenticate, async (req, res) => {
+  try {
+    const { account_name, bank_name, account_number, routing_number, account_type, gl_account_id, current_balance } = req.body;
+    const [result] = await pool.query(
+      'INSERT INTO bank_accounts (account_name, bank_name, account_number, routing_number, account_type, gl_account_id, current_balance) VALUES (?,?,?,?,?,?,?)',
+      [account_name, bank_name, account_number, routing_number, account_type || 'checking', gl_account_id, current_balance || 0]
+    );
+    res.status(201).json({ id: result.insertId });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
@@ -189,28 +330,39 @@ router.get('/bank-reconciliation', authenticate, async (req, res) => {
     let query = 'SELECT br.*, ba.account_name FROM bank_reconciliations br JOIN bank_accounts ba ON br.bank_account_id = ba.id WHERE 1=1';
     const params = [];
     if (bank_account_id) { query += ' AND br.bank_account_id = ?'; params.push(bank_account_id); }
-    if (status) { query += ' AND br.status = ?'; params.push(status); }
+    if (status && status !== 'all') { query += ' AND br.status = ?'; params.push(status); }
     query += ' ORDER BY br.statement_date DESC';
     const [recons] = await pool.query(query, params);
     res.json(recons);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+router.post('/bank-reconciliation', authenticate, async (req, res) => {
+  try {
+    const { bank_account_id, statement_date, statement_balance, notes } = req.body;
+    const [result] = await pool.query(
+      "INSERT INTO bank_reconciliations (bank_account_id, statement_date, statement_balance, status, notes, created_by) VALUES (?,?,?,'in_progress',?,?)",
+      [bank_account_id, statement_date, statement_balance, notes, req.user.id]
+    );
+    res.status(201).json({ id: result.insertId });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 // ============ DASHBOARD ============
 router.get('/dashboard', authenticate, async (req, res) => {
   try {
-    const [openAR] = await pool.query("SELECT COALESCE(SUM(balance),0) as total FROM ar_invoices WHERE status = 'open'");
-    const [openAP] = await pool.query("SELECT COALESCE(SUM(balance),0) as total FROM ap_invoices WHERE status = 'open'");
+    const [openAR] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial')");
+    const [openAP] = await pool.query("SELECT COALESCE(SUM(total - COALESCE(amount_paid,0)),0) as total FROM ap_invoices WHERE status IN ('open','posted','partial')");
     const [bankBalance] = await pool.query("SELECT COALESCE(SUM(current_balance),0) as total FROM bank_accounts WHERE is_active = TRUE");
-    const [mtdRevenue] = await pool.query("SELECT COALESCE(SUM(total),0) as total FROM ar_invoices WHERE MONTH(invoice_date) = MONTH(NOW()) AND YEAR(invoice_date) = YEAR(NOW())");
-    const [ytdRevenue] = await pool.query("SELECT COALESCE(SUM(total),0) as total FROM ar_invoices WHERE YEAR(invoice_date) = YEAR(NOW())");
-    const [overdueAR] = await pool.query("SELECT COALESCE(SUM(balance),0) as total FROM ar_invoices WHERE due_date < CURDATE() AND status = 'open'");
+    const [mtdRevenue] = await pool.query("SELECT COALESCE(SUM(total_amount),0) as total FROM ar_invoices WHERE MONTH(invoice_date) = MONTH(NOW()) AND YEAR(invoice_date) = YEAR(NOW()) AND status != 'void'");
+    const [ytdRevenue] = await pool.query("SELECT COALESCE(SUM(total_amount),0) as total FROM ar_invoices WHERE YEAR(invoice_date) = YEAR(NOW()) AND status != 'void'");
+    const [overdueAR] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE due_date < CURDATE() AND status IN ('posted','partial')");
     
     // AR Aging
-    const [arCurrent] = await pool.query("SELECT COALESCE(SUM(balance),0) as total FROM ar_invoices WHERE status='open' AND DATEDIFF(CURDATE(), due_date) <= 0");
-    const [ar30] = await pool.query("SELECT COALESCE(SUM(balance),0) as total FROM ar_invoices WHERE status='open' AND DATEDIFF(CURDATE(), due_date) BETWEEN 1 AND 30");
-    const [ar60] = await pool.query("SELECT COALESCE(SUM(balance),0) as total FROM ar_invoices WHERE status='open' AND DATEDIFF(CURDATE(), due_date) BETWEEN 31 AND 60");
-    const [ar90] = await pool.query("SELECT COALESCE(SUM(balance),0) as total FROM ar_invoices WHERE status='open' AND DATEDIFF(CURDATE(), due_date) > 60");
+    const [arCurrent] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) <= 0");
+    const [ar30] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) BETWEEN 1 AND 30");
+    const [ar60] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) BETWEEN 31 AND 60");
+    const [ar90] = await pool.query("SELECT COALESCE(SUM(total_amount - COALESCE(amount_paid,0)),0) as total FROM ar_invoices WHERE status IN ('posted','partial') AND DATEDIFF(CURDATE(), due_date) > 60");
 
     res.json({
       open_ar: openAR[0].total, open_ap: openAP[0].total, bank_balance: bankBalance[0].total,

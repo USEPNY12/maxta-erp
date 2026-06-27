@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../config/database');
 const { authenticate } = require('../middleware/auth');
 const { getNextNumber } = require('../utils/sequence');
+const { checkDocumentLock, preventDelete } = require('../middleware/documentLock');
 
 // ============ WORK CENTERS ============
 router.get('/work-centers', authenticate, async (req, res) => {
@@ -321,6 +322,25 @@ router.post('/receipts', authenticate, async (req, res) => {
 });
 
 // ============ LABOR ============
+router.get('/labor', authenticate, async (req, res) => {
+  try {
+    const { work_order_id, work_center_id, employee_id, date_from, date_to } = req.query;
+    let query = `SELECT wl.*, wo.wo_number, wc.name as work_center_name, u.first_name, u.last_name
+                 FROM wo_labor wl JOIN work_orders wo ON wl.work_order_id = wo.id
+                 LEFT JOIN work_centers wc ON wl.work_center_id = wc.id
+                 LEFT JOIN users u ON wl.employee_id = u.id WHERE 1=1`;
+    const params = [];
+    if (work_order_id) { query += ' AND wl.work_order_id = ?'; params.push(work_order_id); }
+    if (work_center_id) { query += ' AND wl.work_center_id = ?'; params.push(work_center_id); }
+    if (employee_id) { query += ' AND wl.employee_id = ?'; params.push(employee_id); }
+    if (date_from) { query += ' AND wl.work_date >= ?'; params.push(date_from); }
+    if (date_to) { query += ' AND wl.work_date <= ?'; params.push(date_to); }
+    query += ' ORDER BY wl.work_date DESC LIMIT 200';
+    const [labor] = await pool.query(query, params);
+    res.json(labor);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 router.post('/labor', authenticate, async (req, res) => {
   try {
     const { work_order_id, work_center_id, employee_id, work_date, hours, rate, labor_type, notes } = req.body;
@@ -328,7 +348,27 @@ router.post('/labor', authenticate, async (req, res) => {
       'INSERT INTO wo_labor (work_order_id, work_center_id, employee_id, work_date, hours, rate, labor_type, notes) VALUES (?,?,?,?,?,?,?,?)',
       [work_order_id, work_center_id, employee_id, work_date || new Date(), hours, rate || 0, labor_type || 'run', notes]
     );
+    await req.audit('wo_labor', result.insertId, 'INSERT', null, { work_order_id, hours, labor_type });
     res.status(201).json({ id: result.insertId });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ PRODUCTION SCHEDULE ============
+router.get('/schedule', authenticate, async (req, res) => {
+  try {
+    const { date_from, date_to, work_center_id, status } = req.query;
+    let query = `SELECT wo.*, i.item_number, i.description as item_description, c.company_name as customer_name, so.order_number
+                 FROM work_orders wo JOIN items i ON wo.item_id = i.id
+                 LEFT JOIN sales_orders so ON wo.sales_order_id = so.id
+                 LEFT JOIN customers c ON so.customer_id = c.id
+                 WHERE wo.status IN ('planned','scheduled','in_progress')`;
+    const params = [];
+    if (date_from) { query += ' AND wo.start_date >= ?'; params.push(date_from); }
+    if (date_to) { query += ' AND wo.finish_date <= ?'; params.push(date_to); }
+    if (status) { query += ' AND wo.status = ?'; params.push(status); }
+    query += ' ORDER BY wo.priority DESC, wo.start_date ASC LIMIT 500';
+    const [schedule] = await pool.query(query, params);
+    res.json(schedule);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
