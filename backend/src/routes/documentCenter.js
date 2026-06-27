@@ -344,7 +344,7 @@ router.post('/statements/generate', authenticate, async (req, res) => {
 
     // Get invoices in period
     const [invoices] = await pool.query(
-      `SELECT id, invoice_number, invoice_date, due_date, total_amount, amount_paid, status
+      `SELECT id, invoice_number, invoice_date, due_date, total as total_amount, amount_paid, status
        FROM ar_invoices WHERE customer_id = ? AND invoice_date BETWEEN ? AND ?
        ORDER BY invoice_date`,
       [customer_id, startDate, endDate]
@@ -352,9 +352,8 @@ router.post('/statements/generate', authenticate, async (req, res) => {
 
     // Get payments in period
     const [payments] = await pool.query(
-      `SELECT cp.id, cp.payment_date, cp.amount, cp.payment_method, cp.reference_number, ai.invoice_number
+      `SELECT cp.id, cp.payment_date, cp.amount, cp.payment_method, cp.reference_number, cp.payment_number
        FROM customer_payments cp
-       LEFT JOIN ar_invoices ai ON cp.invoice_id = ai.id
        WHERE cp.customer_id = ? AND cp.payment_date BETWEEN ? AND ?
        ORDER BY cp.payment_date`,
       [customer_id, startDate, endDate]
@@ -362,7 +361,7 @@ router.post('/statements/generate', authenticate, async (req, res) => {
 
     // Calculate opening balance (unpaid invoices before period start)
     const [openBal] = await pool.query(
-      `SELECT COALESCE(SUM(total_amount - amount_paid), 0) as balance
+      `SELECT COALESCE(SUM(total - amount_paid), 0) as balance
        FROM ar_invoices WHERE customer_id = ? AND invoice_date < ? AND status != 'cancelled'`,
       [customer_id, startDate]
     );
@@ -390,11 +389,11 @@ router.post('/statements/generate', authenticate, async (req, res) => {
     // Calculate aging
     const [agingData] = await pool.query(
       `SELECT 
-        SUM(CASE WHEN DATEDIFF(NOW(), due_date) <= 0 THEN total_amount - amount_paid ELSE 0 END) as current_amt,
-        SUM(CASE WHEN DATEDIFF(NOW(), due_date) BETWEEN 1 AND 30 THEN total_amount - amount_paid ELSE 0 END) as days_30,
-        SUM(CASE WHEN DATEDIFF(NOW(), due_date) BETWEEN 31 AND 60 THEN total_amount - amount_paid ELSE 0 END) as days_60,
-        SUM(CASE WHEN DATEDIFF(NOW(), due_date) BETWEEN 61 AND 90 THEN total_amount - amount_paid ELSE 0 END) as days_90,
-        SUM(CASE WHEN DATEDIFF(NOW(), due_date) > 90 THEN total_amount - amount_paid ELSE 0 END) as over_90
+        SUM(CASE WHEN DATEDIFF(NOW(), due_date) <= 0 THEN total - amount_paid ELSE 0 END) as current_amt,
+        SUM(CASE WHEN DATEDIFF(NOW(), due_date) BETWEEN 1 AND 30 THEN total - amount_paid ELSE 0 END) as days_30,
+        SUM(CASE WHEN DATEDIFF(NOW(), due_date) BETWEEN 31 AND 60 THEN total - amount_paid ELSE 0 END) as days_60,
+        SUM(CASE WHEN DATEDIFF(NOW(), due_date) BETWEEN 61 AND 90 THEN total - amount_paid ELSE 0 END) as days_90,
+        SUM(CASE WHEN DATEDIFF(NOW(), due_date) > 90 THEN total - amount_paid ELSE 0 END) as over_90
        FROM ar_invoices WHERE customer_id = ? AND status NOT IN ('paid','cancelled')`,
       [customer_id]
     );
@@ -579,7 +578,7 @@ router.get('/portal/documents/:token', async (req, res) => {
 
     // Get recent invoices
     const [invoices] = await pool.query(
-      `SELECT id, invoice_number, invoice_date, due_date, total_amount, amount_paid, status
+      `SELECT id, invoice_number, invoice_date, due_date, total as total_amount, amount_paid, status
        FROM ar_invoices WHERE customer_id = ? ORDER BY invoice_date DESC LIMIT 50`,
       [customerId]
     );
