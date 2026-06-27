@@ -32,6 +32,16 @@ module.exports = async () => {
   for (const sql of tables) {
     try { await pool.query(sql); } catch(e) { console.log('Migration:', e.message.substring(0, 80)); }
   }
+
+  // Add columns to work_orders for lamination parent/child WO support
+  const alterStatements = [
+    "ALTER TABLE work_orders ADD COLUMN parent_wo_id INT DEFAULT NULL",
+    "ALTER TABLE work_orders ADD COLUMN wo_category ENUM('standard','assembly','glass_component','interlayer_component') DEFAULT 'standard'",
+    "ALTER TABLE notifications ADD COLUMN is_dismissed BOOLEAN DEFAULT FALSE"
+  ];
+  for (const sql of alterStatements) {
+    try { await pool.query(sql); } catch(e) { /* column already exists - ignore */ }
+  }
   console.log('V3 migrations: All tables verified');
 
   // Seed data if empty
