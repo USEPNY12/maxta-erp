@@ -1,3 +1,4 @@
+import { formatDate } from '../../utils/formatDate';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
@@ -15,7 +16,7 @@ function APInvoices() {
   useEffect(() => { fetchInvoices(); }, []);
 
   const fetchInvoices = async () => {
-    try { const res = await api.get('/api/purchasing/ap-invoices'); setInvoices(Array.isArray(res.data) ? res.data : []); } catch { setInvoices([]); }
+    try { const res = await api.get('/api/purchasing/ap-invoices'); setInvoices(Array.isArray(res.data) ? res.data : res.data.invoices || []); } catch { setInvoices([]); }
   };
 
   const fetchVendors = async () => {
@@ -24,7 +25,7 @@ function APInvoices() {
 
   const fetchPOs = async (vendorId) => {
     if (!vendorId) { setPurchaseOrders([]); return; }
-    try { const res = await api.get('/api/purchasing/purchase-orders', { params: { vendor_id: vendorId } }); setPurchaseOrders(Array.isArray(res.data) ? res.data : res.data.orders || []); } catch { setPurchaseOrders([]); }
+    try { const res = await api.get('/api/purchasing/purchase-orders', { params: { vendor_id: vendorId } }); setPurchaseOrders(res.data); } catch { setPurchaseOrders([]); }
   };
 
   const handleNew = () => {
@@ -69,8 +70,8 @@ function APInvoices() {
                 <td className="text-blue-700 font-bold">{inv.invoice_number}</td>
                 <td>{inv.vendor_name}</td>
                 <td>{inv.po_number || '-'}</td>
-                <td>{inv.invoice_date}</td>
-                <td>{inv.due_date}</td>
+                <td>{formatDate(inv.invoice_date)}</td>
+                <td>{formatDate(inv.due_date)}</td>
                 <td className="text-right font-bold">${parseFloat(inv.total || 0).toFixed(2)}</td>
                 <td className="text-right">${parseFloat(inv.balance || 0).toFixed(2)}</td>
                 <td><span className={`erp-status erp-status-${inv.status}`}>{inv.status}</span></td>

@@ -109,6 +109,7 @@ body {
   background: white;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .erp-panel-header {
@@ -419,6 +420,19 @@ body {
 .erp-status-partial { background: #fcf8e3; color: #8a6d3b; }
 .erp-status-scheduled { background: #d9edf7; color: #31708f; }
 .erp-status-posted { background: #dff0d8; color: #3c763d; }
+.erp-status-draft { background: #f5f5f5; color: #666; }
+.erp-status-sent { background: #d9edf7; color: #31708f; }
+.erp-status-accepted { background: #dff0d8; color: #3c763d; }
+.erp-status-converted { background: #e8daef; color: #6c3483; }
+.erp-status-rejected { background: #f2dede; color: #a94442; }
+.erp-status-expired { background: #f5f5f5; color: #999; }
+.erp-status-released { background: #d4efdf; color: #1e8449; }
+.erp-status-in_production { background: #fdebd0; color: #d35400; }
+.erp-status-complete { background: #d5f5e3; color: #196f3d; }
+.erp-status-shipped { background: #d6eaf8; color: #2471a3; }
+.erp-status-invoiced { background: #e8daef; color: #6c3483; }
+.erp-status-pending { background: #fef9e7; color: #b7950b; }
+.erp-status-planned { background: #eaf2f8; color: #2980b9; }
 
 /* KPI Summary */
 .erp-kpi-row {

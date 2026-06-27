@@ -58,7 +58,7 @@ router.get('/dashboard', authenticate, async (req, res) => {
 router.get('/accounts-payable/open', authenticate, async (req, res) => {
   try {
     const [data] = await pool.query(`
-      SELECT api.*, v.company_name, DATEDIFF(CURDATE(), api.due_date) as days_overdue
+      SELECT api.invoice_number, v.company_name as vendor_name, api.invoice_date, api.due_date, api.amount, api.amount_paid, (api.amount - api.amount_paid) as balance_due, v.company_name, DATEDIFF(CURDATE(), api.due_date) as days_overdue
       FROM ap_invoices api JOIN vendors v ON api.vendor_id = v.id WHERE api.status = 'open' ORDER BY api.due_date`);
     res.json(data);
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -146,7 +146,7 @@ router.get('/inventory/value', authenticate, async (req, res) => {
 router.get('/manufacturing/wo-status', authenticate, async (req, res) => {
   try {
     const [data] = await pool.query(`
-      SELECT wo.*, i.item_number, i.description as item_description, c.company_name as customer_name
+      SELECT wo.order_number, wo.status, wo.priority, i.item_number, i.description as item_description, wo.quantity, wo.quantity_completed, wo.quantity_scrapped, wo.start_date, wo.finish_date, wo.actual_finish_date, wo.notes, c.company_name as customer_name, i.item_number, i.description as item_description, c.company_name as customer_name
       FROM work_orders wo JOIN items i ON wo.item_id = i.id LEFT JOIN customers c ON wo.customer_id = c.id
       WHERE wo.status IN ('released','in_progress','scheduled') ORDER BY wo.finish_date`);
     res.json(data);
@@ -165,6 +165,147 @@ router.get('/sales/by-customer', authenticate, async (req, res) => {
     query += ' GROUP BY c.id ORDER BY total DESC';
     const [data] = await pool.query(query, params);
     res.json(data);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ ADDITIONAL REPORTS ============
+// Purchase Order Status Report
+router.get('/purchasing/po-status', authenticate, async (req, res) => {
+  try {
+    const [data] = await pool.query(`
+      SELECT po.po_number, v.company_name as vendor_name, po.po_type, po.order_date, po.required_date, po.status, po.subtotal, po.tax_amount, po.total, po.notes, v.company_name as vendor_name
+      FROM purchase_orders po JOIN vendors v ON po.vendor_id = v.id
+      ORDER BY po.order_date DESC LIMIT 100`);
+    res.json(data);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Reorder Report
+router.get('/inventory/reorder', authenticate, async (req, res) => {
+  try {
+    const [data] = await pool.query(`
+      SELECT i.item_number, i.description, i.item_type, i.qty_on_hand, i.minimum_qty,
+        (i.minimum_qty - i.qty_on_hand) as qty_to_order, i.lead_time_days
+      FROM items i WHERE i.qty_on_hand <= i.minimum_qty AND i.is_active = TRUE
+      ORDER BY (i.minimum_qty - i.qty_on_hand) DESC`);
+    res.json(data);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Stock Status Report
+router.get('/inventory/stock-status', authenticate, async (req, res) => {
+  try {
+    const [data] = await pool.query(`
+      SELECT i.item_number, i.description, i.item_type, i.qty_on_hand, i.minimum_qty,
+        i.standard_cost, (i.qty_on_hand * i.standard_cost) as value,
+        CASE WHEN i.qty_on_hand <= 0 THEN 'Out of Stock'
+             WHEN i.qty_on_hand <= i.minimum_qty THEN 'Low Stock'
+             ELSE 'In Stock' END as status
+      FROM items i WHERE i.is_active = TRUE ORDER BY i.item_number`);
+    res.json(data);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Production Efficiency Report
+router.get('/manufacturing/efficiency', authenticate, async (req, res) => {
+  try {
+    const [data] = await pool.query(`
+      SELECT wo.order_number, i.item_number, i.description as item_description,
+        wo.quantity as quantity_ordered, wo.quantity_completed, wo.status,
+        wo.start_date, wo.finish_date,
+        DATEDIFF(COALESCE(wo.finish_date, CURDATE()), wo.start_date) as actual_days
+      FROM work_orders wo JOIN items i ON wo.item_id = i.id
+      WHERE wo.status IN ('completed','closed','in_progress')
+      ORDER BY wo.start_date DESC LIMIT 50`);
+    res.json(data);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ INCOME STATEMENT REPORT ============
+router.get('/financial/income-statement', authenticate, async (req, res) => {
+  try {
+    const { from_date, to_date } = req.query;
+    let dateFilter = '';
+    const params = [];
+    if (from_date && to_date) {
+      dateFilter = ' AND glt.transaction_date BETWEEN ? AND ?';
+      params.push(from_date, to_date);
+    }
+    const [revenue] = await pool.query(`SELECT ga.account_number, ga.account_name, COALESCE(SUM(glt.credit - glt.debit), 0) as balance FROM gl_accounts ga LEFT JOIN gl_transactions glt ON ga.id = glt.gl_account_id${dateFilter ? dateFilter : ''} WHERE ga.account_type = 'revenue' AND ga.is_active = TRUE GROUP BY ga.id ORDER BY ga.account_number`, params);
+    const [cogs] = await pool.query(`SELECT ga.account_number, ga.account_name, COALESCE(SUM(glt.debit - glt.credit), 0) as balance FROM gl_accounts ga LEFT JOIN gl_transactions glt ON ga.id = glt.gl_account_id${dateFilter ? dateFilter : ''} WHERE ga.account_type = 'cogs' AND ga.is_active = TRUE GROUP BY ga.id ORDER BY ga.account_number`, params);
+    const [expenses] = await pool.query(`SELECT ga.account_number, ga.account_name, COALESCE(SUM(glt.debit - glt.credit), 0) as balance FROM gl_accounts ga LEFT JOIN gl_transactions glt ON ga.id = glt.gl_account_id${dateFilter ? dateFilter : ''} WHERE ga.account_type = 'expense' AND ga.is_active = TRUE GROUP BY ga.id ORDER BY ga.account_number`, params);
+    const total_revenue = revenue.reduce((s, a) => s + Number(a.balance), 0);
+    const total_cogs = cogs.reduce((s, a) => s + Number(a.balance), 0);
+    const total_expenses = expenses.reduce((s, a) => s + Number(a.balance), 0);
+    res.json({ revenue, cogs, expenses, total_revenue, total_cogs, gross_profit: total_revenue - total_cogs, total_expenses, net_income: total_revenue - total_cogs - total_expenses });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ BALANCE SHEET REPORT ============
+router.get('/financial/balance-sheet', authenticate, async (req, res) => {
+  try {
+    const [assets] = await pool.query(`SELECT ga.account_number, ga.account_name, COALESCE(ga.balance, 0) as balance FROM gl_accounts ga WHERE ga.account_type = 'asset' AND ga.is_active = TRUE ORDER BY ga.account_number`);
+    const [liabilities] = await pool.query(`SELECT ga.account_number, ga.account_name, COALESCE(ga.balance, 0) as balance FROM gl_accounts ga WHERE ga.account_type = 'liability' AND ga.is_active = TRUE ORDER BY ga.account_number`);
+    const [equity] = await pool.query(`SELECT ga.account_number, ga.account_name, COALESCE(ga.balance, 0) as balance FROM gl_accounts ga WHERE ga.account_type = 'equity' AND ga.is_active = TRUE ORDER BY ga.account_number`);
+    const total_assets = assets.reduce((s, a) => s + Number(a.balance), 0);
+    const total_liabilities = liabilities.reduce((s, a) => s + Number(a.balance), 0);
+    const total_equity = equity.reduce((s, a) => s + Number(a.balance), 0);
+    res.json({ assets, liabilities, equity, total_assets, total_liabilities, total_equity });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ SALES BY PRODUCT REPORT ============
+router.get('/sales/by-product', authenticate, async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT i.item_number, i.description, i.item_type,
+        COUNT(DISTINCT sol.sales_order_id) as order_count,
+        SUM(sol.quantity_ordered) as total_qty_ordered,
+        SUM(sol.quantity_shipped) as total_qty_shipped,
+        SUM(sol.quantity_ordered * sol.unit_price) as total_revenue,
+        AVG(sol.unit_price) as avg_price
+      FROM sales_order_lines sol
+      JOIN items i ON sol.item_id = i.id
+      JOIN sales_orders so ON sol.sales_order_id = so.id
+      WHERE so.status != 'cancelled'
+      GROUP BY i.id ORDER BY total_revenue DESC`);
+    res.json(rows);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ WO COST SUMMARY REPORT ============
+router.get('/manufacturing/wo-cost', authenticate, async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT wo.order_number, wo.status, i.item_number, i.description,
+        wo.quantity, wo.quantity_completed,
+        COALESCE(i.standard_cost, 0) * wo.quantity_completed as standard_cost_total,
+        COALESCE((SELECT SUM(wm.quantity_issued * COALESCE(mi.standard_cost, 0))
+          FROM wo_materials wm JOIN items mi ON wm.item_id = mi.id WHERE wm.work_order_id = wo.id), 0) as actual_material_cost,
+        wo.start_date, wo.finish_date
+      FROM work_orders wo
+      JOIN items i ON wo.item_id = i.id
+      ORDER BY wo.created_at DESC LIMIT 100`);
+    res.json(rows);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ INVENTORY MOVEMENT REPORT ============
+router.get('/inventory/movement', authenticate, async (req, res) => {
+  try {
+    const { from_date, to_date } = req.query;
+    let dateFilter = 'WHERE 1=1';
+    const params = [];
+    if (from_date) { dateFilter += ' AND it.created_at >= ?'; params.push(from_date); }
+    if (to_date) { dateFilter += ' AND it.created_at <= ?'; params.push(to_date); }
+    const [rows] = await pool.query(`
+      SELECT it.created_at, it.transaction_type, i.item_number, i.description,
+        it.quantity, it.reference_type, it.reference_id, it.notes
+      FROM inventory_transactions it
+      JOIN items i ON it.item_id = i.id
+      ${dateFilter}
+      ORDER BY it.created_at DESC, it.id DESC LIMIT 500`, params);
+    res.json(rows);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 

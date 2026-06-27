@@ -15,15 +15,15 @@ function Labor() {
   useEffect(() => { fetchLabor(); }, []);
 
   const fetchLabor = async () => {
-    try { const res = await api.get('/api/manufacturing/labor'); setEntries(Array.isArray(res.data) ? res.data : []); } catch { setEntries([]); }
+    try { const res = await api.get('/api/manufacturing/labor'); setEntries(res.data); } catch { setEntries([]); }
   };
 
   const fetchWorkOrders = async () => {
-    try { const res = await api.get('/api/manufacturing/work-orders', { params: { status: 'in_progress' } }); setWorkOrders(Array.isArray(res.data) ? res.data : []); } catch { setWorkOrders([]); }
+    try { const res = await api.get('/api/manufacturing/work-orders', { params: { status: 'in_progress' } }); setWorkOrders(Array.isArray(res.data) ? res.data : res.data.orders || res.data.work_orders || []); } catch { setWorkOrders([]); }
   };
 
   const fetchWorkCenters = async () => {
-    try { const res = await api.get('/api/manufacturing/work-centers'); setWorkCenters(Array.isArray(res.data) ? res.data : []); } catch { setWorkCenters([]); }
+    try { const res = await api.get('/api/manufacturing/work-centers'); setWorkCenters(res.data); } catch { setWorkCenters([]); }
   };
 
   const handleNew = () => {

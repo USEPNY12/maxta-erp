@@ -23,7 +23,7 @@ function VendorPayments() {
   };
   const fetchOpenInvoices = async (vendorId) => {
     if (!vendorId) { setOpenInvoices([]); return; }
-    try { const res = await api.get('/api/accounting/ap-invoices', { params: { vendor_id: vendorId, status: 'posted' } }); const invs = Array.isArray(res.data) ? res.data : res.data.invoices || []; setOpenInvoices(invs.filter(i => parseFloat(i.balance || i.total || 0) > 0)); } catch { setOpenInvoices([]); }
+    try { const res = await api.get('/api/purchasing/ap-invoices', { params: { vendor_id: vendorId, status: 'posted' } }); const invs = Array.isArray(res.data) ? res.data : res.data.invoices || []; setOpenInvoices(invs.filter(i => parseFloat(i.balance || i.total || 0) > 0)); } catch { setOpenInvoices([]); }
   };
   const handleVendorChange = (vendorId) => { setForm({ ...form, vendor_id: vendorId, applied_invoices: [] }); fetchOpenInvoices(vendorId); };
   const toggleInvoice = (inv) => {

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 
 function Vendors() {
+  const [searchParams] = useSearchParams();
   const [vendors, setVendors] = useState([]);
   const [search, setSearch] = useState('');
   const [showDetail, setShowDetail] = useState(false);
-  const [showNew, setShowNew] = useState(false);
+  const [showNew, setShowNew] = useState(searchParams.get('new') === 'true');
   const [selected, setSelected] = useState(null);
   const [activeTab, setActiveTab] = useState('PurchaseOrders');
   const [form, setForm] = useState({ vendor_number: '', name: '', contact_name: '', phone: '', email: '', address1: '', city: '', state: '', zip: '', country: 'US', payment_terms: 'Net 30', notes: '' });
@@ -92,7 +94,7 @@ function Vendors() {
               <div className="border border-gray-300 p-2 min-h-[150px]">
                 {activeTab === 'PurchaseOrders' && (
                   <table className="erp-grid"><thead><tr><th>PO#</th><th>Date</th><th>Total</th><th>Status</th></tr></thead>
-                    <tbody>{(selected.purchase_orders || []).length === 0 ? <tr><td colSpan="4" className="text-center p-4 text-gray-500">No purchase orders</td></tr> : (selected.purchase_orders || []).map((po, i) => (
+                    <tbody>{(selected.recent_pos || []).length === 0 ? <tr><td colSpan="4" className="text-center p-4 text-gray-500">No purchase orders</td></tr> : (selected.recent_pos || []).map((po, i) => (
                       <tr key={i}><td className="text-blue-700">{po.po_number}</td><td>{po.order_date?.split('T')[0]}</td><td className="text-right">${parseFloat(po.total || 0).toFixed(2)}</td><td><span className={`erp-status erp-status-${(po.status || '').toLowerCase()}`}>{po.status}</span></td></tr>
                     ))}</tbody></table>
                 )}
@@ -104,7 +106,7 @@ function Vendors() {
                 )}
                 {activeTab === 'AP Invoices' && (
                   <table className="erp-grid"><thead><tr><th>Invoice#</th><th>Date</th><th>Total</th><th>Balance</th><th>Status</th></tr></thead>
-                    <tbody>{(selected.ap_invoices || []).length === 0 ? <tr><td colSpan="5" className="text-center p-4 text-gray-500">No AP invoices</td></tr> : (selected.ap_invoices || []).map((inv, i) => (
+                    <tbody>{(selected.open_ap || []).length === 0 ? <tr><td colSpan="5" className="text-center p-4 text-gray-500">No AP invoices</td></tr> : (selected.open_ap || []).map((inv, i) => (
                       <tr key={i}><td className="text-blue-700">{inv.invoice_number}</td><td>{inv.invoice_date?.split('T')[0]}</td><td className="text-right">${parseFloat(inv.total || 0).toFixed(2)}</td><td className="text-right">${parseFloat(inv.balance || 0).toFixed(2)}</td><td><span className={`erp-status erp-status-${(inv.status || '').toLowerCase()}`}>{inv.status}</span></td></tr>
                     ))}</tbody></table>
                 )}
@@ -117,7 +119,7 @@ function Vendors() {
                 {activeTab === 'Items' && (
                   <table className="erp-grid"><thead><tr><th>Item#</th><th>Description</th><th>Vendor Part#</th><th>Lead Time</th><th>Last Cost</th></tr></thead>
                     <tbody>{(selected.items || []).length === 0 ? <tr><td colSpan="5" className="text-center p-4 text-gray-500">No vendor items</td></tr> : (selected.items || []).map((item, i) => (
-                      <tr key={i}><td>{item.item_number}</td><td>{item.description}</td><td>{item.vendor_part_number || '-'}</td><td>{item.lead_time_days || '-'} days</td><td className="text-right">${parseFloat(item.last_cost || 0).toFixed(2)}</td></tr>
+                      <tr key={i}><td>{item.item_number}</td><td>{item.description}</td><td>{item.vendor_item_number || '-'}</td><td>{item.lead_time_days || '-'} days</td><td className="text-right">${parseFloat(item.unit_cost || 0).toFixed(2)}</td></tr>
                     ))}</tbody></table>
                 )}
                 {activeTab === 'Audit Trail' && (

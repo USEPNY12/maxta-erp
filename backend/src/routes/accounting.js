@@ -4,6 +4,7 @@ const pool = require('../config/database');
 const { authenticate } = require('../middleware/auth');
 const { getNextNumber } = require('../utils/sequence');
 const { preventDelete } = require('../middleware/documentLock');
+const GLService = require('../services/glService');
 
 // ============ GL ACCOUNTS (Chart of Accounts) ============
 router.get('/gl-accounts', authenticate, async (req, res) => {
@@ -369,6 +370,127 @@ router.get('/dashboard', authenticate, async (req, res) => {
       mtd_revenue: mtdRevenue[0].total, ytd_revenue: ytdRevenue[0].total, overdue_ar: overdueAR[0].total,
       ar_aging: { current: arCurrent[0].total, days_30: ar30[0].total, days_60: ar60[0].total, days_90_plus: ar90[0].total }
     });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ TRIAL BALANCE ============
+router.get('/trial-balance', authenticate, async (req, res) => {
+  try {
+    const [accounts] = await pool.query(`
+      SELECT ga.id, ga.account_number, ga.account_name, ga.account_type, ga.normal_balance,
+        COALESCE(ga.balance, 0) as balance,
+        COALESCE(SUM(CASE WHEN glt.debit > 0 THEN glt.debit ELSE 0 END), 0) as total_debits,
+        COALESCE(SUM(CASE WHEN glt.credit > 0 THEN glt.credit ELSE 0 END), 0) as total_credits
+      FROM gl_accounts ga
+      LEFT JOIN gl_transactions glt ON ga.id = glt.gl_account_id
+      WHERE ga.is_active = TRUE
+      GROUP BY ga.id ORDER BY ga.account_number`);
+    const total_debits = accounts.reduce((s, a) => s + Number(a.total_debits), 0);
+    const total_credits = accounts.reduce((s, a) => s + Number(a.total_credits), 0);
+    res.json({ accounts, total_debits, total_credits, is_balanced: Math.abs(total_debits - total_credits) < 0.01 });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ INCOME STATEMENT ============
+router.get('/income-statement', authenticate, async (req, res) => {
+  try {
+    const [revenue] = await pool.query(`SELECT ga.account_number, ga.account_name, COALESCE(ga.balance, 0) as balance FROM gl_accounts ga WHERE ga.account_type = 'revenue' AND ga.is_active = TRUE ORDER BY ga.account_number`);
+    const [cogs] = await pool.query(`SELECT ga.account_number, ga.account_name, COALESCE(ga.balance, 0) as balance FROM gl_accounts ga WHERE ga.account_type = 'cogs' AND ga.is_active = TRUE ORDER BY ga.account_number`);
+    const [expenses] = await pool.query(`SELECT ga.account_number, ga.account_name, COALESCE(ga.balance, 0) as balance FROM gl_accounts ga WHERE ga.account_type = 'expense' AND ga.is_active = TRUE ORDER BY ga.account_number`);
+    const total_revenue = revenue.reduce((s, a) => s + Number(a.balance), 0);
+    const total_cogs = cogs.reduce((s, a) => s + Number(a.balance), 0);
+    const total_expenses = expenses.reduce((s, a) => s + Number(a.balance), 0);
+    const gross_profit = total_revenue - total_cogs;
+    const net_income = gross_profit - total_expenses;
+    res.json({ revenue, cogs, expenses, total_revenue, total_cogs, gross_profit, total_expenses, net_income });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ BALANCE SHEET ============
+router.get('/balance-sheet', authenticate, async (req, res) => {
+  try {
+    const [assets] = await pool.query(`SELECT ga.account_number, ga.account_name, ga.sub_type, COALESCE(ga.balance, 0) as balance FROM gl_accounts ga WHERE ga.account_type = 'asset' AND ga.is_active = TRUE ORDER BY ga.account_number`);
+    const [liabilities] = await pool.query(`SELECT ga.account_number, ga.account_name, ga.sub_type, COALESCE(ga.balance, 0) as balance FROM gl_accounts ga WHERE ga.account_type = 'liability' AND ga.is_active = TRUE ORDER BY ga.account_number`);
+    const [equity] = await pool.query(`SELECT ga.account_number, ga.account_name, ga.sub_type, COALESCE(ga.balance, 0) as balance FROM gl_accounts ga WHERE ga.account_type = 'equity' AND ga.is_active = TRUE ORDER BY ga.account_number`);
+    const total_assets = assets.reduce((s, a) => s + Number(a.balance), 0);
+    const total_liabilities = liabilities.reduce((s, a) => s + Number(a.balance), 0);
+    const total_equity = equity.reduce((s, a) => s + Number(a.balance), 0);
+    res.json({ assets, liabilities, equity, total_assets, total_liabilities, total_equity, is_balanced: Math.abs(total_assets - (total_liabilities + total_equity)) < 0.01 });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ PERIOD CLOSE ============
+router.post('/period-close', authenticate, async (req, res) => {
+  try {
+    const { period_id } = req.body;
+    await pool.query('UPDATE accounting_periods SET status = ? WHERE id = ?', ['closed', period_id]);
+    res.json({ success: true, message: 'Period closed successfully' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+
+
+// ============ BANK TRANSACTIONS ============
+router.get('/bank-reconciliation/:bankId/transactions', authenticate, async (req, res) => {
+  try {
+    const { bankId } = req.params;
+    const { status } = req.query; // 'uncleared', 'cleared', 'all'
+    let query = 'SELECT * FROM bank_transactions WHERE bank_account_id = ?';
+    const params = [bankId];
+    if (status === 'uncleared') { query += ' AND cleared = 0'; }
+    else if (status === 'cleared') { query += ' AND cleared = 1'; }
+    query += ' ORDER BY transaction_date DESC, id DESC';
+    const [transactions] = await pool.query(query, params);
+    res.json(transactions);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/bank-reconciliation/:bankId/transactions', authenticate, async (req, res) => {
+  try {
+    const { bankId } = req.params;
+    const { transaction_date, type, reference, description, amount } = req.body;
+    const [result] = await pool.query(
+      'INSERT INTO bank_transactions (bank_account_id, transaction_date, type, reference, description, amount) VALUES (?,?,?,?,?,?)',
+      [bankId, transaction_date, type || 'withdrawal', reference, description, amount]
+    );
+    // Update bank account balance
+    await pool.query('UPDATE bank_accounts SET current_balance = current_balance + ? WHERE id = ?', [parseFloat(amount), bankId]);
+    res.status(201).json({ id: result.insertId });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/bank-reconciliation/:bankId/reconcile', authenticate, async (req, res) => {
+  try {
+    const { bankId } = req.params;
+    const { statement_date, statement_balance, cleared_transaction_ids, notes } = req.body;
+    // Create reconciliation record
+    const [result] = await pool.query(
+      "INSERT INTO bank_reconciliations (bank_account_id, statement_date, statement_balance, status, notes, created_by) VALUES (?,?,?,'reconciled',?,?)",
+      [bankId, statement_date, statement_balance, notes, req.user.id]
+    );
+    const reconId = result.insertId;
+    // Mark transactions as cleared
+    if (cleared_transaction_ids && cleared_transaction_ids.length > 0) {
+      await pool.query(
+        'UPDATE bank_transactions SET cleared = 1, reconciliation_id = ? WHERE id IN (?) AND bank_account_id = ?',
+        [reconId, cleared_transaction_ids, bankId]
+      );
+    }
+    // Update reconciliation with book balance
+    const [bookBal] = await pool.query('SELECT current_balance FROM bank_accounts WHERE id = ?', [bankId]);
+    await pool.query('UPDATE bank_reconciliations SET book_balance = ?, adjusted_balance = ?, difference = ?, reconciled_date = NOW() WHERE id = ?',
+      [bookBal[0].current_balance, statement_balance, parseFloat(statement_balance) - parseFloat(bookBal[0].current_balance), reconId]);
+    res.json({ success: true, reconciliation_id: reconId });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.get('/bank-reconciliation/:bankId/history', authenticate, async (req, res) => {
+  try {
+    const { bankId } = req.params;
+    const [history] = await pool.query(
+      'SELECT * FROM bank_reconciliations WHERE bank_account_id = ? ORDER BY statement_date DESC LIMIT 20', [bankId]
+    );
+    res.json(history);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 

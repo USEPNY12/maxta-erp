@@ -26,7 +26,7 @@ function CustomerPayments() {
 
   const fetchOpenInvoices = async (customerId) => {
     if (!customerId) { setOpenInvoices([]); return; }
-    try { const res = await api.get('/api/accounting/ar-invoices', { params: { customer_id: customerId, status: 'posted' } }); const invs = Array.isArray(res.data) ? res.data : res.data.invoices || []; setOpenInvoices(invs.filter(i => parseFloat(i.balance || i.total || 0) > 0)); } catch { setOpenInvoices([]); }
+    try { const res = await api.get('/api/sales/invoices', { params: { customer_id: customerId, status: 'posted' } }); const invs = Array.isArray(res.data) ? res.data : res.data.invoices || []; setOpenInvoices(invs.filter(i => parseFloat(i.balance || i.total || 0) > 0)); } catch { setOpenInvoices([]); }
   };
 
   const handleCustomerChange = (customerId) => {
