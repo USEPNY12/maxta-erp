@@ -476,6 +476,14 @@ router.post('/receipts', authenticate, async (req, res) => {
           `INSERT INTO inventory_transactions (item_id, transaction_type, quantity, location_id, lot_number, reference_type, reference_id, reference_number, notes, created_by)
            VALUES (?, 'wo_receipt', ?, ?, ?, 'work_order', ?, ?, ?, ?)`,
           [wo.item_id, quantity_completed, location_id, lot_number, work_order_id, wo.order_number, 'WO Receipt ' + receiptNumber, req.user.id]);
+        // Sync inventory_balances (location-level tracking)
+        const locId = location_id || 1;
+        const [existBal] = await conn.query('SELECT id FROM inventory_balances WHERE item_id = ? AND location_id = ?', [wo.item_id, locId]);
+        if (existBal.length > 0) {
+          await conn.query('UPDATE inventory_balances SET quantity_on_hand = quantity_on_hand + ?, last_count_date = NOW() WHERE id = ?', [quantity_completed, existBal[0].id]);
+        } else {
+          await conn.query('INSERT INTO inventory_balances (item_id, location_id, quantity_on_hand, last_count_date) VALUES (?, ?, ?, NOW())', [wo.item_id, locId, quantity_completed]);
+        }
       }
 
       // ===== GL AUTO-POSTING =====

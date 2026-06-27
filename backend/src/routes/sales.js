@@ -65,7 +65,9 @@ router.put('/customers/:id', authenticate, async (req, res) => {
     const fields = req.body;
     delete fields.id; delete fields.customer_number; delete fields.created_at;
     if (fields.name) { fields.company_name = fields.name; delete fields.name; }
-    const columns = Object.keys(fields);
+    const allowedCols = ['company_name','contact_name','bill_address1','bill_address2','bill_city','bill_state','bill_zip','bill_country','ship_address1','ship_address2','ship_city','ship_state','ship_zip','ship_country','phone','fax','email','website','customer_type_id','tax_group_id','payment_terms','credit_limit','price_list_id','salesperson_id','carrier_id','tax_exempt','tax_exempt_number','is_active','notes'];
+    const columns = Object.keys(fields).filter(k => allowedCols.includes(k));
+    if (columns.length === 0) return res.status(400).json({ error: 'No valid fields to update' });
     const values = columns.map(k => fields[k]);
     await pool.query(`UPDATE customers SET ${columns.map(k => `${k}=?`).join(',')} WHERE id=?`, [...values, req.params.id]);
     await req.audit('customers', req.params.id, 'UPDATE', old[0], fields);
@@ -834,83 +836,143 @@ router.post('/shipments/:id/create-invoice', authenticate, async (req, res) => {
 
 // Post invoice
 router.post('/invoices/:id/post', authenticate, async (req, res) => {
+  const conn = await pool.getConnection();
   try {
-    const [invoices] = await pool.query('SELECT * FROM ar_invoices WHERE id = ?', [req.params.id]);
-    if (!invoices.length) return res.status(404).json({ error: 'Invoice not found' });
-    if (invoices[0].status !== 'draft') return res.status(400).json({ error: 'Only draft invoices can be posted' });
+    await conn.beginTransaction();
+    const [invoices] = await conn.query('SELECT * FROM ar_invoices WHERE id = ? FOR UPDATE', [req.params.id]);
+    if (!invoices.length) { await conn.rollback(); conn.release(); return res.status(404).json({ error: 'Invoice not found' }); }
+    if (invoices[0].status !== 'draft') { await conn.rollback(); conn.release(); return res.status(400).json({ error: 'Only draft invoices can be posted' }); }
     // Period Lock Enforcement
     try {
       await GLService.validatePeriod(invoices[0].invoice_date || new Date());
     } catch (periodError) {
+      await conn.rollback(); conn.release();
       return res.status(400).json({ error: periodError.message });
     }
-    await pool.query("UPDATE ar_invoices SET status = 'posted', posted = 1, posted_by = ?, posted_at = NOW() WHERE id = ?", [req.user.id, req.params.id]);
-    // GL Auto-Post: Debit Accounts Receivable (1100), Credit Sales Revenue (4000)
+    await conn.query("UPDATE ar_invoices SET status = 'posted', posted = 1, posted_by = ?, posted_at = NOW() WHERE id = ?", [req.user.id, req.params.id]);
+    // GL Auto-Post using GLService: Debit AR, Credit Sales Revenue
     const invTotal = Number(invoices[0].total || 0);
     if (invTotal > 0) {
-      const period = `${new Date().getMonth()+1}-${new Date().getFullYear()}`;
-      await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, memo, source_type, source_id, posted_by)
-        VALUES ((SELECT id FROM gl_accounts WHERE account_number = '1100'), NOW(), ?, ?, 0, ?, 'ar_invoice', ?, ?)`,
-        [period, invTotal, `AR Invoice ${invoices[0].invoice_number} posted`, req.params.id, req.user.id]);
-      await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, memo, source_type, source_id, posted_by)
-        VALUES ((SELECT id FROM gl_accounts WHERE account_number = '4000'), NOW(), ?, 0, ?, ?, 'ar_invoice', ?, ?)`,
-        [period, invTotal, `AR Invoice ${invoices[0].invoice_number} posted`, req.params.id, req.user.id]);
-      // Update GL account balances
-      await pool.query('UPDATE gl_accounts SET balance = balance + ? WHERE account_number = ?', [invTotal, '1100']);
-      await pool.query('UPDATE gl_accounts SET balance = balance + ? WHERE account_number = ?', [invTotal, '4000']);
+      const arAcct = await GLService.getDefaultAccount('gl_default_ar');
+      const revenueAcct = await GLService.getDefaultAccount('gl_default_sales_revenue');
+      await GLService.postJournalEntry({
+        transactionDate: invoices[0].invoice_date || new Date(),
+        sourceType: 'ar_invoice',
+        sourceId: parseInt(req.params.id),
+        memo: `AR Invoice ${invoices[0].invoice_number} posted`,
+        postedBy: req.user.id,
+        lines: [
+          { accountNumber: arAcct, debit: invTotal, credit: 0 },
+          { accountNumber: revenueAcct, debit: 0, credit: invTotal }
+        ],
+        connection: conn
+      });
     }
+    await conn.commit();
     await req.audit('ar_invoices', req.params.id, 'POST', { status: 'draft' }, { status: 'posted' });
     res.json({ message: 'Invoice posted' });
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) {
+    await conn.rollback();
+    res.status(500).json({ error: error.message });
+  } finally {
+    conn.release();
+  }
 });
 
-// Void invoice
+// Void invoice - reverses GL entries if invoice was posted
 router.post('/invoices/:id/void', authenticate, async (req, res) => {
+  const conn = await pool.getConnection();
   try {
+    await conn.beginTransaction();
     const { reason } = req.body;
-    await pool.query("UPDATE ar_invoices SET status = 'void', void_reason = ?, voided_by = ?, voided_at = NOW() WHERE id = ?", [reason, req.user.id, req.params.id]);
-    await req.audit('ar_invoices', req.params.id, 'VOID', null, { reason });
-    res.json({ message: 'Invoice voided' });
-  } catch (error) { res.status(500).json({ error: error.message }); }
+    const [invoices] = await conn.query('SELECT * FROM ar_invoices WHERE id = ?', [req.params.id]);
+    if (!invoices.length) { await conn.rollback(); conn.release(); return res.status(404).json({ error: 'Invoice not found' }); }
+    if (invoices[0].status === 'void') { await conn.rollback(); conn.release(); return res.status(400).json({ error: 'Invoice already voided' }); }
+    const wasPosted = invoices[0].posted === 1 || ['posted', 'partial', 'paid'].includes(invoices[0].status);
+    await conn.query("UPDATE ar_invoices SET status = 'void', void_reason = ?, voided_by = ?, voided_at = NOW() WHERE id = ?", [reason, req.user.id, req.params.id]);
+    // Reverse GL entries if invoice was posted
+    if (wasPosted) {
+      const invTotal = Number(invoices[0].total || 0);
+      if (invTotal > 0) {
+        const arAcct = await GLService.getDefaultAccount('gl_default_ar');
+        const revenueAcct = await GLService.getDefaultAccount('gl_default_sales_revenue');
+        await GLService.postJournalEntry({
+          transactionDate: new Date(),
+          sourceType: 'ar_invoice_void',
+          sourceId: parseInt(req.params.id),
+          memo: `VOID - AR Invoice ${invoices[0].invoice_number} reversed`,
+          postedBy: req.user.id,
+          lines: [
+            { accountNumber: revenueAcct, debit: invTotal, credit: 0 },
+            { accountNumber: arAcct, debit: 0, credit: invTotal }
+          ],
+          connection: conn
+        });
+      }
+    }
+    await conn.commit();
+    await req.audit('ar_invoices', req.params.id, 'VOID', { status: invoices[0].status }, { status: 'void', reason });
+    res.json({ message: 'Invoice voided' + (wasPosted ? ' and GL entries reversed' : '') });
+  } catch (error) {
+    await conn.rollback();
+    res.status(500).json({ error: error.message });
+  } finally {
+    conn.release();
+  }
 });
 
 // Record payment against a specific invoice
 router.post('/invoices/:id/payment', authenticate, async (req, res) => {
+  const conn = await pool.getConnection();
   try {
+    await conn.beginTransaction();
     const { amount, payment_method, reference_number, payment_date } = req.body;
     const invoiceId = req.params.id;
+    if (!amount || amount <= 0) { await conn.rollback(); conn.release(); return res.status(400).json({ error: 'Payment amount must be greater than 0' }); }
     // Get invoice details
-    const [inv] = await pool.query('SELECT * FROM ar_invoices WHERE id = ?', [invoiceId]);
-    if (!inv.length) return res.status(404).json({ error: 'Invoice not found' });
+    const [inv] = await conn.query('SELECT * FROM ar_invoices WHERE id = ? FOR UPDATE', [invoiceId]);
+    if (!inv.length) { await conn.rollback(); conn.release(); return res.status(404).json({ error: 'Invoice not found' }); }
     const invoice = inv[0];
+    if (['void', 'paid'].includes(invoice.status)) { await conn.rollback(); conn.release(); return res.status(400).json({ error: `Cannot apply payment to ${invoice.status} invoice` }); }
     // Create payment
     const paymentNumber = await getNextNumber('payment');
-    const [result] = await pool.query(
+    const [result] = await conn.query(
       `INSERT INTO customer_payments (payment_number, customer_id, payment_date, amount, payment_method, reference_number, status, received_by)
        VALUES (?,?,?,?,?,?,'posted',?)`,
       [paymentNumber, invoice.customer_id, payment_date || new Date(), amount, payment_method || 'check', reference_number, req.user.id]
     );
     // Apply to invoice
-    await pool.query('UPDATE ar_invoices SET amount_paid = COALESCE(amount_paid,0) + ? WHERE id = ?', [amount, invoiceId]);
-    const [updated] = await pool.query('SELECT total, amount_paid FROM ar_invoices WHERE id = ?', [invoiceId]);
+    await conn.query('UPDATE ar_invoices SET amount_paid = COALESCE(amount_paid,0) + ? WHERE id = ?', [amount, invoiceId]);
+    const [updated] = await conn.query('SELECT total, amount_paid FROM ar_invoices WHERE id = ?', [invoiceId]);
     if (updated.length && parseFloat(updated[0].amount_paid) >= parseFloat(updated[0].total)) {
-      await pool.query("UPDATE ar_invoices SET status = 'paid', balance = 0 WHERE id = ?", [invoiceId]);
+      await conn.query("UPDATE ar_invoices SET status = 'paid', balance = 0 WHERE id = ?", [invoiceId]);
     } else {
-      await pool.query("UPDATE ar_invoices SET status = 'partial', balance = total - COALESCE(amount_paid,0) WHERE id = ?", [invoiceId]);
+      await conn.query("UPDATE ar_invoices SET status = 'partial', balance = total - COALESCE(amount_paid,0) WHERE id = ?", [invoiceId]);
     }
-    // GL Auto-Post: Debit Cash (1000), Credit Accounts Receivable (1100)
-    const period = `${new Date().getMonth()+1}-${new Date().getFullYear()}`;
-    await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, memo, source_type, source_id, posted_by)
-      VALUES ((SELECT id FROM gl_accounts WHERE account_number = '1000'), NOW(), ?, ?, 0, ?, 'customer_payment', ?, ?)`,
-      [period, amount, `Customer payment ${paymentNumber} for ${invoice.invoice_number}`, invoiceId, req.user.id]);
-    await pool.query(`INSERT INTO gl_transactions (gl_account_id, transaction_date, period, debit, credit, memo, source_type, source_id, posted_by)
-      VALUES ((SELECT id FROM gl_accounts WHERE account_number = '1100'), NOW(), ?, 0, ?, ?, 'customer_payment', ?, ?)`,
-      [period, amount, `Customer payment ${paymentNumber} for ${invoice.invoice_number}`, invoiceId, req.user.id]);
-    await pool.query('UPDATE gl_accounts SET balance = balance + ? WHERE account_number = ?', [amount, '1000']);
-    await pool.query('UPDATE gl_accounts SET balance = balance - ? WHERE account_number = ?', [amount, '1100']);
+    // GL Auto-Post using GLService: Debit Cash, Credit AR
+    const bankAcct = await GLService.getDefaultAccount('gl_default_bank');
+    const arAcct = await GLService.getDefaultAccount('gl_default_ar');
+    await GLService.postJournalEntry({
+      transactionDate: payment_date || new Date(),
+      sourceType: 'customer_payment',
+      sourceId: result.insertId,
+      memo: `Customer payment ${paymentNumber} for ${invoice.invoice_number}`,
+      postedBy: req.user.id,
+      lines: [
+        { accountNumber: bankAcct, debit: Number(amount), credit: 0 },
+        { accountNumber: arAcct, debit: 0, credit: Number(amount) }
+      ],
+      connection: conn
+    });
+    await conn.commit();
     await req.audit('ar_invoices', invoiceId, 'PAYMENT', null, { payment_number: paymentNumber, amount });
     res.json({ message: 'Payment recorded', payment_number: paymentNumber });
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) {
+    await conn.rollback();
+    res.status(500).json({ error: error.message });
+  } finally {
+    conn.release();
+  }
 });
 
 // ============ CUSTOMER PAYMENTS ============

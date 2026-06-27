@@ -246,9 +246,12 @@ router.post('/remnants', auth, async (req, res) => {
 // PUT update remnant (change status, location, etc.)
 router.put('/remnants/:id', auth, async (req, res) => {
   try {
+    const allowedFields = ['status', 'location', 'notes', 'width_mm', 'height_mm', 'glass_type', 'thickness_mm', 'quality_grade'];
     const fields = req.body;
-    const sets = Object.keys(fields).map(k => `${k} = ?`).join(', ');
-    const values = Object.values(fields);
+    const safeKeys = Object.keys(fields).filter(k => allowedFields.includes(k));
+    if (safeKeys.length === 0) return res.status(400).json({ error: 'No valid fields to update' });
+    const sets = safeKeys.map(k => `${k} = ?`).join(', ');
+    const values = safeKeys.map(k => fields[k]);
     await pool.query(`UPDATE remnants SET ${sets} WHERE id = ?`, [...values, req.params.id]);
     res.json({ message: 'Remnant updated' });
   } catch (error) { res.status(500).json({ error: error.message }); }

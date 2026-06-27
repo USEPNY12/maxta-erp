@@ -328,16 +328,21 @@ router.get('/lots/:id', authenticate, async (req, res) => {
 // ============ STOCK STATUS (by location) ============
 router.get('/stock-status', authenticate, async (req, res) => {
   try {
+    // Use GREATEST of items.qty_on_hand and SUM(inventory_balances) for most accurate stock
     const [stock] = await pool.query(`
       SELECT i.id, i.item_number, i.description, it.name as item_type,
-        COALESCE(i.qty_on_hand, 0) as qty_on_hand,
+        GREATEST(COALESCE(i.qty_on_hand, 0), COALESCE(ib_total.total_qty, 0)) as qty_on_hand,
         COALESCE(i.standard_cost, 0) as standard_cost,
-        COALESCE(i.minimum_qty, 0) as minimum_qty, i.lead_time_days,
-        (COALESCE(i.qty_on_hand, 0) * COALESCE(i.standard_cost, 0)) as extended_value,
-        CASE WHEN COALESCE(i.qty_on_hand, 0) <= 0 THEN 'out_of_stock'
-             WHEN COALESCE(i.qty_on_hand, 0) <= COALESCE(i.minimum_qty, 0) THEN 'low_stock'
+        COALESCE(i.minimum_qty, 0) as minimum_qty, 
+        COALESCE(i.reorder_point, 0) as reorder_point,
+        i.lead_time_days, i.uom,
+        (GREATEST(COALESCE(i.qty_on_hand, 0), COALESCE(ib_total.total_qty, 0)) * COALESCE(i.standard_cost, 0)) as extended_value,
+        CASE WHEN GREATEST(COALESCE(i.qty_on_hand, 0), COALESCE(ib_total.total_qty, 0)) <= 0 THEN 'out_of_stock'
+             WHEN GREATEST(COALESCE(i.qty_on_hand, 0), COALESCE(ib_total.total_qty, 0)) <= COALESCE(i.reorder_point, COALESCE(i.minimum_qty, 0)) THEN 'low_stock'
              ELSE 'in_stock' END as stock_status
-      FROM items i LEFT JOIN item_types it ON i.item_type_id = it.id
+      FROM items i 
+      LEFT JOIN item_types it ON i.item_type_id = it.id
+      LEFT JOIN (SELECT item_id, SUM(quantity_on_hand) as total_qty FROM inventory_balances GROUP BY item_id) ib_total ON i.id = ib_total.item_id
       WHERE i.is_active = TRUE
       ORDER BY i.item_number`);
     res.json(stock);

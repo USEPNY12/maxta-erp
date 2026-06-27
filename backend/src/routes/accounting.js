@@ -37,8 +37,9 @@ router.put('/gl-accounts/:id', authenticate, async (req, res) => {
   try {
     const [old] = await pool.query('SELECT * FROM gl_accounts WHERE id = ?', [req.params.id]);
     const fields = req.body;
-    delete fields.id; delete fields.created_at;
-    const columns = Object.keys(fields);
+    const allowedCols = ['account_number','account_name','account_type','sub_type','parent_account_id','normal_balance','is_active','description'];
+    const columns = Object.keys(fields).filter(k => allowedCols.includes(k));
+    if (columns.length === 0) return res.status(400).json({ error: 'No valid fields to update' });
     const values = columns.map(k => fields[k]);
     await pool.query(`UPDATE gl_accounts SET ${columns.map(k => `${k}=?`).join(',')} WHERE id=?`, [...values, req.params.id]);
     await req.audit('gl_accounts', req.params.id, 'UPDATE', old[0], fields);

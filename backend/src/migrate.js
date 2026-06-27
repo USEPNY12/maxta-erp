@@ -38,7 +38,9 @@ module.exports = async () => {
     "ALTER TABLE work_orders ADD COLUMN parent_wo_id INT DEFAULT NULL",
     "ALTER TABLE work_orders ADD COLUMN wo_category ENUM('standard','assembly','glass_component','interlayer_component') DEFAULT 'standard'",
     "ALTER TABLE notifications ADD COLUMN is_dismissed BOOLEAN DEFAULT FALSE",
-    "ALTER TABLE sales_order_lines ADD COLUMN has_notches TINYINT(1) DEFAULT 0"
+    "ALTER TABLE sales_order_lines ADD COLUMN has_notches TINYINT(1) DEFAULT 0",
+    "ALTER TABLE inventory_transactions MODIFY COLUMN transaction_type ENUM('receipt','issue','adjustment','transfer','return','scrap','wo_receipt','wo_issue','po_receipt','shipment') NOT NULL",
+    "ALTER TABLE wo_receipts ADD COLUMN notes TEXT NULL"
   ];
   for (const sql of alterStatements) {
     try { await pool.query(sql); } catch(e) { /* column already exists - ignore */ }

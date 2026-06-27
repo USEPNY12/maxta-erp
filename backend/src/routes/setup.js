@@ -291,13 +291,17 @@ router.get('/:table', authenticate, async (req, res) => {
 });
 
 // POST new record to setup table
+// Column name validator - prevents SQL injection via dynamic column names
+const isValidColumnName = (col) => /^[a-z_][a-z0-9_]{0,63}$/i.test(col);
+
 router.post('/:table', authenticate, async (req, res) => {
   try {
     if (req.user.role === 'readonly') return res.status(403).json({ error: 'Read-only users cannot create records' });
     const tableName = setupTables[req.params.table];
     if (!tableName) return res.status(404).json({ error: 'Setup table not found' });
     const fields = req.body;
-    const columns = Object.keys(fields);
+    const columns = Object.keys(fields).filter(k => isValidColumnName(k) && !['id','created_at','updated_at'].includes(k));
+    if (columns.length === 0) return res.status(400).json({ error: 'No valid fields provided' });
     const values = columns.map(k => fields[k]);
     const [result] = await pool.query(
       `INSERT INTO ${tableName} (${columns.join(',')}) VALUES (${columns.map(() => '?').join(',')})`, values);
@@ -312,8 +316,8 @@ router.put('/:table/:id', authenticate, async (req, res) => {
     const tableName = setupTables[req.params.table];
     if (!tableName) return res.status(404).json({ error: 'Setup table not found' });
     const fields = req.body;
-    delete fields.id; delete fields.created_at; delete fields.updated_at;
-    const columns = Object.keys(fields);
+    const columns = Object.keys(fields).filter(k => isValidColumnName(k) && !['id','created_at','updated_at'].includes(k));
+    if (columns.length === 0) return res.status(400).json({ error: 'No valid fields to update' });
     const values = columns.map(k => fields[k]);
     await pool.query(`UPDATE ${tableName} SET ${columns.map(k => `${k}=?`).join(',')} WHERE id=?`, [...values, req.params.id]);
     res.json({ message: 'Updated' });
