@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../App';
-import { FaHome, FaCog, FaBoxes, FaDollarSign, FaWrench, FaIndustry, FaShoppingCart, FaCalculator, FaChartBar, FaExchangeAlt, FaBarcode, FaLink, FaTruck, FaHandshake, FaCalendarAlt, FaBell, FaFileAlt } from 'react-icons/fa';
+import { FaHome, FaCog, FaBoxes, FaDollarSign, FaWrench, FaIndustry, FaShoppingCart, FaCalculator, FaChartBar, FaExchangeAlt, FaBarcode, FaLink, FaTruck, FaHandshake, FaCalendarAlt, FaBell, FaFileAlt, FaLayerGroup } from 'react-icons/fa';
 import NotificationBell from './NotificationBell';
 
 const navItems = [
@@ -19,6 +19,7 @@ const navItems = [
   { path: '/crm', label: 'CRM', icon: FaHandshake, module: null },
   { path: '/gantt-schedule', label: 'Gantt Schedule', icon: FaCalendarAlt, module: null },
   { path: '/documents', label: 'Documents', icon: FaFileAlt, module: null },
+  { path: '/lamination', label: 'Lamination', icon: FaLayerGroup, module: 'manufacturing' },
 ];
 
 function Layout() {

@@ -56,6 +56,7 @@ import CRM from './pages/CRM';
 import GanttSchedule from './pages/GanttSchedule';
 import Notifications from './pages/Notifications';
 import DocManagement from './pages/DocManagement';
+import Lamination from './pages/Lamination';
 
 export const AuthContext = createContext(null);
 
@@ -203,6 +204,7 @@ function App() {
           <Route path="gantt-schedule" element={<GanttSchedule />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="documents" element={<DocManagement />} />
+          <Route path="lamination" element={<ProtectedModule module="manufacturing" permissions={permissions}><Lamination /></ProtectedModule>} />
         </Route>
       </Routes>
     </AuthContext.Provider>
