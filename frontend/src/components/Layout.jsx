@@ -4,6 +4,7 @@ import { AuthContext } from '../App';
 import { FaHome, FaCog, FaBoxes, FaDollarSign, FaWrench, FaIndustry, FaShoppingCart, FaCalculator, FaChartBar, FaExchangeAlt, FaBarcode, FaLink, FaTruck, FaHandshake, FaCalendarAlt, FaBell, FaFileAlt, FaLayerGroup, FaBars, FaTimes, FaSignOutAlt, FaUser, FaMoon, FaSun } from 'react-icons/fa';
 import NotificationBell from './NotificationBell';
 import Breadcrumb from './Breadcrumb';
+import OmniSearch from './OmniSearch';
 
 const navItems = [
   { path: '/', label: 'Home', icon: FaHome, module: null, group: 'main' },
@@ -92,6 +93,9 @@ function Layout() {
             </button>
           )}
           <span className="header-brand" onClick={() => navigate('/')}>Max TA Group ERP</span>
+        </div>
+        <div className="header-center">
+          <OmniSearch />
         </div>
         <div className="header-right">
           <button className="theme-toggle" onClick={() => setDarkMode(!darkMode)} title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'} aria-label="Toggle dark mode">

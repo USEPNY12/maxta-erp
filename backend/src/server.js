@@ -3,9 +3,12 @@ const cors = require('cors');
 const path = require('path');
 const morgan = require('morgan');
 const http = require('http');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const { auditMiddleware } = require('./middleware/auditLog');
+const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -13,16 +16,53 @@ const PORT = process.env.PORT || 5000;
 // Create HTTP server (needed for WebSocket upgrade)
 const server = http.createServer(app);
 
-// Middleware
+// ═══════════════════════════════════════════════════════════════════
+// SECURITY & MIDDLEWARE
+// ═══════════════════════════════════════════════════════════════════
+
+// Helmet - HTTP security headers (disable CSP for SPA)
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+// CORS
 app.use(cors());
+
+// Request logging
 app.use(morgan('combined'));
+
+// Body parsing
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Rate limiting on auth endpoints (prevent brute-force attacks)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15-minute window
+  max: 20, // max 20 login attempts per IP per window
+  message: { error: 'Too many login attempts. Please try again in 15 minutes.', code: 'RATE_LIMITED' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/auth/login', authLimiter);
+
+// General API rate limiting (generous for normal use)
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1-minute window
+  max: 300, // 300 requests per minute per IP
+  message: { error: 'Too many requests. Please slow down.', code: 'RATE_LIMITED' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', apiLimiter);
 
 // Audit middleware - attaches req.audit() helper to every request
 app.use(auditMiddleware);
 
-// Routes
+// ═══════════════════════════════════════════════════════════════════
+// ROUTES
+// ═══════════════════════════════════════════════════════════════════
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/inventory', require('./routes/inventory'));
 app.use('/api/sales', require('./routes/sales'));
@@ -33,7 +73,7 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/setup', require('./routes/setup'));
 app.use('/api/cutting', require('./routes/cutting'));
 
-// New V2 routes - email, documents, audit
+// V2 routes - email, documents, audit
 try { app.use('/api/email', require('./routes/email')); } catch(e) { console.log('Email routes not loaded:', e.message); }
 try { app.use('/api/documents', require('./routes/documents')); } catch(e) { console.log('Documents routes not loaded:', e.message); }
 try { app.use('/api/audit', require('./routes/audit')); } catch(e) { console.log('Audit routes not loaded:', e.message); }
@@ -54,7 +94,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', version: '5.0.0', name: 'Max TA Group ERP', websocket: true });
+  res.json({ status: 'ok', version: '6.0.0', name: 'Max TA Group ERP', websocket: true, phase: 'Phase 1 - Architecture Upgrade' });
 });
 
 // Serve frontend in production
@@ -65,13 +105,14 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error', message: err.message });
-});
+// ═══════════════════════════════════════════════════════════════════
+// CENTRALIZED ERROR HANDLING (MUST be last middleware)
+// ═══════════════════════════════════════════════════════════════════
+app.use(errorHandler);
 
-// ============ WebSocket Server (Real-time Updates) ============
+// ═══════════════════════════════════════════════════════════════════
+// WEBSOCKET SERVER (Real-time Updates)
+// ═══════════════════════════════════════════════════════════════════
 let WebSocket, wss;
 try {
   WebSocket = require('ws');
@@ -128,9 +169,12 @@ try {
   global.wsBroadcast = () => {}; // no-op fallback
 }
 
-// ============ Server Start ============
+// ═══════════════════════════════════════════════════════════════════
+// SERVER START
+// ═══════════════════════════════════════════════════════════════════
 server.listen(PORT, '0.0.0.0', async () => {
-  console.log(`Max TA Group ERP Server v5.0 running on port ${PORT}`);
+  console.log(`Max TA Group ERP Server v6.0 running on port ${PORT}`);
+  console.log(`[SECURITY] Helmet enabled, Rate limiting active (auth: 20/15min, api: 300/min)`);
   try { const migrate = require('./migrate'); await migrate(); } catch(e) { console.log('Migration:', e.message); }
   // Start automated notification checks (low stock, overdue invoices, WO delays)
   try { const notifService = require('./services/notificationService'); notifService.start(); } catch(e) { console.log('NotificationService:', e.message); }
