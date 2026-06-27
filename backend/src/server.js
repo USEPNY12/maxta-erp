@@ -93,6 +93,9 @@ try { app.use('/api/lamination', require('./routes/lamination')); } catch(e) { c
 // Phase 3 routes - Document Center, Versioning, Customer Portal
 try { app.use('/api/document-center', require('./routes/documentCenter')); } catch(e) { console.log('Document Center routes not loaded:', e.message); }
 
+// Phase 4 routes - Advanced Manufacturing (Scheduling, Utilization, Dashboard, Barcode, QC)
+try { app.use('/api/manufacturing-advanced', require('./routes/manufacturingAdvanced')); } catch(e) { console.log('Manufacturing Advanced routes not loaded:', e.message); }
+
 // Static uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 

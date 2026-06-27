@@ -494,4 +494,191 @@ module.exports = async () => {
     }
     console.log('BOM seed: verified');
   } catch(e) { console.log('BOM seed:', e.message); }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // PHASE 4: Advanced Manufacturing & Scheduling
+  // ═══════════════════════════════════════════════════════════════════
+  const phase4Tables = [
+    `CREATE TABLE IF NOT EXISTS machine_utilization_log (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      work_center_id INT NOT NULL,
+      log_date DATE NOT NULL,
+      shift ENUM('day','evening','night') DEFAULT 'day',
+      available_hours DECIMAL(5,2) DEFAULT 8.00,
+      productive_hours DECIMAL(5,2) DEFAULT 0.00,
+      setup_hours DECIMAL(5,2) DEFAULT 0.00,
+      idle_hours DECIMAL(5,2) DEFAULT 0.00,
+      downtime_hours DECIMAL(5,2) DEFAULT 0.00,
+      total_pieces_produced INT DEFAULT 0,
+      total_sqft_produced DECIMAL(10,2) DEFAULT 0.00,
+      scrap_pieces INT DEFAULT 0,
+      efficiency_percent DECIMAL(5,2) DEFAULT 0.00,
+      oee_percent DECIMAL(5,2) DEFAULT 0.00,
+      operator_id INT,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_util_wc_date (work_center_id, log_date),
+      INDEX idx_util_date (log_date)
+    )`,
+    `CREATE TABLE IF NOT EXISTS machine_downtime (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      work_center_id INT NOT NULL,
+      work_order_id INT,
+      downtime_start DATETIME NOT NULL,
+      downtime_end DATETIME,
+      duration_minutes DECIMAL(8,2),
+      reason_code ENUM('breakdown','maintenance','changeover','material_wait','operator_wait','quality_hold','power_outage','other') NOT NULL,
+      reason_detail TEXT,
+      reported_by INT,
+      resolved_by INT,
+      resolution_notes TEXT,
+      is_planned BOOLEAN DEFAULT FALSE,
+      severity ENUM('low','medium','high','critical') DEFAULT 'medium',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_dt_wc (work_center_id),
+      INDEX idx_dt_date (downtime_start)
+    )`,
+    `CREATE TABLE IF NOT EXISTS qc_checkpoints (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      work_center_id INT NOT NULL,
+      checkpoint_name VARCHAR(255) NOT NULL,
+      checkpoint_code VARCHAR(50),
+      inspection_type ENUM('visual','measurement','functional','documentation') DEFAULT 'visual',
+      measurement_type ENUM('pass_fail','numeric','range','text') DEFAULT 'pass_fail',
+      target_value DECIMAL(12,4),
+      min_value DECIMAL(12,4),
+      max_value DECIMAL(12,4),
+      unit_of_measure VARCHAR(30),
+      is_critical BOOLEAN DEFAULT FALSE,
+      sequence INT DEFAULT 10,
+      instructions TEXT,
+      is_active BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_qc_cp_wc (work_center_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS qc_checkpoint_results (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      work_order_id INT NOT NULL,
+      wo_routing_id INT NOT NULL,
+      checkpoint_id INT NOT NULL,
+      inspector_id INT,
+      result ENUM('pass','fail','conditional','na') NOT NULL,
+      measured_value DECIMAL(12,4),
+      notes TEXT,
+      defect_photo_url VARCHAR(500),
+      inspected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_qcr_wo (work_order_id),
+      INDEX idx_qcr_routing (wo_routing_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS barcode_scan_log (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      barcode VARCHAR(255) NOT NULL,
+      scan_type ENUM('wo_start','wo_complete','wo_pause','station_in','station_out','qc_pass','qc_fail','material_issue','rack_load','rack_unload') NOT NULL,
+      work_order_id INT,
+      wo_routing_id INT,
+      work_center_id INT,
+      operator_id INT,
+      quantity DECIMAL(12,4) DEFAULT 1,
+      metadata JSON,
+      scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_scan_wo (work_order_id),
+      INDEX idx_scan_wc (work_center_id),
+      INDEX idx_scan_date (scanned_at),
+      INDEX idx_scan_barcode (barcode)
+    )`,
+    `CREATE TABLE IF NOT EXISTS production_kpis (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      kpi_date DATE NOT NULL,
+      shift ENUM('day','evening','night','all') DEFAULT 'all',
+      total_wo_started INT DEFAULT 0,
+      total_wo_completed INT DEFAULT 0,
+      total_pieces_produced INT DEFAULT 0,
+      total_sqft_produced DECIMAL(12,2) DEFAULT 0.00,
+      total_scrap_pieces INT DEFAULT 0,
+      scrap_rate_percent DECIMAL(5,2) DEFAULT 0.00,
+      avg_cycle_time_minutes DECIMAL(8,2) DEFAULT 0.00,
+      on_time_delivery_percent DECIMAL(5,2) DEFAULT 0.00,
+      avg_oee_percent DECIMAL(5,2) DEFAULT 0.00,
+      labor_hours DECIMAL(8,2) DEFAULT 0.00,
+      revenue_produced DECIMAL(12,2) DEFAULT 0.00,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY idx_kpi_date_shift (kpi_date, shift)
+    )`,
+    `CREATE TABLE IF NOT EXISTS scheduling_constraints (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      work_center_id INT NOT NULL,
+      constraint_type ENUM('max_concurrent','min_batch','max_batch','requires_cooldown','requires_preheat','shift_only') NOT NULL,
+      constraint_value DECIMAL(10,2),
+      constraint_unit VARCHAR(30),
+      notes TEXT,
+      is_active BOOLEAN DEFAULT TRUE,
+      INDEX idx_sc_wc (work_center_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS scheduling_blocks (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      work_center_id INT NOT NULL,
+      work_order_id INT,
+      wo_routing_id INT,
+      block_start DATETIME NOT NULL,
+      block_end DATETIME NOT NULL,
+      block_type ENUM('production','setup','maintenance','reserved','break') DEFAULT 'production',
+      status ENUM('planned','confirmed','in_progress','completed','cancelled') DEFAULT 'planned',
+      assigned_operator_id INT,
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_sb_wc_date (work_center_id, block_start),
+      INDEX idx_sb_wo (work_order_id)
+    )`
+  ];
+  for (const sql of phase4Tables) {
+    try { await pool.query(sql); } catch(e) { console.log('Phase4 table:', e.message.substring(0, 80)); }
+  }
+
+  // Phase 4 seed: QC Checkpoints for each work center
+  try {
+    const [qccp] = await pool.query('SELECT COUNT(*) as cnt FROM qc_checkpoints');
+    if (qccp[0].cnt === 0) {
+      await pool.query(`INSERT INTO qc_checkpoints (work_center_id, checkpoint_name, checkpoint_code, inspection_type, measurement_type, target_value, min_value, max_value, unit_of_measure, is_critical, sequence, instructions) VALUES
+        (1, 'Cut Size Accuracy', 'CUT-001', 'measurement', 'range', NULL, -0.5, 0.5, 'mm', 1, 10, 'Measure cut dimensions vs spec. Tolerance +/- 0.5mm'),
+        (1, 'Edge Chip Check', 'CUT-002', 'visual', 'pass_fail', NULL, NULL, NULL, NULL, 1, 20, 'Inspect all edges for chips > 1mm'),
+        (1, 'Glass Clarity', 'CUT-003', 'visual', 'pass_fail', NULL, NULL, NULL, NULL, 0, 30, 'Check for scratches, inclusions, or distortion'),
+        (2, 'Edge Finish Quality', 'EDGE-001', 'visual', 'pass_fail', NULL, NULL, NULL, NULL, 1, 10, 'Inspect polished edges for uniformity and smoothness'),
+        (2, 'Edge Straightness', 'EDGE-002', 'measurement', 'range', NULL, -0.3, 0.3, 'mm', 1, 20, 'Check edge straightness with straight edge'),
+        (3, 'Hole Position Accuracy', 'CNC-001', 'measurement', 'range', NULL, -0.5, 0.5, 'mm', 1, 10, 'Verify hole positions match drawing'),
+        (3, 'Hole Diameter', 'CNC-002', 'measurement', 'range', NULL, -0.2, 0.2, 'mm', 1, 20, 'Measure hole diameters with calipers'),
+        (3, 'Cutout Dimensions', 'CNC-003', 'measurement', 'range', NULL, -0.5, 0.5, 'mm', 0, 30, 'Verify cutout dimensions match spec'),
+        (5, 'Wash Cleanliness', 'WASH-001', 'visual', 'pass_fail', NULL, NULL, NULL, NULL, 1, 10, 'Inspect for water spots, residue, or contamination'),
+        (6, 'Temper Stress Pattern', 'TEMP-001', 'visual', 'pass_fail', NULL, NULL, NULL, NULL, 1, 10, 'Check stress pattern with polarized light'),
+        (6, 'Flatness Check', 'TEMP-002', 'measurement', 'range', NULL, 0, 3.0, 'mm/m', 1, 20, 'Measure bow/warp with straight edge. Max 3mm/m'),
+        (6, 'Fragmentation Test', 'TEMP-003', 'visual', 'pass_fail', NULL, NULL, NULL, NULL, 1, 30, 'Verify fragment count meets EN 12150 (>40 per 50x50mm)'),
+        (7, 'Lamination Clarity', 'LAMI-001', 'visual', 'pass_fail', NULL, NULL, NULL, NULL, 1, 10, 'Check for bubbles, delamination, or haze'),
+        (7, 'Edge Seal Integrity', 'LAMI-002', 'visual', 'pass_fail', NULL, NULL, NULL, NULL, 1, 20, 'Inspect edge seal for gaps or moisture ingress'),
+        (8, 'Final Dimension Check', 'QC-001', 'measurement', 'range', NULL, -1.0, 1.0, 'mm', 1, 10, 'Final measurement of all dimensions'),
+        (8, 'Visual Inspection', 'QC-002', 'visual', 'pass_fail', NULL, NULL, NULL, NULL, 1, 20, 'Full visual inspection under inspection light'),
+        (8, 'Label Verification', 'QC-003', 'visual', 'pass_fail', NULL, NULL, NULL, NULL, 0, 30, 'Verify label matches order specs'),
+        (9, 'Packaging Integrity', 'PACK-001', 'visual', 'pass_fail', NULL, NULL, NULL, NULL, 1, 10, 'Verify proper edge protection and separation'),
+        (9, 'Rack Loading Check', 'PACK-002', 'visual', 'pass_fail', NULL, NULL, NULL, NULL, 0, 20, 'Verify glass is properly secured in rack')`
+      );
+    }
+
+    // Seed scheduling constraints
+    const [sc] = await pool.query('SELECT COUNT(*) as cnt FROM scheduling_constraints');
+    if (sc[0].cnt === 0) {
+      await pool.query(`INSERT INTO scheduling_constraints (work_center_id, constraint_type, constraint_value, constraint_unit, notes) VALUES
+        (1, 'max_concurrent', 2, 'tables', 'Max 2 cutting tables running simultaneously'),
+        (6, 'min_batch', 4, 'pieces', 'Minimum 4 pieces per tempering run for efficiency'),
+        (6, 'requires_preheat', 30, 'minutes', 'Oven requires 30min preheat before first batch'),
+        (6, 'requires_cooldown', 15, 'minutes', 'Cooldown between batches'),
+        (7, 'requires_preheat', 60, 'minutes', 'Autoclave preheat time'),
+        (7, 'max_batch', 12, 'pieces', 'Max 12 pieces per autoclave cycle'),
+        (5, 'max_concurrent', 1, 'lines', 'Single wash line'),
+        (3, 'max_concurrent', 1, 'machines', 'Single CNC machine')`
+      );
+    }
+
+    // Update work centers to finite scheduling
+    await pool.query("UPDATE work_centers SET scheduling_type = 'finite' WHERE code IN ('CUT','TEMP','LAMI','CNC')");
+
+    console.log('Phase 4 tables + seeds: verified');
+  } catch(e) { console.log('Phase4 seed:', e.message); }
 };
