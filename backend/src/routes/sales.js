@@ -373,10 +373,12 @@ router.post('/orders', authenticate, async (req, res) => {
 // This is the KEY action: creates Work Orders from Sales Order lines
 // Fixes: populates wo_routing, detects product_type from item, explodes BOM into materials, creates child WOs
 router.post('/orders/:id/release-to-production', authenticate, async (req, res) => {
+  const conn = await pool.getConnection();
   try {
-    const [orders] = await pool.query('SELECT * FROM sales_orders WHERE id = ?', [req.params.id]);
-    if (!orders.length) return res.status(404).json({ error: 'Order not found' });
-    if (['cancelled', 'closed'].includes(orders[0].status)) return res.status(400).json({ error: 'Cannot release cancelled/closed order' });
+    await conn.beginTransaction();
+    const [orders] = await conn.query('SELECT * FROM sales_orders WHERE id = ?', [req.params.id]);
+    if (!orders.length) { await conn.rollback(); conn.release(); return res.status(404).json({ error: 'Order not found' }); }
+    if (['cancelled', 'closed'].includes(orders[0].status)) { await conn.rollback(); conn.release(); return res.status(400).json({ error: 'Cannot release cancelled/closed order' }); }
     
     const { line_ids } = req.body; // Optional: specific lines to release. If empty, release all pending lines.
     let lineQuery = 'SELECT * FROM sales_order_lines WHERE sales_order_id = ? AND production_status = "pending"';
@@ -385,9 +387,9 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
       lineQuery += ` AND id IN (${line_ids.map(() => '?').join(',')})`;
       lineParams.push(...line_ids);
     }
-    const [lines] = await pool.query(lineQuery, lineParams);
+    const [lines] = await conn.query(lineQuery, lineParams);
     
-    if (lines.length === 0) return res.status(400).json({ error: 'No lines available to release (all already in production or no pending lines)' });
+    if (lines.length === 0) { await conn.rollback(); conn.release(); return res.status(400).json({ error: 'No lines available to release (all already in production or no pending lines)' }); }
     
     // Helper: map item_type_id to routing product_type
     const itemTypeToProductType = {
@@ -402,7 +404,7 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
       // === FIX BUG 2: Detect product_type from item's item_type_id ===
       let productType = line.product_type; // Use SO line product_type if explicitly set
       if (!productType && line.item_id) {
-        const [itemRows] = await pool.query('SELECT item_type_id FROM items WHERE id = ?', [line.item_id]);
+        const [itemRows] = await conn.query('SELECT item_type_id FROM items WHERE id = ?', [line.item_id]);
         if (itemRows.length > 0 && itemRows[0].item_type_id) {
           productType = itemTypeToProductType[itemRows[0].item_type_id] || 'custom';
         }
@@ -411,7 +413,7 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
       
       // Create Work Order for each line
       const woNumber = await getNextNumber('work_order');
-      const [woResult] = await pool.query(
+      const [woResult] = await conn.query(
         `INSERT INTO work_orders (order_number, sales_order_id, sales_order_line_id, item_id, product_type, quantity, 
          glass_type, thickness, width, height, edge_type, interlayer_type, has_holes,
          status, priority, start_date, notes, wo_category)
@@ -423,14 +425,14 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
       const woId = woResult.insertId;
       
       // Check if CNC should be skipped (no holes/notches) - declare outside template block for reuse
-      const [cncCenter] = await pool.query("SELECT id FROM work_centers WHERE code='CNC'");
+      const [cncCenter] = await conn.query("SELECT id FROM work_centers WHERE code='CNC'");
       const cncId = cncCenter.length > 0 ? cncCenter[0].id : null;
       
       // === FIX BUG 1: Populate BOTH wo_routing AND shop_floor_tracking ===
-      const [templates] = await pool.query(
+      const [templates] = await conn.query(
         'SELECT id FROM routing_templates WHERE product_type = ? AND is_active = TRUE LIMIT 1', [productType]);
       if (templates.length > 0) {
-        const [operations] = await pool.query(
+        const [operations] = await conn.query(
           'SELECT * FROM routing_template_operations WHERE template_id = ? ORDER BY sequence', [templates[0].id]);
         
         for (const op of operations) {
@@ -438,7 +440,7 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
           if (op.work_center_id === cncId && !line.has_holes && !line.has_notches) continue;
           
           // Insert into wo_routing (the proper routing table)
-          const [routingResult] = await pool.query(
+          const [routingResult] = await conn.query(
             `INSERT INTO wo_routing (work_order_id, sequence, operation_number, work_center_id, 
              operation_description, setup_hours_estimated, run_hours_estimated, qc_required, status)
              VALUES (?,?,?,?,?,?,?,?,?)`,
@@ -449,7 +451,7 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
           );
           
           // Also insert into shop_floor_tracking (for shop floor display)
-          await pool.query(
+          await conn.query(
             `INSERT INTO shop_floor_tracking (work_order_id, work_center_id, wo_routing_id, status, notes)
              VALUES (?,?,?,?,?)`,
             [woId, op.work_center_id, routingResult.insertId, 'queued',
@@ -458,18 +460,18 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
         }
         
         // Set current_station_id to first routing step
-        const [firstOp] = await pool.query('SELECT work_center_id FROM wo_routing WHERE work_order_id = ? ORDER BY sequence LIMIT 1', [woId]);
+        const [firstOp] = await conn.query('SELECT work_center_id FROM wo_routing WHERE work_order_id = ? ORDER BY sequence LIMIT 1', [woId]);
         if (firstOp.length > 0) {
-          await pool.query('UPDATE work_orders SET current_station_id = ? WHERE id = ?', [firstOp[0].work_center_id, woId]);
+          await conn.query('UPDATE work_orders SET current_station_id = ? WHERE id = ?', [firstOp[0].work_center_id, woId]);
         }
       }
       
       // === FIX BUG 3 & 5: Explode BOM into WO materials and create child WOs ===
       if (line.item_id) {
-        const [bomHeaders] = await pool.query(
+        const [bomHeaders] = await conn.query(
           'SELECT id FROM bom_headers WHERE item_id = ? AND is_active = 1 ORDER BY id DESC LIMIT 1', [line.item_id]);
         if (bomHeaders.length > 0) {
-          const [bomLines] = await pool.query(
+          const [bomLines] = await conn.query(
             'SELECT * FROM bom_lines WHERE bom_id = ? ORDER BY sequence', [bomHeaders[0].id]);
           
           let lineNum = 1;
@@ -480,11 +482,11 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
             const totalQty = qtyRequired * wasteMult;
             
             // Get item cost
-            const [compItem] = await pool.query('SELECT standard_cost, description FROM items WHERE id = ?', [bom.component_item_id]);
+            const [compItem] = await conn.query('SELECT standard_cost, description FROM items WHERE id = ?', [bom.component_item_id]);
             const unitCost = compItem.length > 0 ? compItem[0].standard_cost || 0 : 0;
             
             // Insert WO material line
-            await pool.query(
+            await conn.query(
               `INSERT INTO wo_materials (work_order_id, line_number, item_id, description, 
                quantity_required, waste_percent, total_qty, unit_cost, total_cost, notes)
                VALUES (?,?,?,?,?,?,?,?,?,?)`,
@@ -497,7 +499,7 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
             // Create child WO for glass lites that need cutting
             if (bom.component_type === 'glass_lite') {
               const childWoNumber = await getNextNumber('work_order');
-              const [childResult] = await pool.query(
+              const [childResult] = await conn.query(
                 `INSERT INTO work_orders (order_number, sales_order_id, item_id, product_type, quantity,
                  width, height, thickness, status, priority, start_date, notes, wo_category, parent_wo_id)
                  VALUES (?,?,?,?,?,?,?,?,?,?,CURDATE(),?,?,?)`,
@@ -506,14 +508,14 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
                  'planned', 'normal', `Glass lite cutting for ${woNumber}`, 'glass_component', woId]
               );
               // Add cutting routing to child WO (just glass cutting + edge work)
-              const [cutTemplate] = await pool.query(
+              const [cutTemplate] = await conn.query(
                 'SELECT id FROM routing_templates WHERE product_type = ? AND is_active = TRUE LIMIT 1', ['tempered_panel']);
               if (cutTemplate.length > 0) {
-                const [cutOps] = await pool.query(
+                const [cutOps] = await conn.query(
                   'SELECT * FROM routing_template_operations WHERE template_id = ? AND sequence <= 20 ORDER BY sequence', [cutTemplate[0].id]);
                 for (const cop of cutOps) {
                   if (cop.work_center_id === cncId && !line.has_holes && !line.has_notches) continue;
-                  await pool.query(
+                  await conn.query(
                     `INSERT INTO wo_routing (work_order_id, sequence, operation_number, work_center_id,
                      operation_description, setup_hours_estimated, run_hours_estimated, qc_required, status)
                      VALUES (?,?,?,?,?,?,?,?,?)`,
@@ -529,21 +531,28 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
       }
       
       // Update SO line status
-      await pool.query("UPDATE sales_order_lines SET production_status = 'released', work_order_id = ? WHERE id = ?", [woId, line.id]);
+      await conn.query("UPDATE sales_order_lines SET production_status = 'released', work_order_id = ? WHERE id = ?", [woId, line.id]);
       
       createdWOs.push({ id: woId, order_number: woNumber, line_number: line.line_number, description: line.description, product_type: productType });
     }
     
     // Update SO status
-    const [allLines] = await pool.query('SELECT production_status FROM sales_order_lines WHERE sales_order_id = ?', [req.params.id]);
+    const [allLines] = await conn.query('SELECT production_status FROM sales_order_lines WHERE sales_order_id = ?', [req.params.id]);
     const allReleased = allLines.every(l => l.production_status !== 'pending');
     if (allReleased) {
-      await pool.query("UPDATE sales_orders SET status = 'open' WHERE id = ? AND status = 'draft'", [req.params.id]);
+      await conn.query("UPDATE sales_orders SET status = 'open' WHERE id = ? AND status = 'draft'", [req.params.id]);
     }
     
+    await conn.commit();
+    conn.release();
     await req.audit('sales_orders', req.params.id, 'RELEASE_TO_PRODUCTION', null, { work_orders: createdWOs.map(w => w.order_number) });
     res.status(201).json({ message: `${createdWOs.length} Work Order(s) created`, work_orders: createdWOs });
-  } catch (error) { console.error('Release to production error:', error); res.status(500).json({ error: error.message }); }
+  } catch (error) {
+    await conn.rollback();
+    conn.release();
+    console.error('Release to production error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Record deposit on Sales Order
@@ -648,6 +657,18 @@ router.post('/shipments', authenticate, async (req, res) => {
         // Reduce inventory
         if (l.item_id) {
           await pool.query('UPDATE items SET qty_on_hand = COALESCE(qty_on_hand,0) - ? WHERE id = ?', [l.quantity_shipped, l.item_id]);
+          // Sync inventory_balances (reduce from default location 1)
+          await pool.query(
+            `UPDATE inventory_balances SET quantity_on_hand = quantity_on_hand - ?, last_count_date = NOW()
+             WHERE item_id = ? AND location_id = 1`,
+            [l.quantity_shipped, l.item_id]
+          );
+          // Create inventory transaction for shipment
+          await pool.query(
+            `INSERT INTO inventory_transactions (item_id, transaction_type, quantity, reference_type, reference_id, reference_number, location_id, unit_cost, total_cost, notes, created_by)
+             VALUES (?,'shipment',?,?,?,?,1,0,0,?,?)`,
+            [l.item_id, -l.quantity_shipped, 'shipment', result.insertId, shipmentNumber, `Shipped on ${shipmentNumber}`, req.user.id]
+          );
         }
       }
     }

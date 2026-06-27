@@ -360,6 +360,39 @@ router.post('/receipts', authenticate, async (req, res) => {
       await conn.query('UPDATE locations SET current_items = COALESCE(current_items,0) + ? WHERE id = ?', [totalReceived, location_id]);
     }
     
+    // Sync inventory_balances for each received line
+    for (const line of lines) {
+      if (!line.quantity_received || line.quantity_received <= 0 || !line.item_id) continue;
+      const locId = line.location_id || location_id || 1;
+      await conn.query(
+        `INSERT INTO inventory_balances (item_id, location_id, quantity_on_hand, last_count_date)
+         VALUES (?, ?, ?, NOW())
+         ON DUPLICATE KEY UPDATE quantity_on_hand = quantity_on_hand + ?, last_count_date = NOW()`,
+        [line.item_id, locId, line.quantity_received, line.quantity_received]
+      );
+    }
+    
+    // Post GL entries: Debit Raw Materials Inventory, Credit AP Accrual
+    const glLines = [];
+    for (const line of lines) {
+      if (!line.quantity_received || line.quantity_received <= 0 || !line.item_id) continue;
+      glLines.push({ itemId: line.item_id, quantity: line.quantity_received, unitCost: line.unit_cost || 0 });
+    }
+    if (glLines.length > 0) {
+      try {
+        await GLService.postPOReceipt({
+          receiptId: receiptId,
+          lines: glLines,
+          transactionDate: receipt_date || new Date(),
+          memo: `PO Receipt ${receiptNumber} - PO ${pos[0].po_number}`,
+          postedBy: req.user.id,
+          connection: conn
+        });
+      } catch (glErr) {
+        console.error('GL posting for PO receipt failed (non-fatal):', glErr.message);
+      }
+    }
+    
     await conn.commit();
     await req.audit('po_receipts', receiptId, 'INSERT', null, { receipt_number: receiptNumber, po_number: pos[0].po_number, total_received: totalReceived });
     res.status(201).json({ id: receiptId, receipt_number: receiptNumber, total_received: totalReceived, po_status: newPOStatus });

@@ -45,6 +45,25 @@ module.exports = async () => {
   for (const sql of alterStatements) {
     try { await pool.query(sql); } catch(e) { /* column already exists - ignore */ }
   }
+
+  // Performance indexes
+  const indexStatements = [
+    "CREATE INDEX idx_gl_source ON gl_transactions(source_type, source_id)",
+    "CREATE INDEX idx_gl_date ON gl_transactions(transaction_date)",
+    "CREATE INDEX idx_wo_status ON work_orders(status)",
+    "CREATE INDEX idx_wo_product_type ON work_orders(product_type)",
+    "CREATE INDEX idx_wo_parent ON work_orders(parent_wo_id)",
+    "CREATE INDEX idx_so_status ON sales_orders(status)",
+    "CREATE INDEX idx_sol_prod_status ON sales_order_lines(production_status)",
+    "CREATE INDEX idx_ari_status ON ar_invoices(status)",
+    "CREATE INDEX idx_pol_po ON po_lines(purchase_order_id)",
+    "CREATE INDEX idx_sl_shipment ON shipment_lines(shipment_id)",
+    "CREATE INDEX idx_wor_wo_seq ON wo_routing(work_order_id, sequence)",
+    "CREATE INDEX idx_invt_item_date ON inventory_transactions(item_id, created_at)"
+  ];
+  for (const sql of indexStatements) {
+    try { await pool.query(sql); } catch(e) { /* index already exists - ignore */ }
+  }
   console.log('V3 migrations: All tables verified');
 
   // Seed data if empty

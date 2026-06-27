@@ -445,8 +445,184 @@ body {
 .erp-kpi-label { color: #333; }
 .erp-kpi-value { font-weight: bold; color: #003366; }
 
-/* Responsive adjustments */
+/* ============ RESPONSIVE DESIGN FOR TABLETS & PHONES ============ */
+
+/* Tablet (768px - 1024px) */
+@media (max-width: 1024px) {
+  .erp-navbar {
+    flex-wrap: wrap;
+    gap: 1px;
+    padding: 2px;
+  }
+  .erp-nav-item {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+  .erp-nav-item span {
+    display: none;
+  }
+  .erp-nav-item svg {
+    width: 16px;
+    height: 16px;
+  }
+  .erp-sidebar {
+    width: 140px;
+    min-width: 140px;
+  }
+  .erp-modal {
+    min-width: 90vw;
+  }
+  .erp-grid td, .erp-grid th {
+    padding: 4px 6px;
+  }
+}
+
+/* Mobile / Shop Floor Tablet (max-width: 768px) */
 @media (max-width: 768px) {
-  .erp-sidebar { width: 140px; min-width: 140px; }
-  .erp-form-group { grid-template-columns: 100px 1fr; }
+  body {
+    font-size: 14px;
+  }
+  
+  /* Hamburger-ready navbar: show icons only, larger touch targets */
+  .erp-navbar {
+    flex-wrap: wrap;
+    gap: 0;
+    padding: 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .erp-nav-item {
+    padding: 8px 10px;
+    font-size: 12px;
+    min-width: 40px;
+    justify-content: center;
+  }
+  .erp-nav-item span {
+    display: none;
+  }
+  .erp-nav-item svg {
+    width: 18px;
+    height: 18px;
+  }
+  
+  /* Sidebar collapses to icons-only */
+  .erp-sidebar {
+    width: 48px;
+    min-width: 48px;
+    padding: 4px 0;
+  }
+  .erp-sidebar-title,
+  .erp-sidebar-section-title {
+    display: none;
+  }
+  .erp-sidebar-item {
+    padding: 8px;
+    justify-content: center;
+    font-size: 0;
+  }
+  .erp-sidebar-item svg {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+  
+  /* Forms stack vertically */
+  .erp-form-group {
+    grid-template-columns: 1fr;
+    gap: 2px 0;
+  }
+  .erp-form-label {
+    text-align: left;
+    font-weight: bold;
+  }
+  .erp-form-input, .erp-form-select {
+    padding: 6px 8px;
+    font-size: 14px;
+  }
+  
+  /* Larger touch targets for buttons */
+  .erp-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+    min-height: 36px;
+  }
+  .erp-toolbar-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+    min-height: 36px;
+  }
+  
+  /* Grid scrolls horizontally */
+  .erp-grid {
+    font-size: 12px;
+  }
+  .erp-grid td, .erp-grid th {
+    padding: 6px 8px;
+  }
+  
+  /* Tabs scroll horizontally */
+  .erp-tabs, .erp-panel-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .erp-tab, .erp-panel-tab {
+    padding: 8px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  
+  /* Modal full-width on mobile */
+  .erp-modal {
+    min-width: unset;
+    width: 95vw;
+    max-height: 90vh;
+  }
+  
+  /* KPI cards stack */
+  .erp-kpi-row {
+    font-size: 13px;
+    padding: 4px 0;
+  }
+  
+  /* Status badges larger */
+  .erp-status {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+  
+  /* Top menu bar adjustments */
+  .bg-gray-100.border-b {
+    flex-wrap: wrap;
+    padding: 4px 8px;
+  }
+}
+
+/* Phone (max-width: 480px) */
+@media (max-width: 480px) {
+  .erp-navbar {
+    justify-content: space-around;
+  }
+  .erp-nav-item {
+    padding: 10px 8px;
+  }
+  .erp-sidebar {
+    display: none;
+  }
+  .erp-modal {
+    width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  .erp-form-input, .erp-form-select {
+    padding: 8px 10px;
+    font-size: 16px; /* Prevents iOS zoom */
+  }
+  .erp-btn {
+    padding: 10px 16px;
+    font-size: 14px;
+    width: 100%;
+  }
+  .erp-modal-footer {
+    flex-direction: column;
+  }
 }
