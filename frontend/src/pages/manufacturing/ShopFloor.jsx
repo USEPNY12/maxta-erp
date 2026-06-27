@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 import { formatDate } from '../../utils/formatDate';
+import ModulePage from '../../components/ModulePage';
+import { manufacturingMenu } from '../../config/moduleMenus';
 
 function ShopFloor() {
   const [searchParams] = useSearchParams();
@@ -98,7 +100,8 @@ function ShopFloor() {
   const priorityColors = { urgent: 'bg-red-600', high: 'bg-orange-500', normal: 'bg-blue-500', low: 'bg-gray-400' };
 
   return (
-    <div className="h-full flex">
+    <ModulePage {...manufacturingMenu}>
+      <div className="h-full flex">
       {/* Station Sidebar */}
       <div className="w-56 bg-gray-900 text-white overflow-y-auto flex-shrink-0">
         <div className="p-3 border-b border-gray-700">
@@ -253,6 +256,7 @@ function ShopFloor() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 export default ShopFloor;

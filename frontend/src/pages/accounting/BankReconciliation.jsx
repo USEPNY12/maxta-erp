@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { toast } from 'react-toastify';
+import ModulePage from '../../components/ModulePage';
+import { accountingMenu } from '../../config/moduleMenus';
 
 export default function BankReconciliation() {
   const [banks, setBanks] = useState([]);
@@ -90,7 +92,8 @@ export default function BankReconciliation() {
   const handleFilterChange = (f) => { setFilter(f); fetchTransactions(selectedBank, f); };
 
   return (
-    <div className="h-full flex flex-col">
+    <ModulePage {...accountingMenu}>
+      <div className="h-full flex flex-col">
       <div className="erp-toolbar flex-wrap gap-2">
         <span className="text-xs font-bold">Bank Account:</span>
         <select className="erp-form-select w-64" value={selectedBank} onChange={e => handleBankChange(e.target.value)}>
@@ -202,5 +205,6 @@ export default function BankReconciliation() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }

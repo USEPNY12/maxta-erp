@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { manufacturingMenu } from '../../config/moduleMenus';
 
 function WorkCenters() {
   const [centers, setCenters] = useState([]);
@@ -34,7 +36,8 @@ function WorkCenters() {
   const deptColors = { Cutting: 'bg-blue-100 text-blue-700', Edging: 'bg-cyan-100 text-cyan-700', CNC: 'bg-purple-100 text-purple-700', Washing: 'bg-gray-100 text-gray-700', Tempering: 'bg-red-100 text-red-700', Lamination: 'bg-green-100 text-green-700', IGU: 'bg-teal-100 text-teal-700', QC: 'bg-amber-100 text-amber-700', Packing: 'bg-gray-100 text-gray-700', Production: 'bg-green-100 text-green-700' };
 
   return (
-    <div className="h-full flex flex-col">
+    <ModulePage {...manufacturingMenu}>
+      <div className="h-full flex flex-col">
       <div className="erp-toolbar">
         <span className="font-bold text-sm">Work Centers / Stations</span>
         <div className="erp-toolbar-separator" />
@@ -99,6 +102,7 @@ function WorkCenters() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 export default WorkCenters;

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import ScanPanel from '../../components/ScanPanel';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { inventoryMenu } from '../../config/moduleMenus';
 
 function InventoryHome() {
   const navigate = useNavigate();
@@ -19,7 +21,8 @@ function InventoryHome() {
   const fmt = (v) => v ? Number(v).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '$0.00';
 
   return (
-    <div className="h-full overflow-auto bg-[#c8c8d4] p-4">
+    <ModulePage {...inventoryMenu}>
+      <div className="h-full overflow-auto bg-[#c8c8d4] p-4">
       <div className="grid grid-cols-4 gap-4 mb-4">
         {[
           { label: 'Total Items', value: kpis?.total_items || 0, color: 'blue', icon: '📦' },
@@ -136,6 +139,7 @@ function InventoryHome() {
       )}
 
     </div>
+    </ModulePage>
   );
 }
 

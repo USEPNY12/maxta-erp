@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { purchasingMenu } from '../../config/moduleMenus';
 
 function BuyForWO() {
   const [workOrders, setWorkOrders] = useState([]);
@@ -30,7 +32,8 @@ function BuyForWO() {
   };
 
   return (
-    <div className="erp-page">
+    <ModulePage {...purchasingMenu}>
+      <div className="erp-page">
       <div className="erp-toolbar">
         <h3 style={{ margin: 0 }}>Buy for Work Order / Job</h3>
         <button onClick={fetchWOs} style={{ marginLeft: 12 }}>↻ Refresh</button>
@@ -90,6 +93,7 @@ function BuyForWO() {
         </table>
       )}
     </div>
+    </ModulePage>
   );
 }
 

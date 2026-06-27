@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 import ScanPanel from '../../components/ScanPanel';
+import ModulePage from '../../components/ModulePage';
+import { purchasingMenu } from '../../config/moduleMenus';
 function POReceipts() {
   const [receipts, setReceipts] = useState([]);
   const [search, setSearch] = useState('');
@@ -30,7 +32,8 @@ function POReceipts() {
   };
   const fmt = (d) => d ? d.split('T')[0] : '-';
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <ModulePage {...purchasingMenu}>
+      <div className="h-full flex flex-col overflow-hidden">
       <div className="erp-toolbar">
         <span className="text-sm font-bold">Inventory Receipts</span>
         <input className="erp-form-input w-48" placeholder="Search receipt#, PO#..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchReceipts()} />
@@ -187,6 +190,7 @@ function POReceipts() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 export default POReceipts;

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { inventoryMenu } from '../../config/moduleMenus';
 
 export default function PhysicalCount() {
   const [counts, setCounts] = useState([]);
@@ -85,7 +87,8 @@ export default function PhysicalCount() {
   const formatDate = (d) => d ? new Date(d).toLocaleDateString() : '-';
 
   return (
-    <div className="h-full overflow-auto bg-[#c8c8d4] p-4">
+    <ModulePage {...inventoryMenu}>
+      <div className="h-full overflow-auto bg-[#c8c8d4] p-4">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold text-gray-800">Physical Inventory Count</h1>
@@ -263,5 +266,6 @@ export default function PhysicalCount() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }

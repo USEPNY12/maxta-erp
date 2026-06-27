@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ModulePage from '../../components/ModulePage';
+import { purchasingMenu } from '../../config/moduleMenus';
 import api from '../../services/api';
 function PurchasingHome() {
   const navigate = useNavigate();
@@ -10,24 +11,7 @@ function PurchasingHome() {
     try { const res = await api.get('/api/purchasing/dashboard'); setDashboard(res.data); } catch {}
   };
   return (
-    <ModulePage
-      title="Purchasing"
-      quickActions={[
-        { label: 'New Purchase Order', path: '/purchasing/purchase-orders?new=true' },
-        { label: 'Receive Materials', path: '/purchasing/receipts?new=true' },
-        { label: 'New Vendor', path: '/purchasing/vendors?new=true' },
-      ]}
-      menuItems={[
-        { label: 'Purchasing Home', path: '/purchasing', icon: '🏠' },
-        { label: 'Purchase Orders', path: '/purchasing/purchase-orders', icon: '📋' },
-        { label: 'Receiving', path: '/purchasing/receipts', icon: '📥' },
-        { label: 'A/P Invoices', path: '/purchasing/ap-invoices', icon: '💰' },
-        { label: 'Vendors', path: '/purchasing/vendors', icon: '🏢' },
-        { label: 'Vendor Items', path: '/purchasing/vendor-items', icon: '📦' },
-        { label: 'Buy for WO/Job', path: '/purchasing/buy-for-wo', icon: '🔧' },
-        { label: 'Locations', path: '/purchasing/locations', icon: '📍' },
-      ]}
-    >
+    <ModulePage {...purchasingMenu}>
       <div className="p-4 space-y-4">
         {/* KPI Cards */}
         {dashboard && (

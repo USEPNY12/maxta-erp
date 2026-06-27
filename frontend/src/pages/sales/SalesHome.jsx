@@ -1,36 +1,10 @@
 import React from 'react';
 import ModulePage from '../../components/ModulePage';
-import Flowchart from '../../components/Flowchart';
+import { salesMenu } from '../../config/moduleMenus';
+
 function SalesHome() {
   return (
-    <ModulePage
-      title="Sales"
-      quickActions={[
-        { label: 'New Quote', path: '/sales/quotes?new=true' },
-        { label: 'New Order', path: '/sales/orders?new=true' },
-        { label: 'New Shipment', path: '/sales/shipments?new=true' },
-        { label: 'New Customer', path: '/sales/customers?new=true' },
-      ]}
-      setupItems={[
-        { label: 'Customer Types', path: '/setup?tab=customer-types' },
-        { label: 'Tax Groups', path: '/setup?tab=tax-groups' },
-        { label: 'Carriers', path: '/setup?tab=carriers' },
-        { label: 'Price Lists', path: '/setup?tab=price-lists' },
-        { label: 'Salespeople', path: '/setup?tab=salespeople' },
-      ]}
-      menuItems={[
-        { label: 'Sales Home', path: '/sales', icon: '🏠' },
-        { label: 'Quotes', path: '/sales/quotes', icon: '📝' },
-        { label: 'Orders', path: '/sales/orders', icon: '📋' },
-        { label: 'Shipments', path: '/sales/shipments', icon: '🚚' },
-        { label: 'A/R Invoices', path: '/sales/invoices', icon: '💰' },
-        { label: 'Customers', path: '/sales/customers', icon: '👥' },
-      ]}
-      reports={{
-        type: 'Sales',
-        options: ['Sales Invoice Register', 'Open Orders', 'Bookings Report', 'Shipment Report', 'Aging Report']
-      }}
-    >
+    <ModulePage {...salesMenu}>
       <div className="p-4">
         <h2 className="text-sm font-bold text-gray-700 mb-3">Glass Fabrication — Quote to Cash Flow</h2>
         <div className="flex items-center gap-2 flex-wrap mb-6">
@@ -60,7 +34,7 @@ function SalesHome() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="border rounded p-3">
             <h3 className="text-xs font-bold mb-2">How It Works</h3>
             <ol className="text-[10px] text-gray-700 space-y-1 list-decimal pl-4">

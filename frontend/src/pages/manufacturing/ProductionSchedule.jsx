@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { manufacturingMenu } from '../../config/moduleMenus';
 
 function ProductionSchedule() {
   const [schedule, setSchedule] = useState([]);
@@ -58,7 +60,8 @@ function ProductionSchedule() {
   const boardStations = ['Cutting Table', 'Edge Polisher', 'CNC/Waterjet', 'Wash Line', 'Tempering Oven', 'Lamination Line', 'Quality Control', 'Packing Station'];
 
   return (
-    <div className="h-full flex flex-col">
+    <ModulePage {...manufacturingMenu}>
+      <div className="h-full flex flex-col">
       <div className="erp-toolbar">
         <span className="font-bold text-sm">Production Schedule</span>
         <div className="erp-toolbar-separator" />
@@ -203,6 +206,7 @@ function ProductionSchedule() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 export default ProductionSchedule;

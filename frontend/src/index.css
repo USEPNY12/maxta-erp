@@ -2304,3 +2304,214 @@ body {
 .ws-dot.connected {
   background-color: var(--success);
 }
+
+/* ============ MODULE PAGE LAYOUT FIX ============ */
+/* These classes ensure proper height propagation for mobile content rendering */
+.module-page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.module-page-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0; /* Critical for flex children to shrink properly */
+}
+
+.module-page-content {
+  flex: 1;
+  overflow: auto;
+  background: var(--surface);
+  min-height: 0; /* Allow content to scroll within flex container */
+}
+
+/* Fix layout-main to properly propagate height */
+.layout-main {
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-main-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Allow flex shrinking */
+}
+
+/* Mobile-specific layout fixes */
+@media (max-width: 768px) {
+  .layout-main {
+    padding-bottom: 60px; /* Space for bottom nav */
+  }
+
+  .layout-main-content {
+    flex: 1;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .module-page-container {
+    min-height: 0;
+  }
+
+  .module-page-content {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure sub-pages that use h-full also work */
+  .layout-main-content > div {
+    min-height: 0;
+  }
+
+  /* Mobile module bar sticky positioning */
+  .mobile-module-bar {
+    position: sticky;
+    top: 0;
+    flex-shrink: 0;
+  }
+}
+
+/* ============ MOBILE MODULE NAVIGATION STYLES ============ */
+.mobile-module-bar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-module-bar {
+    display: flex;
+    align-items: center;
+    background: var(--surface, #fff);
+    border-bottom: 1px solid var(--border, #e2e8f0);
+    padding: 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    flex-shrink: 0;
+    min-height: 44px;
+    overflow: hidden;
+  }
+
+  .mobile-module-menu-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 10px;
+    background: none;
+    border: none;
+    border-right: 1px solid var(--border, #e2e8f0);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary, #1e293b);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .mobile-module-menu-btn:active {
+    background: var(--hover-bg, #f1f5f9);
+  }
+
+  .mobile-module-tabs {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex: 1;
+    gap: 0;
+    padding: 0 4px;
+  }
+
+  .mobile-module-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mobile-module-tab {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 10px 10px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-size: 11px;
+    color: var(--text-secondary, #64748b);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+  }
+
+  .mobile-module-tab:active {
+    background: var(--hover-bg, #f1f5f9);
+  }
+
+  .mobile-module-tab.active {
+    color: var(--primary, #2563eb);
+    border-bottom-color: var(--primary, #2563eb);
+    font-weight: 600;
+  }
+
+  .mobile-module-tab span:first-child {
+    font-size: 14px;
+  }
+
+  /* Hide desktop sidebar on mobile */
+  .erp-sidebar {
+    display: none !important;
+  }
+
+  /* Module page body should be full width on mobile */
+  .module-page-body {
+    flex-direction: column;
+  }
+
+  .module-page-content {
+    padding: 0;
+  }
+}
+
+/* ============ LAYOUT MOBILE IMPROVEMENTS ============ */
+@media (max-width: 768px) {
+  /* Hide the top info bar on mobile - too much space */
+  .h-screen > .bg-gray-100.border-b {
+    display: none;
+  }
+
+  /* Make navbar more compact on mobile */
+  .erp-navbar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 2px;
+  }
+
+  .erp-navbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .erp-nav-item {
+    padding: 4px 8px;
+    font-size: 10px;
+    gap: 2px;
+  }
+
+  .erp-nav-item svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* Hide status bar on mobile */
+  .h-screen > .bg-gray-200.border-t {
+    display: none;
+  }
+
+  /* Make main content area take full height */
+  .h-screen > .flex-1.overflow-hidden {
+    flex: 1;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}

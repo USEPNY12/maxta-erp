@@ -4,6 +4,8 @@ import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 import ScanPanel from '../../components/ScanPanel';
+import ModulePage from '../../components/ModulePage';
+import { salesMenu } from '../../config/moduleMenus';
 
 function Shipments() {
   const [shipments, setShipments] = useState([]);
@@ -98,7 +100,8 @@ function Shipments() {
   const updateLineQty = (idx, val) => { const lines = [...form.lines]; lines[idx] = { ...lines[idx], ship_qty: val }; setForm({ ...form, lines }); };
 
   return (
-    <div className="p-3 h-full flex flex-col">
+    <ModulePage {...salesMenu}>
+      <div className="p-3 h-full flex flex-col">
       <div className="erp-toolbar mb-2">
         <button className="erp-btn erp-btn-primary" onClick={openNew}>+ New Shipment</button>
         <div className="erp-toolbar-separator"></div>
@@ -264,6 +267,7 @@ function Shipments() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 export default Shipments;

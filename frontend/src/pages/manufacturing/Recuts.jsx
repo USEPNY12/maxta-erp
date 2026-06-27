@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { formatDate } from '../../utils/formatDate';
+import ModulePage from '../../components/ModulePage';
+import { manufacturingMenu } from '../../config/moduleMenus';
 
 function Recuts() {
   const [recuts, setRecuts] = useState([]);
@@ -18,7 +20,8 @@ function Recuts() {
   const reasonLabels = { breakage: 'Breakage', scratch: 'Scratch/Damage', wrong_size: 'Wrong Size', chip: 'Chip/Edge Defect', inclusion: 'Inclusion/NiS', warp: 'Warp/Roller Wave', delamination: 'Delamination', seal_failure: 'Seal Failure', other: 'Other' };
 
   return (
-    <div className="h-full flex flex-col">
+    <ModulePage {...manufacturingMenu}>
+      <div className="h-full flex flex-col">
       <div className="erp-toolbar">
         <span className="font-bold text-sm">Recuts / Scrap Tracking</span>
         <div className="erp-toolbar-separator" />
@@ -74,6 +77,7 @@ function Recuts() {
         {recuts.length === 0 && <div className="text-center text-gray-500 py-8">No recuts recorded</div>}
       </div>
     </div>
+    </ModulePage>
   );
 }
 export default Recuts;

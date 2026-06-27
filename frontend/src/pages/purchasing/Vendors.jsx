@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { purchasingMenu } from '../../config/moduleMenus';
 
 function Vendors() {
   const [searchParams] = useSearchParams();
@@ -31,7 +33,8 @@ function Vendors() {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <ModulePage {...purchasingMenu}>
+      <div className="h-full flex flex-col">
       <div className="erp-toolbar">
         <button className="erp-toolbar-btn" onClick={() => setShowNew(true)}><span className="text-green-600">+</span> New</button>
         <div className="erp-toolbar-separator" />
@@ -166,6 +169,7 @@ function Vendors() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 

@@ -2,6 +2,8 @@ import { formatDate } from '../../utils/formatDate';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { accountingMenu } from '../../config/moduleMenus';
 
 function APInvoices() {
   const [invoices, setInvoices] = useState([]);
@@ -51,7 +53,8 @@ function APInvoices() {
   const getTotal = () => (parseFloat(form.amount) || 0) + (parseFloat(form.tax_amount) || 0) + (parseFloat(form.freight) || 0);
 
   return (
-    <div className="h-full flex flex-col">
+    <ModulePage {...accountingMenu}>
+      <div className="h-full flex flex-col">
       <div className="erp-toolbar">
         <button className="erp-toolbar-btn" onClick={handleNew}><span className="text-green-600">+</span> New AP Invoice</button>
         <div className="erp-toolbar-separator" />
@@ -125,6 +128,7 @@ function APInvoices() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 

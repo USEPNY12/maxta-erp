@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 import { formatDate } from '../../utils/formatDate';
+import ModulePage from '../../components/ModulePage';
+import { manufacturingMenu } from '../../config/moduleMenus';
 
 function QualityControl() {
   const [activeTab, setActiveTab] = useState('inspections');
@@ -20,7 +22,8 @@ function QualityControl() {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <ModulePage {...manufacturingMenu}>
+      <div className="h-full flex flex-col">
       <div className="erp-toolbar">
         <span className="font-bold text-sm">Quality Control</span>
         <div className="erp-toolbar-separator" />
@@ -91,6 +94,7 @@ function QualityControl() {
         )}
       </div>
     </div>
+    </ModulePage>
   );
 }
 export default QualityControl;

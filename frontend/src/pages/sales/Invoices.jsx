@@ -2,6 +2,8 @@ import DocumentActions from '../../components/DocumentActions';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { salesMenu } from '../../config/moduleMenus';
 
 function Invoices() {
   const [invoices, setInvoices] = useState([]);
@@ -80,7 +82,8 @@ function Invoices() {
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
 
   return (
-    <div className="p-3 h-full flex flex-col">
+    <ModulePage {...salesMenu}>
+      <div className="p-3 h-full flex flex-col">
       <div className="erp-toolbar mb-2">
         <input className="erp-form-input w-48" placeholder="Search invoices..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchInvoices()} />
         <select className="erp-form-select ml-2" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
@@ -265,6 +268,7 @@ function Invoices() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 export default Invoices;

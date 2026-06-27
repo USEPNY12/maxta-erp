@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { purchasingMenu } from '../../config/moduleMenus';
 
 function PurchaseOrders() {
   const [searchParams] = useSearchParams();
@@ -350,7 +352,8 @@ function PurchaseOrders() {
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <ModulePage {...purchasingMenu}>
+      <div className="h-full flex flex-col overflow-hidden">
       {/* Toolbar */}
       <div className="erp-toolbar">
         <button className="erp-btn erp-btn-primary" onClick={() => { resetNewPO(); setShowNew(true); }}>+ New PO</button>
@@ -669,6 +672,7 @@ function PurchaseOrders() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 export default PurchaseOrders;

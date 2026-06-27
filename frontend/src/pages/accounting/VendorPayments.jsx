@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { accountingMenu } from '../../config/moduleMenus';
 
 function VendorPayments() {
   const [payments, setPayments] = useState([]);
@@ -36,7 +38,8 @@ function VendorPayments() {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <ModulePage {...accountingMenu}>
+      <div className="h-full flex flex-col">
       <div className="erp-toolbar">
         <button className="erp-toolbar-btn" onClick={() => setShowNew(true)}><span className="text-green-600">+</span> Make Payment</button>
         <div className="erp-toolbar-separator" />
@@ -100,6 +103,7 @@ function VendorPayments() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 

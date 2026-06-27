@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { manufacturingMenu } from '../../config/moduleMenus';
 
 // Color palette for pieces
 const PIECE_COLORS = [
@@ -286,7 +288,8 @@ export default function CuttingOptimization() {
   };
 
   return (
-    <div className="p-4">
+    <ModulePage {...manufacturingMenu}>
+      <div className="p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-gray-800">Glass Cutting Optimization</h1>
@@ -768,5 +771,6 @@ export default function CuttingOptimization() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { purchasingMenu } from '../../config/moduleMenus';
 
 function VendorItems() {
   const [items, setItems] = useState([]);
@@ -28,7 +30,8 @@ function VendorItems() {
   );
 
   return (
-    <div className="erp-page">
+    <ModulePage {...purchasingMenu}>
+      <div className="erp-page">
       <div className="erp-toolbar">
         <button onClick={fetchItems}>↻ Refresh</button>
         <span style={{ marginLeft: 8 }}>Search:</span>
@@ -74,6 +77,7 @@ function VendorItems() {
         </table>
       )}
     </div>
+    </ModulePage>
   );
 }
 

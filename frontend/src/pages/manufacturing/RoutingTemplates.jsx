@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { manufacturingMenu } from '../../config/moduleMenus';
 
 function RoutingTemplates() {
   const [templates, setTemplates] = useState([]);
@@ -21,7 +23,8 @@ function RoutingTemplates() {
   const productTypeLabels = { tempered_panel: 'Tempered Panel', laminated: 'Laminated Glass', tempered_laminated: 'Tempered Laminated', igu: 'Standard IGU', low_e_igu: 'Low-E IGU', heat_soaked: 'Heat Soaked', custom: 'Custom' };
 
   return (
-    <div className="h-full flex flex-col">
+    <ModulePage {...manufacturingMenu}>
+      <div className="h-full flex flex-col">
       <div className="erp-toolbar">
         <span className="font-bold text-sm">Routing Templates</span>
         <div className="erp-toolbar-separator" />
@@ -94,6 +97,7 @@ function RoutingTemplates() {
         </div>
       </div>
     </div>
+    </ModulePage>
   );
 }
 export default RoutingTemplates;

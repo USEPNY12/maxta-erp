@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { inventoryMenu } from '../../config/moduleMenus';
 
 const TABS = ['General', 'Stock Status', 'Pricing/Discounts', 'Commission', 'Bill Of Materials', 'Routing', 'Co-Products', 'GL Accounts', 'Vendor', 'Customer', 'Dimensions', 'Documents', 'Manufacturer', 'Detailed Desc'];
 
@@ -250,7 +252,8 @@ function ItemDetail() {
   if (loading) return <div className="flex items-center justify-center h-full">Loading...</div>;
 
   return (
-    <div className="h-full flex flex-col bg-gray-100">
+    <ModulePage {...inventoryMenu}>
+      <div className="h-full flex flex-col bg-gray-100">
       {/* Title Bar */}
       <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white px-4 py-1 flex justify-between items-center">
         <span className="font-bold text-sm">{isNew ? 'New Item' : `${item.item_number} - ${item.description}`}</span>
@@ -885,6 +888,7 @@ function ItemDetail() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 

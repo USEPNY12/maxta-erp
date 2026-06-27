@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { manufacturingMenu } from '../../config/moduleMenus';
 
 function BillOfMaterials() {
   const [items, setItems] = useState([]);
@@ -52,7 +54,8 @@ function BillOfMaterials() {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <ModulePage {...manufacturingMenu}>
+      <div className="h-full flex flex-col">
       <div className="erp-toolbar">
         <button className="erp-toolbar-btn" onClick={fetchItems}>↻ Refresh</button>
         <div className="erp-toolbar-separator" />
@@ -182,6 +185,7 @@ function BillOfMaterials() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 

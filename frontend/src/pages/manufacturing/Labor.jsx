@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { manufacturingMenu } from '../../config/moduleMenus';
 
 function Labor() {
   const [entries, setEntries] = useState([]);
@@ -44,7 +46,8 @@ function Labor() {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <ModulePage {...manufacturingMenu}>
+      <div className="h-full flex flex-col">
       <div className="erp-toolbar">
         <button className="erp-toolbar-btn" onClick={handleNew}><span className="text-green-600">+</span> New Labor Entry</button>
         <div className="erp-toolbar-separator" />
@@ -116,6 +119,7 @@ function Labor() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 

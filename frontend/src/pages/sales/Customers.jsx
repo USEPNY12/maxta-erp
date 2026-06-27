@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { salesMenu } from '../../config/moduleMenus';
 
 function Customers() {
   const [customers, setCustomers] = useState([]);
@@ -36,7 +38,8 @@ function Customers() {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <ModulePage {...salesMenu}>
+      <div className="h-full flex flex-col">
       <div className="erp-toolbar">
         <button className="erp-toolbar-btn" onClick={handleNew}><span className="text-green-600">+</span> New</button>
         <div className="erp-toolbar-separator" />
@@ -174,6 +177,7 @@ function Customers() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 

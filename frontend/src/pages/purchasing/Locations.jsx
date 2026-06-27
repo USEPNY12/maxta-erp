@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { purchasingMenu } from '../../config/moduleMenus';
 function Locations() {
   const [locations, setLocations] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -39,7 +41,8 @@ function Locations() {
     </React.Fragment>
   ));
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <ModulePage {...purchasingMenu}>
+      <div className="h-full flex flex-col overflow-hidden">
       <div className="erp-toolbar">
         <span className="text-sm font-bold">Warehouse Locations & Inventory</span>
         <div className="flex gap-1 ml-4">
@@ -85,6 +88,7 @@ function Locations() {
         )}
       </div>
     </div>
+    </ModulePage>
   );
 }
 export default Locations;

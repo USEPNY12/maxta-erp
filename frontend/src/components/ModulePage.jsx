@@ -87,7 +87,7 @@ function ModulePage({ title, quickActions, setupItems, menuItems, reports, child
   );
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="module-page-container">
       {/* Mobile Action Bar */}
       {isMobile && (
         <div className="mobile-module-bar">
@@ -96,7 +96,7 @@ function ModulePage({ title, quickActions, setupItems, menuItems, reports, child
             <span>{title}</span>
           </button>
           <div className="mobile-module-tabs">
-            {(menuItems || []).slice(0, 6).map((item, i) => (
+            {(menuItems || []).map((item, i) => (
               <button
                 key={i}
                 className={`mobile-module-tab ${location.pathname === item.path ? 'active' : ''}`}
@@ -110,7 +110,7 @@ function ModulePage({ title, quickActions, setupItems, menuItems, reports, child
         </div>
       )}
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="module-page-body">
         {/* Desktop Sidebar */}
         {!isMobile && (
           <div className="erp-sidebar">
@@ -136,7 +136,7 @@ function ModulePage({ title, quickActions, setupItems, menuItems, reports, child
         )}
 
         {/* Main Content */}
-        <div className="flex-1 overflow-auto bg-white">
+        <div className="module-page-content">
           {children}
         </div>
       </div>

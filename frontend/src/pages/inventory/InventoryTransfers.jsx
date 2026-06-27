@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { toast } from 'react-toastify';
+import ModulePage from '../../components/ModulePage';
+import { inventoryMenu } from '../../config/moduleMenus';
 
 export default function InventoryTransfers() {
   const [transfers, setTransfers] = useState([]);
@@ -49,7 +51,8 @@ export default function InventoryTransfers() {
   }
 
   return (
-    <div className="erp-page">
+    <ModulePage {...inventoryMenu}>
+      <div className="erp-page">
       <div className="erp-toolbar">
         <h2>Inventory Transfers</h2>
         <button className="erp-btn erp-btn-primary" onClick={() => setShowNew(!showNew)}>+ New Transfer</button>
@@ -139,5 +142,6 @@ export default function InventoryTransfers() {
         )}
       </div>
     </div>
+    </ModulePage>
   );
 }

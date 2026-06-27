@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { purchasingMenu } from '../../config/moduleMenus';
 function APInvoices() {
   const [invoices, setInvoices] = useState([]);
   const [search, setSearch] = useState('');
@@ -49,7 +51,8 @@ function APInvoices() {
   };
   const fmt = (d) => d ? d.split('T')[0] : '-';
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <ModulePage {...purchasingMenu}>
+      <div className="h-full flex flex-col overflow-hidden">
       <div className="erp-toolbar">
         <span className="text-sm font-bold">A/P Invoices</span>
         <input className="erp-form-input w-48" placeholder="Search invoice#, vendor..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchInvoices()} />
@@ -222,6 +225,7 @@ function APInvoices() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 export default APInvoices;

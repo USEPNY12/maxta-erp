@@ -7,6 +7,8 @@ import { toast } from 'react-toastify';
 import api from '../../services/api';
 import ScanPanel from '../../components/ScanPanel';
 import { formatDate } from '../../utils/formatDate';
+import ModulePage from '../../components/ModulePage';
+import { manufacturingMenu } from '../../config/moduleMenus';
 
 function WorkOrders() {
   const [searchParams] = useSearchParams();
@@ -353,7 +355,8 @@ function WorkOrders() {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <ModulePage {...manufacturingMenu}>
+      <div className="h-full flex flex-col">
       {/* Summary Bar */}
       <div className="bg-white border-b px-4 py-2 flex items-center gap-6">
         <div className="flex items-center gap-1.5">
@@ -656,6 +659,7 @@ function WorkOrders() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 export default WorkOrders;

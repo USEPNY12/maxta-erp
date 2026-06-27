@@ -45,6 +45,10 @@
 <body>
   <a href="#main-content" class="skip-to-content">Skip to main content</a>
   <div id="root"></div>
+  <script>
+    if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(reg){reg.unregister()})});}
+    if("caches" in window){caches.keys().then(function(n){n.forEach(function(name){caches.delete(name)})});}
+  </script>
   <script type="module" src="/src/main.jsx"></script>
   <script>
     // Register Service Worker for PWA

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import ModulePage from '../../components/ModulePage';
+import ModulePage from "../../components/ModulePage";
+import { manufacturingMenu } from "../../config/moduleMenus";
 
 function ManufacturingHome() {
   const navigate = useNavigate();
@@ -34,34 +35,7 @@ function ManufacturingHome() {
   };
 
   return (
-    <ModulePage
-      title="Manufacturing"
-      quickActions={[
-        { label: 'New Work Order', path: '/manufacturing/work-orders?new=true' },
-        { label: 'Shop Floor', path: '/manufacturing/shop-floor' },
-      ]}
-      setupItems={[
-        { label: 'Work Centers', path: '/manufacturing/work-centers' },
-        { label: 'Routing Templates', path: '/manufacturing/routing-templates' },
-      ]}
-      menuItems={[
-        { label: 'Manufacturing Home', path: '/manufacturing', icon: '🏠' },
-        { label: 'Work Orders', path: '/manufacturing/work-orders', icon: '📋' },
-        { label: 'Shop Floor', path: '/manufacturing/shop-floor', icon: '🏭' },
-        { label: 'Quality Control', path: '/manufacturing/quality', icon: '✅' },
-        { label: 'Production Schedule', path: '/manufacturing/production-schedule', icon: '📅' },
-        { label: 'Bill of Materials', path: '/manufacturing/bom', icon: '📦' },
-        { label: 'Labor', path: '/manufacturing/labor', icon: '👷' },
-        { label: 'Recuts / Scrap', path: '/manufacturing/recuts', icon: '⚠️' },
-        { label: 'Cutting Optimization', path: '/manufacturing/cutting-optimization', icon: '✂️' },
-        { label: 'Work Centers', path: '/manufacturing/work-centers', icon: '⚙️' },
-        { label: 'Routing Templates', path: '/manufacturing/routing-templates', icon: '🔄' },
-      ]}
-      reports={{
-        type: 'Manufacturing',
-        options: ['Work Order Status', 'WO Cost Summary', 'Open Work Orders', 'Recut Report', 'Labor Report', 'Production Efficiency', 'Station Throughput']
-      }}
-    >
+    <ModulePage {...manufacturingMenu}>
       <div className="p-4 space-y-4">
         {/* KPI Cards */}
         <div className="grid grid-cols-5 gap-3">

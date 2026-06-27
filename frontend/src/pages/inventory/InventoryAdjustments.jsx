@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { toast } from 'react-toastify';
+import ModulePage from '../../components/ModulePage';
+import { inventoryMenu } from '../../config/moduleMenus';
 
 export default function InventoryAdjustments() {
   const [adjustments, setAdjustments] = useState([]);
@@ -46,7 +48,8 @@ export default function InventoryAdjustments() {
   }
 
   return (
-    <div className="erp-page">
+    <ModulePage {...inventoryMenu}>
+      <div className="erp-page">
       <div className="erp-toolbar">
         <h2>Inventory Adjustments</h2>
         <button className="erp-btn erp-btn-primary" onClick={() => setShowNew(!showNew)}>+ New Adjustment</button>
@@ -145,5 +148,6 @@ export default function InventoryAdjustments() {
         )}
       </div>
     </div>
+    </ModulePage>
   );
 }

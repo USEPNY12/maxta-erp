@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { salesMenu } from '../../config/moduleMenus';
 
 function Quotes() {
   const [quotes, setQuotes] = useState([]);
@@ -178,7 +180,8 @@ function Quotes() {
   }, {});
 
   return (
-    <div className="p-3 h-full flex flex-col">
+    <ModulePage {...salesMenu}>
+      <div className="p-3 h-full flex flex-col">
       <div className="erp-toolbar mb-2">
         <button className="erp-btn erp-btn-primary" onClick={() => setShowNew(true)}>+ New Quote</button>
         <div className="erp-toolbar-separator"></div>
@@ -444,6 +447,7 @@ function Quotes() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
 

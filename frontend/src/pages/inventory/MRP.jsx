@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
+import ModulePage from '../../components/ModulePage';
+import { inventoryMenu } from '../../config/moduleMenus';
 
 export default function MRP() {
   const [mrpData, setMrpData] = useState(null);
@@ -33,7 +35,8 @@ export default function MRP() {
   if (loading) return <div className="h-full flex items-center justify-center"><span className="text-gray-500">Loading MRP data...</span></div>;
 
   return (
-    <div className="h-full overflow-auto bg-[#c8c8d4] p-4">
+    <ModulePage {...inventoryMenu}>
+      <div className="h-full overflow-auto bg-[#c8c8d4] p-4">
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold text-gray-800">Material Requirements Planning (MRP)</h1>
@@ -181,5 +184,6 @@ export default function MRP() {
         </div>
       )}
     </div>
+    </ModulePage>
   );
 }
