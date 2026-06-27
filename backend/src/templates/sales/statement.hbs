@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #333; line-height: 1.4; }
+  .page { padding: 20px; max-width: 8.5in; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 3px solid {{company.primary_color}}; padding-bottom: 15px; }
+  .company-info { flex: 1; }
+  .company-name { font-size: 22px; font-weight: bold; color: {{company.primary_color}}; margin-bottom: 4px; }
+  .company-details { font-size: 10px; color: #666; line-height: 1.5; }
+  .doc-title { text-align: right; }
+  .doc-title h1 { font-size: 28px; color: {{company.primary_color}}; margin-bottom: 5px; }
+  .doc-title .date { font-size: 12px; color: #666; }
+  .customer-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
+  .customer-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 15px; width: 48%; }
+  .customer-box h3 { font-size: 10px; text-transform: uppercase; color: #64748b; margin-bottom: 6px; letter-spacing: 0.5px; }
+  .summary-box { background: linear-gradient(135deg, {{company.primary_color}}10, {{company.primary_color}}05); border: 1px solid {{company.primary_color}}40; border-radius: 6px; padding: 15px; margin-bottom: 20px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; text-align: center; }
+  .summary-item label { font-size: 9px; text-transform: uppercase; color: #64748b; display: block; margin-bottom: 3px; }
+  .summary-item .value { font-size: 16px; font-weight: bold; color: {{company.primary_color}}; }
+  .summary-item .value.danger { color: #dc2626; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+  th { background: {{company.primary_color}}; color: white; padding: 8px 10px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10px; }
+  tr:nth-child(even) { background: #f8fafc; }
+  .amount { text-align: right; font-family: 'Courier New', monospace; }
+  .overdue { color: #dc2626; font-weight: bold; }
+  .aging-section { margin-top: 20px; }
+  .aging-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .aging-box { text-align: center; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; }
+  .aging-box.current { border-color: #22c55e; background: #f0fdf4; }
+  .aging-box.warn { border-color: #f59e0b; background: #fffbeb; }
+  .aging-box.danger { border-color: #dc2626; background: #fef2f2; }
+  .aging-box label { font-size: 9px; display: block; color: #666; margin-bottom: 3px; }
+  .aging-box .value { font-size: 14px; font-weight: bold; }
+  .footer { margin-top: 30px; padding-top: 15px; border-top: 2px solid #e2e8f0; font-size: 9px; color: #666; text-align: center; }
+  .payment-info { background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 12px; margin-top: 15px; }
+  .payment-info h4 { color: #166534; margin-bottom: 5px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="company-info">
+      {{#if company.logo_url}}<img src="{{company.logo_url}}" style="max-height:50px;margin-bottom:5px;">{{/if}}
+      <div class="company-name">{{company.name}}</div>
+      <div class="company-details">
+        {{company.address}}<br>
+        {{company.city}}, {{company.state}} {{company.zip}}<br>
+        Phone: {{company.phone}} {{#if company.fax}}| Fax: {{company.fax}}{{/if}}<br>
+        {{#if company.email}}{{company.email}}{{/if}} {{#if company.website}}| {{company.website}}{{/if}}
+      </div>
+    </div>
+    <div class="doc-title">
+      <h1>STATEMENT</h1>
+      <div class="date">
+        Statement Date: <strong>{{formatDate statement_date}}</strong><br>
+        Period: {{formatDate period_start}} - {{formatDate period_end}}<br>
+        Account #: {{customer.account_number}}
+      </div>
+    </div>
+  </div>
+
+  <div class="customer-section">
+    <div class="customer-box">
+      <h3>Bill To</h3>
+      <strong>{{customer.company_name}}</strong><br>
+      {{#if customer.contact_name}}Attn: {{customer.contact_name}}<br>{{/if}}
+      {{#if customer.address}}{{customer.address}}<br>{{/if}}
+      {{#if customer.city}}{{customer.city}}, {{customer.state}} {{customer.zip}}{{/if}}
+    </div>
+    <div class="customer-box">
+      <h3>Account Summary</h3>
+      Credit Terms: <strong>{{or customer.payment_terms 'Net 30'}}</strong><br>
+      Credit Limit: <strong>{{formatCurrency customer.credit_limit}}</strong><br>
+      Available Credit: <strong>{{formatCurrency available_credit}}</strong>
+    </div>
+  </div>
+
+  <div class="summary-box">
+    <div class="summary-grid">
+      <div class="summary-item">
+        <label>Opening Balance</label>
+        <div class="value">{{formatCurrency opening_balance}}</div>
+      </div>
+      <div class="summary-item">
+        <label>New Charges</label>
+        <div class="value">{{formatCurrency total_invoiced}}</div>
+      </div>
+      <div class="summary-item">
+        <label>Payments Received</label>
+        <div class="value">{{formatCurrency total_payments}}</div>
+      </div>
+      <div class="summary-item">
+        <label>Balance Due</label>
+        <div class="value {{#if is_overdue}}danger{{/if}}">{{formatCurrency closing_balance}}</div>
+      </div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Type</th>
+        <th>Reference</th>
+        <th>Description</th>
+        <th>Due Date</th>
+        <th class="amount">Charges</th>
+        <th class="amount">Payments</th>
+        <th class="amount">Balance</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each transactions}}
+      <tr>
+        <td>{{formatDateShort this.date}}</td>
+        <td>{{this.type}}</td>
+        <td>{{this.reference}}</td>
+        <td>{{this.description}}</td>
+        <td>{{#if this.due_date}}{{formatDateShort this.due_date}}{{/if}}</td>
+        <td class="amount">{{#if this.charge}}{{formatCurrency this.charge}}{{/if}}</td>
+        <td class="amount">{{#if this.payment}}{{formatCurrency this.payment}}{{/if}}</td>
+        <td class="amount {{#if this.is_overdue}}overdue{{/if}}">{{formatCurrency this.running_balance}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <div class="aging-section">
+    <h3 style="margin-bottom:10px;font-size:12px;">Aging Summary</h3>
+    <div class="aging-grid">
+      <div class="aging-box current">
+        <label>Current</label>
+        <div class="value">{{formatCurrency aging.current}}</div>
+      </div>
+      <div class="aging-box {{#if aging.days_30}}warn{{else}}current{{/if}}">
+        <label>1-30 Days</label>
+        <div class="value">{{formatCurrency aging.days_30}}</div>
+      </div>
+      <div class="aging-box {{#if aging.days_60}}warn{{else}}current{{/if}}">
+        <label>31-60 Days</label>
+        <div class="value">{{formatCurrency aging.days_60}}</div>
+      </div>
+      <div class="aging-box {{#if aging.days_90}}danger{{else}}current{{/if}}">
+        <label>61-90 Days</label>
+        <div class="value">{{formatCurrency aging.days_90}}</div>
+      </div>
+      <div class="aging-box {{#if aging.over_90}}danger{{else}}current{{/if}}">
+        <label>Over 90 Days</label>
+        <div class="value">{{formatCurrency aging.over_90}}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="payment-info">
+    <h4>Payment Information</h4>
+    <p>Please remit payment to: <strong>{{company.name}}</strong> | {{company.address}}, {{company.city}}, {{company.state}} {{company.zip}}</p>
+    <p>For questions regarding this statement, please contact us at {{company.phone}} or {{company.email}}</p>
+  </div>
+
+  <div class="footer">
+    {{company.document_footer}}
+  </div>
+</div>
+</body>
+</html>

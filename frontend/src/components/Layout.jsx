@@ -21,6 +21,7 @@ const navItems = [
   { path: '/crm', label: 'CRM', icon: FaHandshake, module: null, group: 'tools' },
   { path: '/smart-glazier', label: 'Smart Glazier', icon: FaLink, module: null, group: 'tools' },
   { path: '/documents', label: 'Documents', icon: FaFileAlt, module: null, group: 'tools' },
+  { path: '/document-center', label: 'Doc Center', icon: FaFileAlt, module: null, group: 'tools' },
   { path: '/setup', label: 'Setup', icon: FaCog, module: 'system_setup', group: 'admin' },
 ];
 

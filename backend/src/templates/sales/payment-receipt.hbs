@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #333; line-height: 1.4; }
+  .page { padding: 20px; max-width: 8.5in; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 3px solid #16a34a; padding-bottom: 15px; }
+  .company-info { flex: 1; }
+  .company-name { font-size: 22px; font-weight: bold; color: {{company.primary_color}}; margin-bottom: 4px; }
+  .company-details { font-size: 10px; color: #666; line-height: 1.5; }
+  .doc-title { text-align: right; }
+  .doc-title h1 { font-size: 26px; color: #16a34a; margin-bottom: 5px; }
+  .doc-title .meta { font-size: 11px; color: #666; }
+  .payment-summary { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 2px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center; }
+  .payment-amount { font-size: 32px; font-weight: bold; color: #16a34a; margin: 10px 0; }
+  .payment-method { font-size: 14px; color: #166534; }
+  .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+  .detail-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 15px; }
+  .detail-box h3 { font-size: 10px; text-transform: uppercase; color: #64748b; margin-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+  th { background: #16a34a; color: white; padding: 8px 10px; text-align: left; font-size: 10px; text-transform: uppercase; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10px; }
+  .amount { text-align: right; font-family: 'Courier New', monospace; }
+  .balance-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin-top: 15px; }
+  .balance-row { display: flex; justify-content: space-between; padding: 5px 0; }
+  .balance-row.total { border-top: 2px solid #333; font-weight: bold; font-size: 13px; padding-top: 8px; margin-top: 5px; }
+  .footer { margin-top: 30px; padding-top: 15px; border-top: 2px solid #e2e8f0; font-size: 9px; color: #666; text-align: center; }
+  .thank-you { text-align: center; margin: 20px 0; font-size: 14px; color: #16a34a; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="company-info">
+      {{#if company.logo_url}}<img src="{{company.logo_url}}" style="max-height:50px;margin-bottom:5px;">{{/if}}
+      <div class="company-name">{{company.name}}</div>
+      <div class="company-details">
+        {{company.address}}<br>
+        {{company.city}}, {{company.state}} {{company.zip}}<br>
+        Phone: {{company.phone}}<br>
+        {{#if company.email}}{{company.email}}{{/if}}
+      </div>
+    </div>
+    <div class="doc-title">
+      <h1>PAYMENT RECEIPT</h1>
+      <div class="meta">
+        Receipt #: <strong>{{receipt_number}}</strong><br>
+        Date: <strong>{{formatDate payment_date}}</strong><br>
+        Customer Acct: <strong>{{customer.account_number}}</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="details-grid">
+    <div class="detail-box">
+      <h3>Received From</h3>
+      <strong>{{customer.company_name}}</strong><br>
+      {{#if customer.contact_name}}{{customer.contact_name}}<br>{{/if}}
+      {{#if customer.address}}{{customer.address}}<br>{{/if}}
+      {{#if customer.city}}{{customer.city}}, {{customer.state}} {{customer.zip}}{{/if}}
+    </div>
+    <div class="detail-box">
+      <h3>Payment Details</h3>
+      Method: <strong>{{payment_method}}</strong><br>
+      {{#if check_number}}Check #: <strong>{{check_number}}</strong><br>{{/if}}
+      {{#if reference_number}}Reference: <strong>{{reference_number}}</strong><br>{{/if}}
+      Bank: <strong>{{or bank_account 'Operating Account'}}</strong>
+    </div>
+  </div>
+
+  <div class="payment-summary">
+    <div style="font-size:12px;color:#666;">Amount Received</div>
+    <div class="payment-amount">{{formatCurrency amount}}</div>
+    <div class="payment-method">via {{uppercase payment_method}}</div>
+  </div>
+
+  {{#if applied_invoices.length}}
+  <h3 style="margin-bottom:10px;font-size:12px;">Applied to Invoices</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Invoice #</th>
+        <th>Invoice Date</th>
+        <th>Due Date</th>
+        <th class="amount">Invoice Amount</th>
+        <th class="amount">Amount Applied</th>
+        <th class="amount">Balance</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each applied_invoices}}
+      <tr>
+        <td>{{this.invoice_number}}</td>
+        <td>{{formatDateShort this.invoice_date}}</td>
+        <td>{{formatDateShort this.due_date}}</td>
+        <td class="amount">{{formatCurrency this.invoice_amount}}</td>
+        <td class="amount">{{formatCurrency this.amount_applied}}</td>
+        <td class="amount">{{formatCurrency this.remaining_balance}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+  {{/if}}
+
+  <div class="balance-box">
+    <div class="balance-row">
+      <span>Previous Balance:</span>
+      <span>{{formatCurrency previous_balance}}</span>
+    </div>
+    <div class="balance-row">
+      <span>Payment Applied:</span>
+      <span>({{formatCurrency amount}})</span>
+    </div>
+    {{#if unapplied_amount}}
+    <div class="balance-row">
+      <span>Unapplied Amount (Credit):</span>
+      <span>{{formatCurrency unapplied_amount}}</span>
+    </div>
+    {{/if}}
+    <div class="balance-row total">
+      <span>New Balance:</span>
+      <span>{{formatCurrency new_balance}}</span>
+    </div>
+  </div>
+
+  <div class="thank-you">Thank you for your payment!</div>
+
+  <div class="footer">
+    This receipt confirms payment received. Please retain for your records.<br>
+    {{company.name}} | {{company.phone}} | {{company.email}}
+  </div>
+</div>
+</body>
+</html>

@@ -90,6 +90,9 @@ try { app.use('/api/crm', require('./routes/crm')); } catch(e) { console.log('CR
 try { app.use('/api/docmanagement', require('./routes/docmanagement')); } catch(e) { console.log('Doc Management routes not loaded:', e.message); }
 try { app.use('/api/lamination', require('./routes/lamination')); } catch(e) { console.log('Lamination routes not loaded:', e.message); }
 
+// Phase 3 routes - Document Center, Versioning, Customer Portal
+try { app.use('/api/document-center', require('./routes/documentCenter')); } catch(e) { console.log('Document Center routes not loaded:', e.message); }
+
 // Static uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 

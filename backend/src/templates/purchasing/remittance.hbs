@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #333; line-height: 1.4; }
+  .page { padding: 20px; max-width: 8.5in; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 3px solid {{company.primary_color}}; padding-bottom: 15px; }
+  .company-info { flex: 1; }
+  .company-name { font-size: 22px; font-weight: bold; color: {{company.primary_color}}; margin-bottom: 4px; }
+  .company-details { font-size: 10px; color: #666; line-height: 1.5; }
+  .doc-title { text-align: right; }
+  .doc-title h1 { font-size: 24px; color: {{company.primary_color}}; margin-bottom: 5px; }
+  .doc-title .meta { font-size: 11px; color: #666; }
+  .vendor-section { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+  .vendor-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 15px; }
+  .vendor-box h3 { font-size: 10px; text-transform: uppercase; color: #64748b; margin-bottom: 6px; }
+  .payment-highlight { background: linear-gradient(135deg, {{company.primary_color}}08, {{company.primary_color}}03); border: 2px solid {{company.primary_color}}40; border-radius: 8px; padding: 15px; margin-bottom: 20px; text-align: center; }
+  .payment-highlight .amount { font-size: 28px; font-weight: bold; color: {{company.primary_color}}; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+  th { background: {{company.primary_color}}; color: white; padding: 8px 10px; text-align: left; font-size: 10px; text-transform: uppercase; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10px; }
+  tr:nth-child(even) { background: #f8fafc; }
+  .amount { text-align: right; font-family: 'Courier New', monospace; }
+  .totals { margin-left: auto; width: 250px; margin-top: 10px; }
+  .totals .row { display: flex; justify-content: space-between; padding: 4px 0; }
+  .totals .row.total { border-top: 2px solid #333; font-weight: bold; padding-top: 8px; margin-top: 5px; }
+  .footer { margin-top: 30px; padding-top: 15px; border-top: 2px solid #e2e8f0; font-size: 9px; color: #666; text-align: center; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="company-info">
+      {{#if company.logo_url}}<img src="{{company.logo_url}}" style="max-height:50px;margin-bottom:5px;">{{/if}}
+      <div class="company-name">{{company.name}}</div>
+      <div class="company-details">
+        {{company.address}}<br>
+        {{company.city}}, {{company.state}} {{company.zip}}<br>
+        Phone: {{company.phone}}
+      </div>
+    </div>
+    <div class="doc-title">
+      <h1>REMITTANCE ADVICE</h1>
+      <div class="meta">
+        Payment #: <strong>{{payment_number}}</strong><br>
+        Date: <strong>{{formatDate payment_date}}</strong><br>
+        Method: <strong>{{payment_method}}</strong><br>
+        {{#if check_number}}Check #: <strong>{{check_number}}</strong>{{/if}}
+      </div>
+    </div>
+  </div>
+
+  <div class="vendor-section">
+    <div class="vendor-box">
+      <h3>Pay To</h3>
+      <strong>{{vendor.company_name}}</strong><br>
+      {{#if vendor.contact_name}}Attn: {{vendor.contact_name}}<br>{{/if}}
+      {{#if vendor.address}}{{vendor.address}}<br>{{/if}}
+      {{#if vendor.city}}{{vendor.city}}, {{vendor.state}} {{vendor.zip}}{{/if}}
+    </div>
+    <div class="vendor-box">
+      <h3>From</h3>
+      <strong>{{company.name}}</strong><br>
+      {{company.address}}<br>
+      {{company.city}}, {{company.state}} {{company.zip}}<br>
+      Vendor Acct #: <strong>{{vendor.account_number}}</strong>
+    </div>
+  </div>
+
+  <div class="payment-highlight">
+    <div style="font-size:11px;color:#666;">Total Payment Amount</div>
+    <div class="amount">{{formatCurrency total_amount}}</div>
+    <div style="font-size:10px;color:#666;margin-top:3px;">via {{uppercase payment_method}} {{#if check_number}}(Check #{{check_number}}){{/if}}</div>
+  </div>
+
+  <h3 style="margin-bottom:10px;font-size:12px;">Invoices Paid</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Invoice #</th>
+        <th>Invoice Date</th>
+        <th>PO Reference</th>
+        <th>Description</th>
+        <th class="amount">Invoice Amount</th>
+        <th class="amount">Discount</th>
+        <th class="amount">Amount Paid</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each invoices_paid}}
+      <tr>
+        <td>{{this.invoice_number}}</td>
+        <td>{{formatDateShort this.invoice_date}}</td>
+        <td>{{this.po_number}}</td>
+        <td>{{this.description}}</td>
+        <td class="amount">{{formatCurrency this.invoice_amount}}</td>
+        <td class="amount">{{#if this.discount}}({{formatCurrency this.discount}}){{/if}}</td>
+        <td class="amount">{{formatCurrency this.amount_paid}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <div class="row">
+      <span>Gross Amount:</span>
+      <span>{{formatCurrency gross_amount}}</span>
+    </div>
+    {{#if total_discount}}
+    <div class="row">
+      <span>Less Discounts:</span>
+      <span>({{formatCurrency total_discount}})</span>
+    </div>
+    {{/if}}
+    <div class="row total">
+      <span>Net Payment:</span>
+      <span>{{formatCurrency total_amount}}</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    Please retain this remittance advice for your records. For questions, contact {{company.phone}} or {{company.email}}<br>
+    {{company.name}} | {{company.address}}, {{company.city}}, {{company.state}} {{company.zip}}
+  </div>
+</div>
+</body>
+</html>

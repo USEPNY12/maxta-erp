@@ -75,6 +75,8 @@ const Lamination = lazy(() => import('./pages/Lamination'));
 const ApprovalQueue = lazy(() => import('./pages/ApprovalQueue'));
 const Commissions = lazy(() => import('./pages/Commissions'));
 const PricingMatrix = lazy(() => import('./pages/PricingMatrix'));
+const DocumentCenter = lazy(() => import('./components/DocumentCenter'));
+const CustomerPortal = lazy(() => import('./components/CustomerPortal'));
 
 export const AuthContext = createContext(null);
 
@@ -239,7 +241,11 @@ function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="documents" element={<DocManagement />} />
           <Route path="lamination" element={<ProtectedModule module="manufacturing" permissions={permissions}><Lamination /></ProtectedModule>} />
+          <Route path="document-center" element={<DocumentCenter />} />
         </Route>
+        {/* Customer Portal - public route (no auth required) */}
+        <Route path="/portal/:token" element={<CustomerPortal />} />
+        <Route path="/portal/document/:token" element={<CustomerPortal />} />
       </Routes>
       </Suspense>
     </AuthContext.Provider>

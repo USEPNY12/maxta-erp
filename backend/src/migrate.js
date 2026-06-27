@@ -333,6 +333,132 @@ module.exports = async () => {
     console.log('Phase 2 seed: verified');
   } catch(e) { console.log('Phase2 seed:', e.message); }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // PHASE 3: Document Generation, Versioning, Customer Portal
+  // ═══════════════════════════════════════════════════════════════════
+  const phase3Tables = [
+    `CREATE TABLE IF NOT EXISTS document_versions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      document_type VARCHAR(50) NOT NULL,
+      document_id INT NOT NULL,
+      version INT NOT NULL DEFAULT 1,
+      file_path VARCHAR(500),
+      file_size INT DEFAULT 0,
+      generated_by INT,
+      generation_method ENUM('manual','auto','batch','email') DEFAULT 'manual',
+      checksum VARCHAR(64),
+      metadata JSON,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_docver_type_id (document_type, document_id),
+      INDEX idx_docver_created (created_at)
+    )`,
+    `CREATE TABLE IF NOT EXISTS customer_portal_tokens (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      customer_id INT NOT NULL,
+      token VARCHAR(128) UNIQUE NOT NULL,
+      token_type ENUM('session','document_link','statement_link') DEFAULT 'session',
+      document_type VARCHAR(50),
+      document_id INT,
+      expires_at DATETIME NOT NULL,
+      last_accessed DATETIME,
+      access_count INT DEFAULT 0,
+      is_active TINYINT(1) DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_portal_customer (customer_id),
+      INDEX idx_portal_token (token)
+    )`,
+    `CREATE TABLE IF NOT EXISTS customer_portal_access_log (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      customer_id INT NOT NULL,
+      token_id INT,
+      action VARCHAR(50) NOT NULL,
+      document_type VARCHAR(50),
+      document_id INT,
+      ip_address VARCHAR(45),
+      user_agent VARCHAR(500),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_portal_log_customer (customer_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS company_branding (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      setting_key VARCHAR(50) UNIQUE NOT NULL,
+      setting_value TEXT,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS batch_document_jobs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      job_type ENUM('statements','invoices','quotes','purchase_orders') NOT NULL,
+      status ENUM('pending','processing','completed','failed') DEFAULT 'pending',
+      total_documents INT DEFAULT 0,
+      processed_documents INT DEFAULT 0,
+      failed_documents INT DEFAULT 0,
+      parameters JSON,
+      error_log TEXT,
+      started_by INT,
+      started_at DATETIME,
+      completed_at DATETIME,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS batch_document_items (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      job_id INT NOT NULL,
+      document_type VARCHAR(50) NOT NULL,
+      document_id INT NOT NULL,
+      customer_id INT,
+      status ENUM('pending','generated','emailed','failed') DEFAULT 'pending',
+      file_path VARCHAR(500),
+      error_message TEXT,
+      processed_at DATETIME,
+      INDEX idx_batch_job (job_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS customer_statements (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      customer_id INT NOT NULL,
+      statement_date DATE NOT NULL,
+      period_start DATE NOT NULL,
+      period_end DATE NOT NULL,
+      opening_balance DECIMAL(12,2) DEFAULT 0,
+      total_invoiced DECIMAL(12,2) DEFAULT 0,
+      total_payments DECIMAL(12,2) DEFAULT 0,
+      total_credits DECIMAL(12,2) DEFAULT 0,
+      closing_balance DECIMAL(12,2) DEFAULT 0,
+      file_path VARCHAR(500),
+      emailed_at DATETIME,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_stmt_customer (customer_id),
+      INDEX idx_stmt_date (statement_date)
+    )`
+  ];
+  for (const sql of phase3Tables) {
+    try { await pool.query(sql); } catch(e) { console.log('Phase3 table:', e.message.substring(0, 80)); }
+  }
+
+  // Phase 3 seed: Company branding defaults
+  try {
+    const [cb] = await pool.query('SELECT COUNT(*) as cnt FROM company_branding');
+    if (cb[0].cnt === 0) {
+      await pool.query(`INSERT INTO company_branding (setting_key, setting_value) VALUES
+        ('company_name', 'Max TA Group'),
+        ('company_address', '123 Glass Industry Blvd, Suite 100'),
+        ('company_city', 'Houston'),
+        ('company_state', 'TX'),
+        ('company_zip', '77001'),
+        ('company_phone', '(713) 555-0100'),
+        ('company_fax', '(713) 555-0101'),
+        ('company_email', 'info@maxtagroup.com'),
+        ('company_website', 'www.maxtagroup.com'),
+        ('company_logo_url', ''),
+        ('primary_color', '#1e40af'),
+        ('secondary_color', '#3b82f6'),
+        ('accent_color', '#f59e0b'),
+        ('document_footer', 'Thank you for your business! Terms: Net 30. Late payments subject to 1.5% monthly finance charge.'),
+        ('quote_terms', 'This quote is valid for 30 days from the date above. Prices are subject to change after expiration.'),
+        ('invoice_terms', 'Payment is due within 30 days of invoice date. Please reference invoice number on your payment.'),
+        ('po_terms', 'Please confirm receipt of this purchase order and provide estimated delivery date within 48 hours.')`);
+    }
+    console.log('Phase 3 tables + branding: verified');
+  } catch(e) { console.log('Phase3 seed:', e.message); }
+
   // Fix item_type_ids and seed BOM data
   try {
     // Ensure item_type_ids are correct

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #333; line-height: 1.4; }
+  .page { padding: 20px; max-width: 8.5in; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 3px solid #dc2626; padding-bottom: 15px; }
+  .company-info { flex: 1; }
+  .company-name { font-size: 22px; font-weight: bold; color: {{company.primary_color}}; margin-bottom: 4px; }
+  .company-details { font-size: 10px; color: #666; line-height: 1.5; }
+  .doc-title { text-align: right; }
+  .doc-title h1 { font-size: 26px; color: #dc2626; margin-bottom: 5px; }
+  .doc-title .meta { font-size: 11px; color: #666; }
+  .doc-title .meta strong { color: #333; }
+  .customer-section { display: flex; justify-content: space-between; margin-bottom: 20px; }
+  .customer-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 15px; width: 48%; }
+  .customer-box h3 { font-size: 10px; text-transform: uppercase; color: #64748b; margin-bottom: 6px; letter-spacing: 0.5px; }
+  .reason-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; }
+  .reason-box h3 { color: #dc2626; font-size: 11px; margin-bottom: 5px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+  th { background: #dc2626; color: white; padding: 8px 10px; text-align: left; font-size: 10px; text-transform: uppercase; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10px; }
+  tr:nth-child(even) { background: #f8fafc; }
+  .amount { text-align: right; font-family: 'Courier New', monospace; }
+  .totals { margin-left: auto; width: 280px; }
+  .totals table { margin-bottom: 0; }
+  .totals td { padding: 5px 10px; border: none; }
+  .totals .total-row { background: #dc2626; color: white; font-weight: bold; font-size: 13px; }
+  .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 80px; color: rgba(220, 38, 38, 0.08); font-weight: bold; pointer-events: none; }
+  .footer { margin-top: 30px; padding-top: 15px; border-top: 2px solid #e2e8f0; font-size: 9px; color: #666; text-align: center; }
+  .signature-line { margin-top: 40px; display: flex; justify-content: space-between; }
+  .sig-box { width: 45%; border-top: 1px solid #333; padding-top: 5px; font-size: 10px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="watermark">CREDIT MEMO</div>
+  
+  <div class="header">
+    <div class="company-info">
+      {{#if company.logo_url}}<img src="{{company.logo_url}}" style="max-height:50px;margin-bottom:5px;">{{/if}}
+      <div class="company-name">{{company.name}}</div>
+      <div class="company-details">
+        {{company.address}}<br>
+        {{company.city}}, {{company.state}} {{company.zip}}<br>
+        Phone: {{company.phone}}<br>
+        {{#if company.email}}{{company.email}}{{/if}}
+      </div>
+    </div>
+    <div class="doc-title">
+      <h1>CREDIT MEMO</h1>
+      <div class="meta">
+        Credit Memo #: <strong>{{credit_memo_number}}</strong><br>
+        Date: <strong>{{formatDate credit_date}}</strong><br>
+        Original Invoice: <strong>{{original_invoice_number}}</strong><br>
+        {{#if original_order_number}}Order #: <strong>{{original_order_number}}</strong>{{/if}}
+      </div>
+    </div>
+  </div>
+
+  <div class="customer-section">
+    <div class="customer-box">
+      <h3>Credit To</h3>
+      <strong>{{customer.company_name}}</strong><br>
+      {{#if customer.contact_name}}Attn: {{customer.contact_name}}<br>{{/if}}
+      {{#if customer.address}}{{customer.address}}<br>{{/if}}
+      {{#if customer.city}}{{customer.city}}, {{customer.state}} {{customer.zip}}{{/if}}
+    </div>
+    <div class="customer-box">
+      <h3>Credit Details</h3>
+      Reason: <strong>{{reason_code}}</strong><br>
+      Approved By: <strong>{{approved_by}}</strong><br>
+      Applied To: <strong>{{#if applied_to_invoice}}Invoice {{applied_to_invoice}}{{else}}Account Balance{{/if}}</strong>
+    </div>
+  </div>
+
+  {{#if reason_notes}}
+  <div class="reason-box">
+    <h3>Reason for Credit</h3>
+    <p>{{reason_notes}}</p>
+  </div>
+  {{/if}}
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Item</th>
+        <th>Description</th>
+        <th class="amount">Qty</th>
+        <th class="amount">Unit Price</th>
+        <th class="amount">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each lines}}
+      <tr>
+        <td>{{inc @index}}</td>
+        <td>{{this.item_number}}</td>
+        <td>{{this.description}}</td>
+        <td class="amount">{{this.quantity}}</td>
+        <td class="amount">{{formatCurrency this.unit_price}}</td>
+        <td class="amount">{{formatCurrency this.line_total}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <table>
+      <tr>
+        <td>Subtotal:</td>
+        <td class="amount">{{formatCurrency subtotal}}</td>
+      </tr>
+      {{#if tax_amount}}
+      <tr>
+        <td>Tax:</td>
+        <td class="amount">{{formatCurrency tax_amount}}</td>
+      </tr>
+      {{/if}}
+      <tr class="total-row">
+        <td style="padding:8px 10px;">TOTAL CREDIT:</td>
+        <td class="amount" style="padding:8px 10px;">{{formatCurrency total}}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="signature-line">
+    <div class="sig-box">Authorized Signature</div>
+    <div class="sig-box">Date</div>
+  </div>
+
+  <div class="footer">
+    This credit memo reduces the amount owed on your account. No payment is required for this amount.<br>
+    {{company.name}} | {{company.phone}} | {{company.email}}
+  </div>
+</div>
+</body>
+</html>
