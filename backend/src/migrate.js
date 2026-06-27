@@ -38,12 +38,12 @@ module.exports = async () => {
   for (const sql of tables) {
     try { await pool.query(sql); } catch(e) { console.log('Migration:', e.message.substring(0, 100)); }
   }
-  // Add missing columns to existing tables
+  // Add missing columns to existing tables (no IF NOT EXISTS - not supported in MySQL < 8.0.37)
   const alterations = [
-    `ALTER TABLE notifications ADD COLUMN IF NOT EXISTS is_dismissed BOOLEAN DEFAULT FALSE`,
+    `ALTER TABLE notifications ADD COLUMN is_dismissed BOOLEAN DEFAULT FALSE AFTER is_read`,
   ];
   for (const sql of alterations) {
-    try { await pool.query(sql); } catch(e) { /* column may already exist */ }
+    try { await pool.query(sql); } catch(e) { /* column may already exist - ignore error 1060 */ }  
   }
   console.log('V3 migrations: All tables created/verified');
 
