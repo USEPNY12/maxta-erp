@@ -109,6 +109,7 @@ body {
   background: white;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .erp-panel-header {

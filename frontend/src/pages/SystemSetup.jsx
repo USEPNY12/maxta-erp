@@ -661,7 +661,7 @@ function GenericSetupTable({ tableKey }) {
             <tbody>
               {rows.map((row, i) => (
                 <tr key={row.id || i} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                  {columns.map(c => <td key={c} style={tdStyle}>{formatCell(row[c])}</td>)}
+                  {columns.map(c => <td key={c} style={tdStyle}>{formatCell(row[c], c)}</td>)}
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', gap: 4 }}>
                       <button onClick={() => openEdit(row)} style={btnSmStyle('#2563eb')}>Edit</button>
@@ -736,15 +736,16 @@ function getRoleColor(role) {
   return map[role] || '#64748b';
 }
 
-function formatCell(val) {
+function formatCell(val, colName) {
   if (val === null || val === undefined) return '—';
   if (typeof val === 'boolean') return val ? <span style={{ color: '#16a34a' }}>● Yes</span> : <span style={{ color: '#dc2626' }}>● No</span>;
-  if (val === 1 || val === 0) {
-    // Only treat as boolean if it looks like a flag field
+  // Only treat 0/1 as boolean for columns that are clearly flags
+  if ((val === 1 || val === 0) && colName && (colName.startsWith('is_') || colName.startsWith('has_') || colName === 'active' || colName === 'taxable')) {
     return val === 1 ? <span style={{ color: '#16a34a' }}>● Yes</span> : <span style={{ color: '#dc2626' }}>● No</span>;
   }
   if (typeof val === 'string' && val.match(/^\d{4}-\d{2}-\d{2}T/)) {
     return new Date(val).toLocaleDateString();
   }
+  if (typeof val === 'number') return val.toLocaleString();
   return String(val);
 }

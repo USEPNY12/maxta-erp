@@ -23,8 +23,9 @@ function PurchasingHome() {
         { label: 'Receiving', path: '/purchasing/receipts', icon: '📥' },
         { label: 'A/P Invoices', path: '/purchasing/ap-invoices', icon: '💰' },
         { label: 'Vendors', path: '/purchasing/vendors', icon: '🏢' },
+        { label: 'Vendor Items', path: '/purchasing/vendor-items', icon: '📦' },
+        { label: 'Buy for WO/Job', path: '/purchasing/buy-for-wo', icon: '🔧' },
         { label: 'Locations', path: '/purchasing/locations', icon: '📍' },
-        { label: 'Inventory', path: '/purchasing/inventory', icon: '📦' },
       ]}
     >
       <div className="p-4 space-y-4">

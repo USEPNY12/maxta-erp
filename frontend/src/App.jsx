@@ -12,6 +12,8 @@ import Items from './pages/inventory/Items';
 import ItemDetail from './pages/inventory/ItemDetail';
 import MRP from './pages/inventory/MRP';
 import PhysicalCount from './pages/inventory/PhysicalCount';
+import InventoryAdjustments from './pages/inventory/InventoryAdjustments';
+import InventoryTransfers from './pages/inventory/InventoryTransfers';
 import SalesHome from './pages/sales/SalesHome';
 import Customers from './pages/sales/Customers';
 import Quotes from './pages/sales/Quotes';
@@ -34,6 +36,8 @@ import PurchasingHome from './pages/purchasing/PurchasingHome';
 import PurchaseOrders from './pages/purchasing/PurchaseOrders';
 import Vendors from './pages/purchasing/Vendors';
 import POReceipts from './pages/purchasing/POReceipts';
+import VendorItems from './pages/purchasing/VendorItems';
+import BuyForWO from './pages/purchasing/BuyForWO';
 import Locations from './pages/purchasing/Locations';
 import PurchasingAPInvoices from './pages/purchasing/APInvoices';
 import AccountingHome from './pages/accounting/AccountingHome';
@@ -142,6 +146,8 @@ function App() {
           <Route path="inventory/items/:id" element={<ProtectedModule module="inventory" permissions={permissions}><ItemDetail /></ProtectedModule>} />
           <Route path="inventory/mrp" element={<ProtectedModule module="inventory" permissions={permissions}><MRP /></ProtectedModule>} />
           <Route path="inventory/physical-count" element={<ProtectedModule module="inventory" permissions={permissions}><PhysicalCount /></ProtectedModule>} />
+          <Route path="inventory/adjustments" element={<ProtectedModule module="inventory" permissions={permissions}><InventoryAdjustments /></ProtectedModule>} />
+          <Route path="inventory/transfers" element={<ProtectedModule module="inventory" permissions={permissions}><InventoryTransfers /></ProtectedModule>} />
           {/* Sales */}
           <Route path="sales" element={<ProtectedModule module="sales" permissions={permissions}><SalesHome /></ProtectedModule>} />
           <Route path="sales/customers" element={<ProtectedModule module="sales" permissions={permissions}><Customers /></ProtectedModule>} />
@@ -168,6 +174,9 @@ function App() {
           <Route path="purchasing/vendors" element={<ProtectedModule module="purchasing" permissions={permissions}><Vendors /></ProtectedModule>} />
           <Route path="purchasing/receipts" element={<ProtectedModule module="purchasing" permissions={permissions}><POReceipts /></ProtectedModule>} />
           <Route path="purchasing/ap-invoices" element={<ProtectedModule module="purchasing" permissions={permissions}><PurchasingAPInvoices /></ProtectedModule>} />
+          <Route path="purchasing/invoices" element={<ProtectedModule module="purchasing" permissions={permissions}><PurchasingAPInvoices /></ProtectedModule>} />
+          <Route path="purchasing/vendor-items" element={<ProtectedModule module="purchasing" permissions={permissions}><VendorItems /></ProtectedModule>} />
+          <Route path="purchasing/buy-for-wo" element={<ProtectedModule module="purchasing" permissions={permissions}><BuyForWO /></ProtectedModule>} />
           <Route path="purchasing/locations" element={<ProtectedModule module="purchasing" permissions={permissions}><Locations /></ProtectedModule>} />
           {/* Accounting */}
           <Route path="accounting" element={<ProtectedModule module="accounting" permissions={permissions}><AccountingHome /></ProtectedModule>} />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import api from '../services/api';
 
 const REPORTS = {
@@ -46,6 +46,7 @@ function Reports() {
   const runReport = async (report) => {
     setActiveReport(report);
     setLoading(true);
+    setData(null);
     try {
       const params = {};
       if (report.hasDateRange) { params.from_date = fromDate; params.to_date = toDate; }
@@ -56,35 +57,67 @@ function Reports() {
   };
 
   const fmtCurrency = (v) => '$' + Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const fmtVal = (v) => {
-    if (v === null || v === undefined) return '';
-    if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+
+  // Smart column type detection
+  const CURRENCY_KEYWORDS = ['cost', 'price', 'amount', 'total', 'revenue', 'value', 'subtotal', 'freight', 'tax', 'balance', 'debit', 'credit', 'avg_price', 'current_amt', 'days_30', 'days_60', 'days_90'];
+  const QTY_KEYWORDS = ['qty', 'quantity', 'count', 'on_hand', 'ordered', 'shipped', 'completed', 'scrapped', 'lead_time', 'actual_days'];
+  const DATE_KEYWORDS = ['date', '_at'];
+
+  const isCurrencyCol = (col) => CURRENCY_KEYWORDS.some(k => col.toLowerCase().includes(k));
+  const isQtyCol = (col) => QTY_KEYWORDS.some(k => col.toLowerCase().includes(k));
+  const isDateCol = (col) => DATE_KEYWORDS.some(k => col.toLowerCase().endsWith(k) || col.toLowerCase().includes('date'));
+
+  const fmtVal = (v, col) => {
+    if (v === null || v === undefined || v === '') return '-';
+    if (typeof v === 'boolean' || v === 0 || v === 1) {
+      if (col && (col.includes('printed') || col.includes('has_'))) return v ? 'Yes' : 'No';
+    }
+    // Date formatting
+    if (col && isDateCol(col) && typeof v === 'string' && v.match(/^\d{4}-\d{2}-\d{2}/)) {
+      return new Date(v).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
     const n = Number(v);
     if (isNaN(n) || (typeof v === 'string' && !v.match(/^-?\d+\.?\d*$/))) return String(v);
-    if (Math.abs(n) >= 100 || String(v).match(/\.\d{2,4}$/)) return fmtCurrency(n);
-    return String(v);
+    if (col && isCurrencyCol(col)) return fmtCurrency(n);
+    if (col && isQtyCol(col)) return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    return n.toLocaleString('en-US', { maximumFractionDigits: 4 });
   };
+
+  // Hide internal/technical columns for cleaner reports
+  const HIDDEN_COLS = ['id', 'created_at', 'updated_at', 'entered_by', 'created_by', 'approved_by', 'closed_by', 'sent_by',
+    'vendor_id', 'customer_id', 'item_id', 'location_id', 'from_location_id', 'to_location_id',
+    'sales_order_id', 'sales_order_line_id', 'sales_order_line', 'work_order_id', 'purchase_order_id',
+    'ship_to_location_id', 'routing_template_id', 'current_station_id', 'item_type_id',
+    'wo_printed', 'po_printed', 'approved_date', 'approved_at', 'closed_at', 'sent_at',
+    'scheduling_type', 'has_holes', 'has_notches', 'hole_specs', 'interlayer_type',
+    'wo_type', 'release_date', 'order_date', 'requested_date', 'project_number',
+    'purchase_order', 'service_job', 'fob', 'ship_via', 'vendor_contact', 'payment_terms', 'freight_terms',
+    'internal_notes', 'reference_id', 'wo_number'];
 
   const renderIncomeStatement = () => {
     if (!data) return null;
     const { revenue = [], cogs = [], expenses = [], total_revenue = 0, total_cogs = 0, gross_profit = 0, total_expenses = 0, net_income = 0 } = data;
     return (
-      <div className="p-4">
-        <h2 className="text-center text-lg font-bold mb-1">Max TA Group LLC</h2>
-        <h3 className="text-center text-sm text-gray-600 mb-4">Income Statement {fromDate} to {toDate}</h3>
-        <div className="max-w-lg mx-auto">
-          <div className="font-bold text-sm border-b pb-1 mb-2">Revenue</div>
-          {revenue.map(r => <div key={r.account_number} className="flex justify-between text-sm pl-4"><span>{r.account_number} - {r.account_name}</span><span className="font-mono">{fmtCurrency(r.balance)}</span></div>)}
-          <div className="flex justify-between font-bold text-sm border-t mt-1 pt-1"><span>Total Revenue</span><span className="font-mono">{fmtCurrency(total_revenue)}</span></div>
-          <div className="font-bold text-sm border-b pb-1 mb-2 mt-4">Cost of Goods Sold</div>
-          {cogs.map(r => <div key={r.account_number} className="flex justify-between text-sm pl-4"><span>{r.account_number} - {r.account_name}</span><span className="font-mono">{fmtCurrency(r.balance)}</span></div>)}
-          <div className="flex justify-between font-bold text-sm border-t mt-1 pt-1"><span>Total COGS</span><span className="font-mono">{fmtCurrency(total_cogs)}</span></div>
-          <div className="flex justify-between font-bold text-sm bg-blue-50 p-2 rounded mt-2"><span>Gross Profit</span><span className="font-mono">{fmtCurrency(gross_profit)}</span></div>
-          <div className="font-bold text-sm border-b pb-1 mb-2 mt-4">Operating Expenses</div>
-          {expenses.map(r => <div key={r.account_number} className="flex justify-between text-sm pl-4"><span>{r.account_number} - {r.account_name}</span><span className="font-mono">{fmtCurrency(r.balance)}</span></div>)}
-          <div className="flex justify-between font-bold text-sm border-t mt-1 pt-1"><span>Total Expenses</span><span className="font-mono">{fmtCurrency(total_expenses)}</span></div>
-          <div className={`flex justify-between font-bold text-base p-2 rounded mt-3 ${net_income >= 0 ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}><span>Net Income</span><span className="font-mono">{fmtCurrency(net_income)}</span></div>
+      <div className="p-6 max-w-2xl mx-auto">
+        <h2 className="text-xl font-bold text-center">Max TA Group LLC</h2>
+        <h3 className="text-center text-gray-600 mb-4">Income Statement {fromDate} to {toDate}</h3>
+        <div className="mb-4">
+          <h4 className="font-bold border-b pb-1">Revenue</h4>
+          {revenue.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
+          <div className="flex justify-between font-bold border-t mt-1 pt-1"><span>Total Revenue</span><span className="font-mono">{fmtCurrency(total_revenue)}</span></div>
         </div>
+        <div className="mb-4">
+          <h4 className="font-bold border-b pb-1">Cost of Goods Sold</h4>
+          {cogs.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
+          <div className="flex justify-between font-bold border-t mt-1 pt-1"><span>Total COGS</span><span className="font-mono">{fmtCurrency(total_cogs)}</span></div>
+        </div>
+        <div className="flex justify-between font-bold bg-blue-50 p-2 rounded mb-4"><span>Gross Profit</span><span className="font-mono">{fmtCurrency(gross_profit)}</span></div>
+        <div className="mb-4">
+          <h4 className="font-bold border-b pb-1">Operating Expenses</h4>
+          {expenses.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
+          <div className="flex justify-between font-bold border-t mt-1 pt-1"><span>Total Expenses</span><span className="font-mono">{fmtCurrency(total_expenses)}</span></div>
+        </div>
+        <div className={`flex justify-between font-bold text-lg p-2 rounded ${Number(net_income) >= 0 ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}><span>Net Income</span><span className="font-mono">{fmtCurrency(net_income)}</span></div>
       </div>
     );
   };
@@ -93,21 +126,25 @@ function Reports() {
     if (!data) return null;
     const { assets = [], liabilities = [], equity = [], total_assets = 0, total_liabilities = 0, total_equity = 0 } = data;
     return (
-      <div className="p-4">
-        <h2 className="text-center text-lg font-bold mb-1">Max TA Group LLC</h2>
-        <h3 className="text-center text-sm text-gray-600 mb-4">Balance Sheet as of {toDate}</h3>
-        <div className="max-w-lg mx-auto">
-          <div className="font-bold text-sm border-b pb-1 mb-2">Assets</div>
-          {assets.map(r => <div key={r.account_number} className="flex justify-between text-sm pl-4"><span>{r.account_number} - {r.account_name}</span><span className="font-mono">{fmtCurrency(r.balance)}</span></div>)}
-          <div className="flex justify-between font-bold text-sm border-t mt-1 pt-1 bg-blue-50 p-1 rounded"><span>Total Assets</span><span className="font-mono">{fmtCurrency(total_assets)}</span></div>
-          <div className="font-bold text-sm border-b pb-1 mb-2 mt-4">Liabilities</div>
-          {liabilities.map(r => <div key={r.account_number} className="flex justify-between text-sm pl-4"><span>{r.account_number} - {r.account_name}</span><span className="font-mono">{fmtCurrency(r.balance)}</span></div>)}
-          <div className="flex justify-between font-bold text-sm border-t mt-1 pt-1"><span>Total Liabilities</span><span className="font-mono">{fmtCurrency(total_liabilities)}</span></div>
-          <div className="font-bold text-sm border-b pb-1 mb-2 mt-4">Equity</div>
-          {equity.map(r => <div key={r.account_number} className="flex justify-between text-sm pl-4"><span>{r.account_number} - {r.account_name}</span><span className="font-mono">{fmtCurrency(r.balance)}</span></div>)}
-          <div className="flex justify-between font-bold text-sm border-t mt-1 pt-1"><span>Total Equity</span><span className="font-mono">{fmtCurrency(total_equity)}</span></div>
-          <div className="flex justify-between font-bold text-sm bg-green-50 p-2 rounded mt-3"><span>Total Liabilities + Equity</span><span className="font-mono">{fmtCurrency(total_liabilities + total_equity)}</span></div>
+      <div className="p-6 max-w-2xl mx-auto">
+        <h2 className="text-xl font-bold text-center">Max TA Group LLC</h2>
+        <h3 className="text-center text-gray-600 mb-4">Balance Sheet as of {toDate}</h3>
+        <div className="mb-4">
+          <h4 className="font-bold border-b pb-1">Assets</h4>
+          {assets.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
+          <div className="flex justify-between font-bold border-t mt-1 pt-1 bg-blue-50 p-1 rounded"><span>Total Assets</span><span className="font-mono">{fmtCurrency(total_assets)}</span></div>
         </div>
+        <div className="mb-4">
+          <h4 className="font-bold border-b pb-1">Liabilities</h4>
+          {liabilities.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
+          <div className="flex justify-between font-bold border-t mt-1 pt-1"><span>Total Liabilities</span><span className="font-mono">{fmtCurrency(total_liabilities)}</span></div>
+        </div>
+        <div className="mb-4">
+          <h4 className="font-bold border-b pb-1">Equity</h4>
+          {equity.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
+          <div className="flex justify-between font-bold border-t mt-1 pt-1"><span>Total Equity</span><span className="font-mono">{fmtCurrency(total_equity)}</span></div>
+        </div>
+        <div className="flex justify-between font-bold bg-gray-100 p-2 rounded"><span>Total Liabilities + Equity</span><span className="font-mono">{fmtCurrency(Number(total_liabilities) + Number(total_equity))}</span></div>
       </div>
     );
   };
@@ -116,14 +153,14 @@ function Reports() {
     if (!data) return null;
     const { accounts = [], total_debits = 0, total_credits = 0, is_balanced } = data;
     return (
-      <div className="p-4">
-        <h2 className="text-center text-lg font-bold mb-1">Max TA Group LLC</h2>
-        <h3 className="text-center text-sm text-gray-600 mb-4">Trial Balance</h3>
-        <table className="w-full text-sm max-w-2xl mx-auto">
-          <thead><tr className="bg-gray-100 border-b"><th className="text-left p-2">Account #</th><th className="text-left p-2">Account Name</th><th className="text-left p-2">Type</th><th className="text-right p-2">Debits</th><th className="text-right p-2">Credits</th><th className="text-right p-2">Balance</th></tr></thead>
+      <div className="p-6 max-w-3xl mx-auto">
+        <h2 className="text-xl font-bold text-center">Max TA Group LLC</h2>
+        <h3 className="text-center text-gray-600 mb-4">Trial Balance</h3>
+        <table className="w-full text-sm border-collapse">
+          <thead><tr className="bg-gray-100 border-b"><th className="p-2 text-left">Account #</th><th className="p-2 text-left">Account Name</th><th className="p-2 text-left">Type</th><th className="p-2 text-right">Debits</th><th className="p-2 text-right">Credits</th><th className="p-2 text-right">Balance</th></tr></thead>
           <tbody>
             {accounts.map(a => (
-              <tr key={a.id} className="border-b"><td className="p-2">{a.account_number}</td><td className="p-2">{a.account_name}</td><td className="p-2 capitalize">{a.account_type}</td><td className="p-2 text-right font-mono">{fmtCurrency(a.total_debits)}</td><td className="p-2 text-right font-mono">{fmtCurrency(a.total_credits)}</td><td className="p-2 text-right font-mono">{fmtCurrency(a.balance)}</td></tr>
+              <tr key={a.account_number} className="border-b hover:bg-blue-50"><td className="p-2">{a.account_number}</td><td className="p-2">{a.account_name}</td><td className="p-2 capitalize">{a.account_type}</td><td className="p-2 text-right font-mono">{fmtCurrency(a.total_debits)}</td><td className="p-2 text-right font-mono">{fmtCurrency(a.total_credits)}</td><td className="p-2 text-right font-mono">{fmtCurrency(a.balance)}</td></tr>
             ))}
           </tbody>
           <tfoot>
@@ -137,12 +174,12 @@ function Reports() {
   const renderTable = () => {
     const rows = Array.isArray(data) ? data : [];
     if (rows.length === 0) return <p className="text-center py-8 text-gray-400">No data for this report</p>;
-    const cols = Object.keys(rows[0]).filter(k => !['id','created_at','updated_at','entered_by'].includes(k));
+    const cols = Object.keys(rows[0]).filter(k => !HIDDEN_COLS.includes(k));
     return (
       <div className="overflow-auto">
         <table className="w-full text-sm border-collapse">
-          <thead><tr className="bg-gray-100 border-b">{cols.map(c => <th key={c} className="text-left p-2 text-xs font-medium whitespace-nowrap">{c.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}</th>)}</tr></thead>
-          <tbody>{rows.map((r, i) => (<tr key={i} className="border-b hover:bg-blue-50">{cols.map(c => <td key={c} className="p-2 text-xs whitespace-nowrap">{fmtVal(r[c])}</td>)}</tr>))}</tbody>
+          <thead><tr className="bg-gray-100 border-b sticky top-0">{cols.map(c => <th key={c} className={`p-2 text-xs font-medium whitespace-nowrap ${isCurrencyCol(c) || isQtyCol(c) ? 'text-right' : 'text-left'}`}>{c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</th>)}</tr></thead>
+          <tbody>{rows.map((r, i) => (<tr key={i} className="border-b hover:bg-blue-50">{cols.map(c => <td key={c} className={`p-2 text-xs whitespace-nowrap ${isCurrencyCol(c) || isQtyCol(c) ? 'text-right font-mono' : ''}`}>{fmtVal(r[c], c)}</td>)}</tr>))}</tbody>
         </table>
         <div className="p-2 text-xs text-gray-500 border-t">{rows.length} record(s)</div>
       </div>
@@ -182,7 +219,7 @@ function Reports() {
               {Object.entries(REPORTS).map(([cat, reports]) => (
                 <div key={cat} className="bg-white rounded shadow p-3">
                   <h4 className="font-bold text-sm mb-2">{cat}</h4>
-                  {reports.map(r => <div key={r.id} className="text-xs text-gray-600 py-0.5">{r.name}</div>)}
+                  {reports.map(r => <div key={r.id} className="text-xs text-gray-600 py-0.5 cursor-pointer hover:text-blue-600" onClick={() => runReport(r)}>{r.name}</div>)}
                 </div>
               ))}
             </div>
@@ -201,8 +238,8 @@ function Reports() {
                     <input type="date" className="erp-form-input text-xs w-32" value={toDate} onChange={e => setToDate(e.target.value)} />
                   </>
                 )}
-                <button onClick={() => runReport(activeReport)} className="px-3 py-1 bg-blue-600 text-white rounded text-xs">Refresh</button>
-                <button onClick={() => window.print()} className="px-3 py-1 bg-gray-600 text-white rounded text-xs">Print</button>
+                <button onClick={() => runReport(activeReport)} className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">Refresh</button>
+                <button onClick={() => window.print()} className="px-3 py-1 bg-gray-600 text-white rounded text-xs hover:bg-gray-700">Print</button>
               </div>
             </div>
             {renderReport()}

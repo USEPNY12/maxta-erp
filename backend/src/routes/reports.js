@@ -58,7 +58,7 @@ router.get('/dashboard', authenticate, async (req, res) => {
 router.get('/accounts-payable/open', authenticate, async (req, res) => {
   try {
     const [data] = await pool.query(`
-      SELECT api.*, v.company_name, DATEDIFF(CURDATE(), api.due_date) as days_overdue
+      SELECT api.invoice_number, v.company_name as vendor_name, api.invoice_date, api.due_date, api.amount, api.amount_paid, (api.amount - api.amount_paid) as balance_due, v.company_name, DATEDIFF(CURDATE(), api.due_date) as days_overdue
       FROM ap_invoices api JOIN vendors v ON api.vendor_id = v.id WHERE api.status = 'open' ORDER BY api.due_date`);
     res.json(data);
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -146,7 +146,7 @@ router.get('/inventory/value', authenticate, async (req, res) => {
 router.get('/manufacturing/wo-status', authenticate, async (req, res) => {
   try {
     const [data] = await pool.query(`
-      SELECT wo.*, i.item_number, i.description as item_description, c.company_name as customer_name
+      SELECT wo.order_number, wo.status, wo.priority, i.item_number, i.description as item_description, wo.quantity, wo.quantity_completed, wo.quantity_scrapped, wo.start_date, wo.finish_date, wo.actual_finish_date, wo.notes, c.company_name as customer_name, i.item_number, i.description as item_description, c.company_name as customer_name
       FROM work_orders wo JOIN items i ON wo.item_id = i.id LEFT JOIN customers c ON wo.customer_id = c.id
       WHERE wo.status IN ('released','in_progress','scheduled') ORDER BY wo.finish_date`);
     res.json(data);
@@ -173,7 +173,7 @@ router.get('/sales/by-customer', authenticate, async (req, res) => {
 router.get('/purchasing/po-status', authenticate, async (req, res) => {
   try {
     const [data] = await pool.query(`
-      SELECT po.*, v.company_name as vendor_name
+      SELECT po.po_number, v.company_name as vendor_name, po.po_type, po.order_date, po.required_date, po.status, po.subtotal, po.tax_amount, po.total, po.notes, v.company_name as vendor_name
       FROM purchase_orders po JOIN vendors v ON po.vendor_id = v.id
       ORDER BY po.order_date DESC LIMIT 100`);
     res.json(data);
@@ -210,7 +210,7 @@ router.get('/inventory/stock-status', authenticate, async (req, res) => {
 router.get('/manufacturing/efficiency', authenticate, async (req, res) => {
   try {
     const [data] = await pool.query(`
-      SELECT wo.wo_number, i.item_number, i.description as item_description,
+      SELECT wo.order_number, i.item_number, i.description as item_description,
         wo.quantity as quantity_ordered, wo.quantity_completed, wo.status,
         wo.start_date, wo.finish_date,
         DATEDIFF(COALESCE(wo.finish_date, CURDATE()), wo.start_date) as actual_days
@@ -258,7 +258,7 @@ router.get('/financial/balance-sheet', authenticate, async (req, res) => {
 router.get('/sales/by-product', authenticate, async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT i.item_number, i.description, i.product_type,
+      SELECT i.item_number, i.description, i.item_type,
         COUNT(DISTINCT sol.sales_order_id) as order_count,
         SUM(sol.quantity_ordered) as total_qty_ordered,
         SUM(sol.quantity_shipped) as total_qty_shipped,
@@ -277,12 +277,12 @@ router.get('/sales/by-product', authenticate, async (req, res) => {
 router.get('/manufacturing/wo-cost', authenticate, async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT wo.wo_number, wo.status, i.item_number, i.description,
-        wo.quantity_ordered, wo.quantity_completed,
+      SELECT wo.order_number, wo.status, i.item_number, i.description,
+        wo.quantity, wo.quantity_completed,
         COALESCE(i.standard_cost, 0) * wo.quantity_completed as standard_cost_total,
         COALESCE((SELECT SUM(wm.quantity_issued * COALESCE(mi.standard_cost, 0))
           FROM wo_materials wm JOIN items mi ON wm.item_id = mi.id WHERE wm.work_order_id = wo.id), 0) as actual_material_cost,
-        wo.start_date, wo.due_date
+        wo.start_date, wo.finish_date
       FROM work_orders wo
       JOIN items i ON wo.item_id = i.id
       ORDER BY wo.created_at DESC LIMIT 100`);
@@ -296,15 +296,15 @@ router.get('/inventory/movement', authenticate, async (req, res) => {
     const { from_date, to_date } = req.query;
     let dateFilter = 'WHERE 1=1';
     const params = [];
-    if (from_date) { dateFilter += ' AND it.transaction_date >= ?'; params.push(from_date); }
-    if (to_date) { dateFilter += ' AND it.transaction_date <= ?'; params.push(to_date); }
+    if (from_date) { dateFilter += ' AND it.created_at >= ?'; params.push(from_date); }
+    if (to_date) { dateFilter += ' AND it.created_at <= ?'; params.push(to_date); }
     const [rows] = await pool.query(`
-      SELECT it.transaction_date, it.transaction_type, i.item_number, i.description,
+      SELECT it.created_at, it.transaction_type, i.item_number, i.description,
         it.quantity, it.reference_type, it.reference_id, it.notes
       FROM inventory_transactions it
       JOIN items i ON it.item_id = i.id
       ${dateFilter}
-      ORDER BY it.transaction_date DESC, it.id DESC LIMIT 500`, params);
+      ORDER BY it.created_at DESC, it.id DESC LIMIT 500`, params);
     res.json(rows);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });

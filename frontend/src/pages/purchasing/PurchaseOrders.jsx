@@ -1,14 +1,16 @@
 import DocumentActions from '../../components/DocumentActions';
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 
 function PurchaseOrders() {
+  const [searchParams] = useSearchParams();
   const [orders, setOrders] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('open');
   const [showDetail, setShowDetail] = useState(false);
-  const [showNew, setShowNew] = useState(false);
+  const [showNew, setShowNew] = useState(searchParams.get('new') === 'true');
   const [selected, setSelected] = useState(null);
   const [activeTab, setActiveTab] = useState('Lines');
   const [vendors, setVendors] = useState([]);

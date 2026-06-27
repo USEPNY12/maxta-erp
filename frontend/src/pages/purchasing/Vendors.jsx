@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 
 function Vendors() {
+  const [searchParams] = useSearchParams();
   const [vendors, setVendors] = useState([]);
   const [search, setSearch] = useState('');
   const [showDetail, setShowDetail] = useState(false);
-  const [showNew, setShowNew] = useState(false);
+  const [showNew, setShowNew] = useState(searchParams.get('new') === 'true');
   const [selected, setSelected] = useState(null);
   const [activeTab, setActiveTab] = useState('PurchaseOrders');
   const [form, setForm] = useState({ vendor_number: '', name: '', contact_name: '', phone: '', email: '', address1: '', city: '', state: '', zip: '', country: 'US', payment_terms: 'Net 30', notes: '' });
