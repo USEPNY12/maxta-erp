@@ -1,84 +1,226 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../App';
-import { FaHome, FaCog, FaBoxes, FaDollarSign, FaWrench, FaIndustry, FaShoppingCart, FaCalculator, FaChartBar, FaExchangeAlt, FaBarcode, FaLink, FaTruck, FaHandshake, FaCalendarAlt, FaBell, FaFileAlt, FaLayerGroup } from 'react-icons/fa';
+import { FaHome, FaCog, FaBoxes, FaDollarSign, FaWrench, FaIndustry, FaShoppingCart, FaCalculator, FaChartBar, FaExchangeAlt, FaBarcode, FaLink, FaTruck, FaHandshake, FaCalendarAlt, FaBell, FaFileAlt, FaLayerGroup, FaBars, FaTimes, FaSignOutAlt, FaUser } from 'react-icons/fa';
 import NotificationBell from './NotificationBell';
+import Breadcrumb from './Breadcrumb';
 
 const navItems = [
-  { path: '/', label: 'Home', icon: FaHome, module: null },
-  { path: '/setup', label: 'System Setup', icon: FaCog, module: 'system_setup' },
-  { path: '/inventory', label: 'Inventory', icon: FaBoxes, module: 'inventory' },
-  { path: '/sales', label: 'Sales', icon: FaDollarSign, module: 'sales' },
-  { path: '/manufacturing', label: 'Manufacturing', icon: FaIndustry, module: 'manufacturing' },
-  { path: '/purchasing', label: 'Purchasing', icon: FaShoppingCart, module: 'purchasing' },
-  { path: '/accounting', label: 'Accounting', icon: FaCalculator, module: 'accounting' },
-  { path: '/reports', label: 'Reports', icon: FaChartBar, module: 'reports' },
-  { path: '/scanner', label: 'Scanner', icon: FaBarcode, module: null },
-  { path: '/smart-glazier', label: 'Smart Glazier', icon: FaLink, module: null },
-  { path: '/dispatch', label: 'Dispatch', icon: FaTruck, module: null },
-  { path: '/crm', label: 'CRM', icon: FaHandshake, module: null },
-  { path: '/gantt-schedule', label: 'Gantt Schedule', icon: FaCalendarAlt, module: null },
-  { path: '/documents', label: 'Documents', icon: FaFileAlt, module: null },
-  { path: '/lamination', label: 'Lamination', icon: FaLayerGroup, module: 'manufacturing' },
+  { path: '/', label: 'Home', icon: FaHome, module: null, group: 'main' },
+  { path: '/sales', label: 'Sales', icon: FaDollarSign, module: 'sales', group: 'main' },
+  { path: '/manufacturing', label: 'Manufacturing', icon: FaIndustry, module: 'manufacturing', group: 'main' },
+  { path: '/purchasing', label: 'Purchasing', icon: FaShoppingCart, module: 'purchasing', group: 'main' },
+  { path: '/inventory', label: 'Inventory', icon: FaBoxes, module: 'inventory', group: 'main' },
+  { path: '/accounting', label: 'Accounting', icon: FaCalculator, module: 'accounting', group: 'main' },
+  { path: '/lamination', label: 'Lamination', icon: FaLayerGroup, module: 'manufacturing', group: 'production' },
+  { path: '/dispatch', label: 'Dispatch', icon: FaTruck, module: null, group: 'production' },
+  { path: '/scanner', label: 'Scanner', icon: FaBarcode, module: null, group: 'production' },
+  { path: '/gantt-schedule', label: 'Schedule', icon: FaCalendarAlt, module: null, group: 'tools' },
+  { path: '/reports', label: 'Reports', icon: FaChartBar, module: 'reports', group: 'tools' },
+  { path: '/crm', label: 'CRM', icon: FaHandshake, module: null, group: 'tools' },
+  { path: '/smart-glazier', label: 'Smart Glazier', icon: FaLink, module: null, group: 'tools' },
+  { path: '/documents', label: 'Documents', icon: FaFileAlt, module: null, group: 'tools' },
+  { path: '/setup', label: 'Setup', icon: FaCog, module: 'system_setup', group: 'admin' },
+];
+
+// Bottom nav items for mobile (most used on shop floor)
+const mobileBottomNav = [
+  { path: '/', label: 'Home', icon: FaHome },
+  { path: '/manufacturing', label: 'Mfg', icon: FaIndustry },
+  { path: '/scanner', label: 'Scan', icon: FaBarcode },
+  { path: '/sales', label: 'Sales', icon: FaDollarSign },
+  { path: '/inventory', label: 'Inv', icon: FaBoxes },
 ];
 
 function Layout() {
   const { user, logout, permissions } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Close mobile menu on navigation
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   const isActive = (path) => {
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
   };
 
-  // Filter nav items based on permissions
   const visibleNavItems = navItems.filter(item => {
-    if (!item.module) return true; // Home is always visible
-    if (!permissions) return true; // Show all while loading
+    if (!item.module) return true;
+    if (!permissions) return true;
     return permissions[item.module] && permissions[item.module].length > 0;
   });
 
-  return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      {/* Top Menu Bar */}
-      <div className="bg-gray-100 border-b border-gray-300 px-2 py-0.5 flex items-center text-xs gap-4">
-        <span className="font-bold text-gray-700">Max TA Group ERP</span>
-        <span className="text-gray-500">|</span>
-        <span className="text-gray-600">User: {user?.first_name} {user?.last_name}</span>
-        <span className="text-gray-500">|</span>
-        <span className="text-gray-600">Role: <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>{user?.role}</span></span>
-        <div className="ml-auto flex items-center gap-3">
-          <NotificationBell />
-          <button onClick={() => navigate('/notifications')} className="text-gray-600 hover:text-amber-600 text-xs">Alerts</button>
-          <button onClick={logout} className="text-red-600 hover:text-red-800 text-xs">Logout</button>
-        </div>
-      </div>
+  const groupedItems = {
+    main: visibleNavItems.filter(i => i.group === 'main'),
+    production: visibleNavItems.filter(i => i.group === 'production'),
+    tools: visibleNavItems.filter(i => i.group === 'tools'),
+    admin: visibleNavItems.filter(i => i.group === 'admin'),
+  };
 
-      {/* Navigation Bar - E2 Style */}
-      <nav className="erp-navbar">
-        {visibleNavItems.map(item => (
-          <div
-            key={item.path}
-            className={`erp-nav-item ${isActive(item.path) ? 'active' : ''}`}
-            onClick={() => navigate(item.path)}
-          >
-            <item.icon size={14} />
-            <span>{item.label}</span>
+  return (
+    <div className="layout-container">
+      {/* Top Header Bar */}
+      <header className="layout-header">
+        <div className="header-left">
+          {isMobile && (
+            <button className="hamburger-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              {mobileMenuOpen ? <FaTimes size={20} /> : <FaBars size={20} />}
+            </button>
+          )}
+          <span className="header-brand" onClick={() => navigate('/')}>Max TA Group ERP</span>
+        </div>
+        <div className="header-right">
+          <NotificationBell />
+          <div className="header-user">
+            <FaUser size={12} />
+            <span className="header-user-name">{user?.first_name}</span>
+            <span className="header-user-role">{user?.role}</span>
           </div>
-        ))}
-      </nav>
+          <button onClick={logout} className="header-logout" title="Logout">
+            <FaSignOutAlt size={14} />
+            <span className="logout-text">Logout</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Desktop Navigation Bar */}
+      {!isMobile && (
+        <nav className="erp-navbar">
+          {visibleNavItems.map(item => (
+            <div
+              key={item.path}
+              className={`erp-nav-item ${isActive(item.path) ? 'active' : ''}`}
+              onClick={() => navigate(item.path)}
+              title={item.label}
+            >
+              <item.icon size={14} />
+              <span>{item.label}</span>
+            </div>
+          ))}
+        </nav>
+      )}
+
+      {/* Mobile Slide-Out Menu */}
+      {isMobile && mobileMenuOpen && (
+        <div className="mobile-menu-overlay" onClick={() => setMobileMenuOpen(false)}>
+          <nav className="mobile-menu" onClick={e => e.stopPropagation()}>
+            <div className="mobile-menu-header">
+              <span className="mobile-menu-title">Navigation</span>
+              <button onClick={() => setMobileMenuOpen(false)} className="mobile-menu-close">
+                <FaTimes size={18} />
+              </button>
+            </div>
+
+            <div className="mobile-menu-section">
+              <div className="mobile-menu-section-title">Core Modules</div>
+              {groupedItems.main.map(item => (
+                <div
+                  key={item.path}
+                  className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
+                  onClick={() => navigate(item.path)}
+                >
+                  <item.icon size={18} />
+                  <span>{item.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mobile-menu-section">
+              <div className="mobile-menu-section-title">Production</div>
+              {groupedItems.production.map(item => (
+                <div
+                  key={item.path}
+                  className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
+                  onClick={() => navigate(item.path)}
+                >
+                  <item.icon size={18} />
+                  <span>{item.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mobile-menu-section">
+              <div className="mobile-menu-section-title">Tools & Reports</div>
+              {groupedItems.tools.map(item => (
+                <div
+                  key={item.path}
+                  className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
+                  onClick={() => navigate(item.path)}
+                >
+                  <item.icon size={18} />
+                  <span>{item.label}</span>
+                </div>
+              ))}
+            </div>
+
+            {groupedItems.admin.length > 0 && (
+              <div className="mobile-menu-section">
+                <div className="mobile-menu-section-title">Administration</div>
+                {groupedItems.admin.map(item => (
+                  <div
+                    key={item.path}
+                    className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
+                    onClick={() => navigate(item.path)}
+                  >
+                    <item.icon size={18} />
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="mobile-menu-footer">
+              <button onClick={logout} className="mobile-logout-btn">
+                <FaSignOutAlt size={16} />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </nav>
+        </div>
+      )}
 
       {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
-        <Outlet />
-      </div>
+      <main className="layout-main">
+        <Breadcrumb />
+        <div className="layout-main-content">
+          <Outlet />
+        </div>
+      </main>
 
-      {/* Status Bar */}
-      <div className="bg-gray-200 border-t border-gray-400 px-4 py-0.5 text-xs text-gray-600 flex justify-between">
-        <span>Max TA Group LLC - Glass Fabrication ERP v3.0</span>
-        <span>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</span>
-      </div>
+      {/* Mobile Bottom Navigation */}
+      {isMobile && (
+        <nav className="mobile-bottom-nav">
+          {mobileBottomNav.map(item => (
+            <div
+              key={item.path}
+              className={`bottom-nav-item ${isActive(item.path) ? 'active' : ''}`}
+              onClick={() => navigate(item.path)}
+            >
+              <item.icon size={20} />
+              <span>{item.label}</span>
+            </div>
+          ))}
+        </nav>
+      )}
+
+      {/* Desktop Status Bar */}
+      {!isMobile && (
+        <footer className="layout-footer">
+          <span>Max TA Group LLC - Glass Fabrication ERP v4.0</span>
+          <span>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</span>
+        </footer>
+      )}
     </div>
   );
 }

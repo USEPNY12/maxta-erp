@@ -1,17 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Bar, Pie } from 'react-chartjs-2';
+import { Bar, Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
+import { FaDollarSign, FaIndustry, FaShoppingCart, FaTruck, FaExclamationTriangle, FaChartLine, FaBoxes, FaFileInvoiceDollar } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+
+function KPICard({ icon: Icon, label, value, subtext, color, onClick }) {
+  return (
+    <div className="kpi-card" onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default' }}>
+      <div className="kpi-card-icon" style={{ background: `${color}15`, color }}>
+        <Icon size={20} />
+      </div>
+      <div className="kpi-card-content">
+        <div className="kpi-card-value">{value}</div>
+        <div className="kpi-card-label">{label}</div>
+        {subtext && <div className="kpi-card-subtext">{subtext}</div>}
+      </div>
+    </div>
+  );
+}
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
 function Dashboard() {
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [topTab, setTopTab] = useState('bookings_customer');
-  const [bottomLeftTab, setBottomLeftTab] = useState('ar_customer');
-  const [bottomRightTab, setBottomRightTab] = useState('sales_salesperson');
-  const [summaryTab, setSummaryTab] = useState('summary');
+  const navigate = useNavigate();
 
   const loadData = () => {
     setLoading(true);
@@ -67,228 +81,138 @@ function Dashboard() {
   useEffect(() => { loadData(); }, []);
 
   if (loading || !kpis) return (
-    <div className="h-full flex items-center justify-center">
-      <div className="text-center">
-        <div className="text-lg text-gray-500">Loading Dashboard...</div>
-        <div className="text-sm text-gray-400 mt-2">Fetching KPIs and charts</div>
+    <div className="dashboard-loading" style={{ padding: '24px' }}>
+      <div className="dashboard-loading-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="skeleton" style={{ height: '100px', borderRadius: '8px' }}></div>
+        ))}
       </div>
     </div>
   );
 
-  const chartColors = ['#4472c4', '#ed7d31', '#a5a5a5', '#ffc000', '#5b9bd5', '#70ad47', '#264478', '#9e480e', '#636363', '#997300'];
+  const chartColors = ['#2563eb', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'];
+  const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
 
   const bookingsData = {
-    labels: kpis.bookings_by_customer.map(c => c.name.length > 20 ? c.name.substring(0, 20) + '...' : c.name),
+    labels: kpis.bookings_by_customer.slice(0, 6).map(c => (c.name || 'Unknown').substring(0, 15)),
     datasets: [{
-      label: 'Amount',
-      data: kpis.bookings_by_customer.map(c => c.amount),
+      label: 'Bookings',
+      data: kpis.bookings_by_customer.slice(0, 6).map(c => c.amount),
       backgroundColor: chartColors,
-      borderWidth: 1,
+      borderRadius: 4,
+      borderWidth: 0,
     }]
   };
 
   const arData = {
-    labels: kpis.ar_by_customer.map(c => c.name.length > 15 ? c.name.substring(0, 15) + '...' : c.name),
+    labels: kpis.ar_by_customer.slice(0, 6).map(c => (c.name || 'Unknown').substring(0, 15)),
     datasets: [{
-      label: 'Balance',
-      data: kpis.ar_by_customer.map(c => c.amount),
+      data: kpis.ar_by_customer.slice(0, 6).map(c => c.amount),
       backgroundColor: chartColors,
-      borderWidth: 1,
+      borderWidth: 2,
+      borderColor: '#fff',
     }]
   };
-
-  const salesPieData = {
-    labels: kpis.sales_by_salesperson.map(s => s.name),
-    datasets: [{
-      data: kpis.sales_by_salesperson.map(s => s.amount),
-      backgroundColor: ['#ffc000', '#4472c4', '#ed7d31', '#a5a5a5', '#5b9bd5', '#70ad47'],
-      borderWidth: 1,
-    }]
-  };
-
-  const fmt = (n) => '$' + (n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const hasBookings = kpis.bookings_by_customer.length > 0;
   const hasAR = kpis.ar_by_customer.length > 0;
-  const hasSales = kpis.sales_by_salesperson.length > 0 && kpis.sales_by_salesperson.some(s => s.amount > 0);
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1e293b', padding: 10, cornerRadius: 6 } },
+    scales: { x: { grid: { display: false }, ticks: { font: { size: 10 } } }, y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } } }
+  };
+
+  const doughnutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, padding: 12, usePointStyle: true } }, tooltip: { backgroundColor: '#1e293b', padding: 10, cornerRadius: 6 } },
+    cutout: '65%',
+  };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* Toolbar */}
-      <div className="erp-toolbar">
-        <button className="erp-toolbar-btn" onClick={loadData}><span>Refresh</span></button>
-        <div className="erp-toolbar-separator" />
-        <button className="erp-toolbar-btn"><span>KPI Settings</span></button>
+    <div className="dashboard" style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
+      {/* Welcome Header */}
+      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+        <div>
+          <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>Dashboard</h1>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>Welcome back. Here's your business at a glance.</p>
+        </div>
+        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </div>
       </div>
 
-      {/* 4-Panel Grid */}
-      <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-1 p-1 overflow-hidden">
-        {/* Top Left - Bookings by Customer */}
-        <div className="erp-panel">
-          <div className="erp-panel-header">
-            <span>Bookings Ranked by Customer</span>
-            <span className="text-xs font-normal cursor-pointer">&#x25A1;</span>
-          </div>
-          <div className="erp-panel-content">
+      {/* KPI Cards Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+        <div className="kpi-card" onClick={() => navigate('/sales')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2563eb15', color: '#2563eb' }}><FaDollarSign size={20} /></div>
+          <div><div style={{ fontSize: '18px', fontWeight: '700' }}>{fmt(kpis.total_sales_mtd)}</div><div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Sales MTD</div><div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>YTD: {fmt(kpis.total_sales_ytd)}</div></div>
+        </div>
+        <div className="kpi-card" onClick={() => navigate('/sales/orders')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#10b98115', color: '#10b981' }}><FaFileInvoiceDollar size={20} /></div>
+          <div><div style={{ fontSize: '18px', fontWeight: '700' }}>{kpis.open_sales_orders}</div><div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Open Sales Orders</div></div>
+        </div>
+        <div className="kpi-card" onClick={() => navigate('/manufacturing/work-orders')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f59e0b15', color: '#f59e0b' }}><FaIndustry size={20} /></div>
+          <div><div style={{ fontSize: '18px', fontWeight: '700' }}>{kpis.open_mfg_orders}</div><div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Open Work Orders</div>{kpis.overdue_jobs > 0 && <div style={{ fontSize: '10px', color: '#ef4444' }}>{kpis.overdue_jobs} overdue</div>}</div>
+        </div>
+        <div className="kpi-card" onClick={() => navigate('/purchasing')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#8b5cf615', color: '#8b5cf6' }}><FaShoppingCart size={20} /></div>
+          <div><div style={{ fontSize: '18px', fontWeight: '700' }}>{kpis.open_purchase_orders}</div><div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Open POs</div></div>
+        </div>
+        <div className="kpi-card" onClick={() => navigate('/inventory')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#06b6d415', color: '#06b6d4' }}><FaBoxes size={20} /></div>
+          <div><div style={{ fontSize: '18px', fontWeight: '700' }}>{fmt(kpis.total_inventory_value)}</div><div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Inventory Value</div></div>
+        </div>
+        <div className="kpi-card" onClick={() => navigate('/accounting')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#14b8a615', color: '#14b8a6' }}><FaChartLine size={20} /></div>
+          <div><div style={{ fontSize: '18px', fontWeight: '700' }}>{fmt(kpis.total_bank_balance)}</div><div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Bank Balance</div></div>
+        </div>
+        <div className="kpi-card" onClick={() => navigate('/sales/shipments')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: kpis.overdue_shipments > 0 ? '#ef444415' : '#10b98115', color: kpis.overdue_shipments > 0 ? '#ef4444' : '#10b981' }}><FaTruck size={20} /></div>
+          <div><div style={{ fontSize: '18px', fontWeight: '700' }}>{kpis.overdue_shipments}</div><div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Overdue Shipments</div></div>
+        </div>
+        <div className="kpi-card" onClick={() => navigate('/manufacturing/work-orders')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: kpis.overdue_jobs > 0 ? '#ef444415' : '#10b98115', color: kpis.overdue_jobs > 0 ? '#ef4444' : '#10b981' }}><FaExclamationTriangle size={20} /></div>
+          <div><div style={{ fontSize: '18px', fontWeight: '700' }}>{kpis.overdue_jobs}</div><div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Overdue Jobs</div></div>
+        </div>
+      </div>
+
+      {/* Charts Section */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: '600', fontSize: '13px' }}>Bookings by Customer</div>
+          <div style={{ padding: '16px', height: '250px' }}>
             {hasBookings ? (
-              <Bar data={bookingsData} options={{
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                  x: { ticks: { callback: v => v >= 1000 ? '$' + (v/1000).toFixed(0) + 'k' : '$' + v } }
-                }
-              }} />
+              <Bar data={bookingsData} options={chartOptions} />
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                No booking data available
-              </div>
-            )}
-          </div>
-          <div className="erp-panel-footer">
-            <button className="erp-btn text-xs">Print</button>
-            <button className="erp-btn text-xs">Customize Chart</button>
-            <span className="ml-auto text-xs text-gray-500">Bar diagram</span>
-          </div>
-          <div className="erp-panel-tabs">
-            {['Bookings by Customer', 'Bookings by Item', 'Sales by Customer', 'Sales by Item'].map(t => (
-              <div key={t} className={`erp-panel-tab ${topTab === t ? 'active' : ''}`} onClick={() => setTopTab(t)}>{t}</div>
-            ))}
-          </div>
-        </div>
-
-        {/* Top Right - Summary */}
-        <div className="erp-panel">
-          <div className="erp-panel-tabs">
-            {['Summary', 'Overdue Shipments', 'Overdue Jobs', 'Backorders by Item', 'Items with zero UOH'].map(t => (
-              <div key={t} className={`erp-panel-tab ${summaryTab === t.toLowerCase() ? 'active' : ''}`} onClick={() => setSummaryTab(t.toLowerCase())}>{t}</div>
-            ))}
-          </div>
-          <div className="erp-panel-content p-4">
-            {summaryTab === 'summary' && (
-              <div className="space-y-3">
-                <div className="erp-kpi-row">
-                  <span className="erp-kpi-label">Open Sales Orders:</span>
-                  <span className="erp-kpi-value text-blue-600 cursor-pointer">{kpis.open_sales_orders}</span>
-                </div>
-                <div className="erp-kpi-row">
-                  <span className="erp-kpi-label">Open Mfg Orders:</span>
-                  <span className="erp-kpi-value text-blue-600 cursor-pointer">{kpis.open_mfg_orders}</span>
-                </div>
-                <div className="erp-kpi-row">
-                  <span className="erp-kpi-label">Open Purchase Orders:</span>
-                  <span className="erp-kpi-value text-blue-600 cursor-pointer">{kpis.open_purchase_orders}</span>
-                </div>
-                <hr className="my-2" />
-                <div className="erp-kpi-row">
-                  <span className="erp-kpi-label">Total Sales Month to date:</span>
-                  <span className="erp-kpi-value">{fmt(kpis.total_sales_mtd)}</span>
-                </div>
-                <div className="erp-kpi-row">
-                  <span className="erp-kpi-label">Total Sales Quarter to date:</span>
-                  <span className="erp-kpi-value">{fmt(kpis.total_sales_qtd)}</span>
-                </div>
-                <div className="erp-kpi-row">
-                  <span className="erp-kpi-label">Total Sales Year to date:</span>
-                  <span className="erp-kpi-value">{fmt(kpis.total_sales_ytd)}</span>
-                </div>
-                <hr className="my-2" />
-                <div className="erp-kpi-row">
-                  <span className="erp-kpi-label font-bold">Total Bank Balance:</span>
-                  <span className="erp-kpi-value">{fmt(kpis.total_bank_balance)}</span>
-                </div>
-                <div className="erp-kpi-row">
-                  <span className="erp-kpi-label font-bold">Total Inventory Value:</span>
-                  <span className="erp-kpi-value">{fmt(kpis.total_inventory_value)}</span>
-                </div>
-              </div>
-            )}
-            {summaryTab === 'overdue shipments' && (
-              <div className="text-center text-gray-500 mt-8">
-                {kpis.overdue_shipments > 0 ? `${kpis.overdue_shipments} overdue shipments` : 'No overdue shipments'}
-              </div>
-            )}
-            {summaryTab === 'overdue jobs' && (
-              <div className="text-center text-gray-500 mt-8">
-                {kpis.overdue_jobs > 0 ? `${kpis.overdue_jobs} overdue jobs` : 'No overdue jobs'}
-              </div>
-            )}
-            {summaryTab === 'backorders by item' && (
-              <div className="text-center text-gray-500 mt-8">No backorders</div>
-            )}
-            {summaryTab === 'items with zero uoh' && (
-              <div className="text-center text-gray-500 mt-8">Check Inventory module for stock status</div>
+              <div className="empty-state"><div className="empty-state-text">No booking data available</div></div>
             )}
           </div>
         </div>
-
-        {/* Bottom Left - Open AR by Customer */}
-        <div className="erp-panel">
-          <div className="erp-panel-header">
-            <span>Open AR by Customer</span>
-            <span className="text-xs font-normal cursor-pointer">&#x25A1;</span>
-          </div>
-          <div className="erp-panel-content">
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', fontWeight: '600', fontSize: '13px' }}>A/R by Customer</div>
+          <div style={{ padding: '16px', height: '250px' }}>
             {hasAR ? (
-              <Bar data={arData} options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                  x: { ticks: { maxRotation: 45, font: { size: 9 } } },
-                  y: { ticks: { callback: v => v >= 1000 ? '$' + (v/1000).toFixed(0) + 'k' : '$' + v } }
-                }
-              }} />
+              <Doughnut data={arData} options={doughnutOptions} />
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                No open AR balances
-              </div>
+              <div className="empty-state"><div className="empty-state-text">No receivables data</div></div>
             )}
-          </div>
-          <div className="erp-panel-footer">
-            <button className="erp-btn text-xs">Print</button>
-            <button className="erp-btn text-xs">Customize Chart</button>
-            <span className="ml-auto text-xs text-gray-500">Column diagram</span>
-          </div>
-          <div className="erp-panel-tabs">
-            {['Open AR by Customer', 'Open AP by Vendor', 'Purchases by Vendor', 'Purchase by Item'].map(t => (
-              <div key={t} className={`erp-panel-tab ${bottomLeftTab === t ? 'active' : ''}`} onClick={() => setBottomLeftTab(t)}>{t}</div>
-            ))}
           </div>
         </div>
+      </div>
 
-        {/* Bottom Right - Sales by Salesperson */}
-        <div className="erp-panel">
-          <div className="erp-panel-header">
-            <span>Sales by Salesperson</span>
-            <span className="text-xs font-normal cursor-pointer">&#x25A1;</span>
-          </div>
-          <div className="erp-panel-content flex items-center justify-center">
-            {hasSales ? (
-              <div style={{ width: '80%', maxWidth: '300px' }}>
-                <Pie data={salesPieData} options={{
-                  responsive: true,
-                  plugins: {
-                    legend: { position: 'right', labels: { font: { size: 10 } } },
-                    tooltip: { callbacks: { label: ctx => ctx.label + ': $' + ctx.raw.toLocaleString() } }
-                  }
-                }} />
-              </div>
-            ) : (
-              <div className="text-gray-400 text-sm">No sales data available</div>
-            )}
-          </div>
-          <div className="erp-panel-footer">
-            <button className="erp-btn text-xs">Print</button>
-            <button className="erp-btn text-xs">Customize Chart</button>
-            <span className="ml-auto text-xs text-gray-500">Pie diagram</span>
-          </div>
-          <div className="erp-panel-tabs">
-            {['Sales YTD', 'Cashflow YTD', 'Sales by Salesperson'].map(t => (
-              <div key={t} className={`erp-panel-tab ${bottomRightTab === t ? 'active' : ''}`} onClick={() => setBottomRightTab(t)}>{t}</div>
-            ))}
-          </div>
+      {/* Quick Actions */}
+      <div style={{ marginBottom: '20px' }}>
+        <h3 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: 'var(--text-primary)' }}>Quick Actions</h3>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button className="erp-btn" onClick={() => navigate('/sales/quotes?new=true')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FaDollarSign size={12} /> New Quote</button>
+          <button className="erp-btn" onClick={() => navigate('/sales/orders?new=true')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FaFileInvoiceDollar size={12} /> New Order</button>
+          <button className="erp-btn" onClick={() => navigate('/manufacturing/work-orders')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FaIndustry size={12} /> Work Orders</button>
+          <button className="erp-btn" onClick={() => navigate('/scanner')} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FaBoxes size={12} /> Scanner</button>
+          <button className="erp-btn" onClick={loadData} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><FaChartLine size={12} /> Refresh</button>
         </div>
       </div>
     </div>

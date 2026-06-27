@@ -1,7 +1,6 @@
 import React, { useState, useEffect, createContext } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { ToastProvider } from './components/Toast';
 import api from './services/api';
 import Login from './pages/Login';
 import Scanner from "./pages/Scanner";
@@ -140,8 +139,8 @@ function App() {
   if (loading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
 
   return (
+    <ToastProvider>
     <AuthContext.Provider value={{ user, login, logout, permissions, permChecker }}>
-      <ToastContainer position="top-right" autoClose={3000} />
       <Routes>
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
         <Route path="/scanner" element={user ? <Scanner /> : <Navigate to="/login" />} />
@@ -208,6 +207,7 @@ function App() {
         </Route>
       </Routes>
     </AuthContext.Provider>
+    </ToastProvider>
   );
 }
 

@@ -23,7 +23,7 @@ function AccountingHome() {
     if (tab === 'balance-sheet') api.get('/api/accounting/balance-sheet').then(r => setBalanceSheet(r.data)).catch(() => {});
   };
 
-  const fmt = (v) => Number(v || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+  const fmt = (v) => (v === undefined || v === null) ? '...' : Number(v || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
   const handlePeriodClose = async (id) => {
     if (!window.confirm('Close this accounting period?')) return;
@@ -42,7 +42,7 @@ function AccountingHome() {
 
   return (
     <div className="h-full overflow-auto bg-[#c8c8d4] p-4">
-      <div className="grid grid-cols-6 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
         {[{l:'Open A/R',v:dashboard?.open_ar,c:'blue'},{l:'Open A/P',v:dashboard?.open_ap,c:'red'},{l:'Bank Balance',v:dashboard?.bank_balance,c:'green'},{l:'MTD Revenue',v:dashboard?.mtd_revenue,c:'purple'},{l:'YTD Revenue',v:dashboard?.ytd_revenue,c:'indigo'},{l:'Overdue A/R',v:dashboard?.overdue_ar,c:'orange'}].map(k => (
           <div key={k.l} className={`bg-white rounded shadow p-3 border-l-4 border-${k.c}-500`}><p className="text-xs text-gray-500">{k.l}</p><p className="text-lg font-bold">{fmt(k.v)}</p></div>
         ))}
