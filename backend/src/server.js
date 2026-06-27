@@ -59,23 +59,25 @@ app.listen(PORT, '0.0.0.0', () => {
 
 module.exports = app;
 
-// Temporary DB init endpoint for Coolify deployment
+// DB init endpoint for Coolify deployment
 app.get('/api/init-db', async (req, res) => {
   try {
     const { execSync } = require('child_process');
+    const pool = require('./config/database');
     // Check if tables exist
-    const [rows] = await db.query("SHOW TABLES LIKE 'users'");
+    const [rows] = await pool.query("SHOW TABLES LIKE 'users'");
     if (rows.length > 0) {
       return res.json({ message: 'Database already initialized', tables: rows.length });
     }
-    // Download and import the SQL dump
+    // Import the SQL dump
     console.log('Importing database...');
-    execSync('apk add --no-cache mysql-client curl 2>/dev/null || true');
-    execSync(`curl -sL "https://raw.githubusercontent.com/USEPNY12/maxta-erp/main/database/maxta_erp_dump.sql" | mysql -h ${process.env.DB_HOST || 'localhost'} -u ${process.env.DB_USER || 'maxta_erp'} -p'${process.env.DB_PASSWORD || 'MaxTA_ERP_2026!'}' ${process.env.DB_NAME || 'maxta_erp'}`);
+    try { execSync('apk add --no-cache mysql-client curl 2>/dev/null || true'); } catch(e) {}
+    const cmd = `curl -sL "https://raw.githubusercontent.com/USEPNY12/maxta-erp/main/database/maxta_erp_dump.sql" | mysql -h ${process.env.DB_HOST || 'localhost'} -u ${process.env.DB_USER || 'maxta_erp'} -p'${process.env.DB_PASSWORD || 'MaxTA_ERP_2026!'}' ${process.env.DB_NAME || 'maxta_erp'}`;
+    execSync(cmd, { stdio: 'inherit' });
     console.log('Database imported successfully!');
     res.json({ message: 'Database imported successfully!' });
   } catch (err) {
     console.error('DB init error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, stdout: err.stdout?.toString(), stderr: err.stderr?.toString() });
   }
 });
