@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './components/Toast';
 import api from './services/api';
 import Login from './pages/Login';
+import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout';
 
 // Lazy-loaded modules (code splitting per module)
@@ -198,6 +199,7 @@ function App() {
   return (
     <ToastProvider>
     <AuthContext.Provider value={{ user, login, logout, permissions, permChecker }}>
+      <ErrorBoundary>
       <Suspense fallback={<ModuleLoader />}>
       <Routes>
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
@@ -298,6 +300,7 @@ function App() {
         <Route path="/portal/document/:token" element={<CustomerPortal />} />
       </Routes>
       </Suspense>
+      </ErrorBoundary>
     </AuthContext.Provider>
     </ToastProvider>
   );
