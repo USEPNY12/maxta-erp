@@ -1410,17 +1410,11 @@ module.exports = async () => {
         ('Receiving Bay', 'RECV-01', NULL, '1234', '["scan_po","receive_item","inspect_quality"]', 1, '{"theme":"dark","timeout":180}')
       `);
     }
-    // Seed notification preference categories for admin
-    const [np] = await pool.query('SELECT COUNT(*) as cnt FROM notification_preferences');
+    // Seed notification preferences for admin (schema: user_id, email_enabled, in_app_enabled, digest_frequency, muted_categories)
+    const [np] = await pool.query('SELECT COUNT(*) as cnt FROM notification_preferences WHERE user_id = 1');
     if (np[0].cnt === 0) {
-      await pool.query(`INSERT IGNORE INTO notification_preferences (user_id, category, push_enabled, in_app_enabled, email_enabled) VALUES
-        (1, 'orders', 1, 1, 1),
-        (1, 'production', 1, 1, 0),
-        (1, 'inventory', 1, 1, 0),
-        (1, 'accounting', 0, 1, 1),
-        (1, 'shipping', 1, 1, 0),
-        (1, 'system', 1, 1, 0),
-        (1, 'approvals', 1, 1, 1)
+      await pool.query(`INSERT IGNORE INTO notification_preferences (user_id, email_enabled, in_app_enabled, digest_frequency, muted_categories) VALUES
+        (1, 1, 1, 'immediate', '[]')
       `);
     }
     console.log('Phase 9 tables + seeds: verified');

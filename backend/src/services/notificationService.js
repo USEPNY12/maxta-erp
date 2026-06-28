@@ -107,14 +107,14 @@ class NotificationService {
   async checkOverdueInvoices() {
     try {
       const [overdueInvoices] = await pool.query(`
-        SELECT ai.id, ai.invoice_number, ai.total, ai.due_date, ai.balance_due,
+        SELECT ai.id, ai.invoice_number, ai.total, ai.due_date, ai.balance as balance_due,
           c.company_name as customer_name, c.email as customer_email,
           DATEDIFF(CURDATE(), ai.due_date) as days_overdue
         FROM ar_invoices ai
         LEFT JOIN sales_orders so ON ai.sales_order_id = so.id
         LEFT JOIN customers c ON so.customer_id = c.id
         WHERE ai.status = 'posted' AND ai.due_date < CURDATE()
-          AND (ai.balance_due > 0 OR ai.balance_due IS NULL)
+          AND (ai.balance > 0 OR ai.balance IS NULL)
         ORDER BY ai.due_date ASC`);
 
       if (overdueInvoices.length === 0) return;
@@ -178,15 +178,15 @@ class NotificationService {
   async checkOverdueWorkOrders() {
     try {
       const [overdueWOs] = await pool.query(`
-        SELECT wo.id, wo.wo_number, wo.order_number, wo.status, wo.due_date, wo.product_type,
+        SELECT wo.id, wo.wo_number, wo.order_number, wo.status, wo.finish_date as due_date, wo.product_type,
           c.company_name as customer_name,
-          DATEDIFF(CURDATE(), wo.due_date) as days_overdue
+          DATEDIFF(CURDATE(), wo.finish_date) as days_overdue
         FROM work_orders wo
         LEFT JOIN sales_orders so ON wo.sales_order_id = so.id
         LEFT JOIN customers c ON so.customer_id = c.id
         WHERE wo.status IN ('planned','scheduled','released','in_progress')
-          AND wo.due_date IS NOT NULL AND wo.due_date < CURDATE()
-        ORDER BY wo.due_date ASC`);
+          AND wo.finish_date IS NOT NULL AND wo.finish_date < CURDATE()
+        ORDER BY wo.finish_date ASC`);
 
       if (overdueWOs.length === 0) return;
 
@@ -211,7 +211,7 @@ class NotificationService {
   async checkOverduePOs() {
     try {
       const [overduePOs] = await pool.query(`
-        SELECT po.id, po.po_number, po.required_date, po.status, po.total_amount,
+        SELECT po.id, po.po_number, po.required_date, po.status, po.total,
           v.company_name as vendor_name,
           DATEDIFF(CURDATE(), po.required_date) as days_overdue
         FROM purchase_orders po
@@ -261,8 +261,8 @@ class NotificationService {
 
     // Overdue invoices
     const [overdueAR] = await pool.query(`
-      SELECT COUNT(*) as cnt, COALESCE(SUM(balance_due), 0) as total
-      FROM ar_invoices WHERE status = 'posted' AND due_date < CURDATE() AND (balance_due > 0 OR balance_due IS NULL)`);
+      SELECT COUNT(*) as cnt, COALESCE(SUM(balance), 0) as total
+      FROM ar_invoices WHERE status = 'posted' AND due_date < CURDATE() AND (balance > 0 OR balance IS NULL)`);
     if (overdueAR[0].cnt > 0) {
       alerts.push({ type: 'overdue_invoices', severity: 'danger', count: overdueAR[0].cnt, message: `${overdueAR[0].cnt} overdue invoices ($${parseFloat(overdueAR[0].total).toFixed(2)})` });
     }
@@ -271,7 +271,7 @@ class NotificationService {
     const [overdueWO] = await pool.query(`
       SELECT COUNT(*) as cnt FROM work_orders
       WHERE status IN ('planned','scheduled','released','in_progress')
-        AND due_date IS NOT NULL AND due_date < CURDATE()`);
+        AND finish_date IS NOT NULL AND finish_date < CURDATE()`);
     if (overdueWO[0].cnt > 0) {
       alerts.push({ type: 'overdue_wos', severity: 'warning', count: overdueWO[0].cnt, message: `${overdueWO[0].cnt} work orders past due date` });
     }

@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 const path = require('path');
 const morgan = require('morgan');
 const http = require('http');
@@ -28,6 +29,9 @@ app.use(helmet({
 
 // CORS
 app.use(cors());
+
+// Gzip compression for all responses
+app.use(compression());
 
 // Request logging
 app.use(morgan('combined'));
@@ -113,7 +117,16 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', version: '6.0.0', name: 'Max TA Group ERP', websocket: true, phase: 'Phase 1 - Architecture Upgrade' });
+  res.json({
+    status: 'ok',
+    version: '10.0.0',
+    name: 'Max TA Group ERP',
+    websocket: true,
+    phase: 'Phase 10 - Production Ready',
+    uptime: Math.floor(process.uptime()),
+    memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Serve frontend in production
