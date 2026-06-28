@@ -702,7 +702,46 @@ router.post('/shipments', authenticate, async (req, res) => {
       console.error('GL posting error (shipment COGS):', glError.message);
     }
     await req.audit('shipments', result.insertId, 'INSERT', null, { shipment_number: shipmentNumber, sales_order_id, total_panels: totalPanels });
-    res.status(201).json({ id: result.insertId, shipment_number: shipmentNumber });
+    // === FIX GAP 4: Auto-generate draft invoice from shipment ===
+    let autoInvoiceId = null;
+    try {
+      const invoiceNumber = await getNextNumber('ar_invoice');
+      const [soInfo] = await pool.query('SELECT payment_terms, customer_id FROM sales_orders WHERE id = ?', [sales_order_id]);
+      if (soInfo.length) {
+        const payTerms = soInfo[0].payment_terms || 'Net 30';
+        const days = parseInt(payTerms.replace(/\D/g, '')) || 30;
+        const dueDate = new Date(); dueDate.setDate(dueDate.getDate() + days);
+        let subtotal = 0;
+        const invLines = [];
+        for (const l of lines) {
+          const [solInfo] = await pool.query('SELECT unit_price, description, item_id FROM sales_order_lines WHERE id = ?', [l.sales_order_line_id]);
+          if (solInfo.length) {
+            const lineTotal = (Number(l.quantity_shipped) || 0) * (Number(solInfo[0].unit_price) || 0);
+            subtotal += lineTotal;
+            invLines.push({ item_id: solInfo[0].item_id || l.item_id, description: solInfo[0].description || l.description, quantity: l.quantity_shipped, unit_price: solInfo[0].unit_price || 0, line_total: lineTotal });
+          }
+        }
+        if (subtotal > 0) {
+          const [invResult] = await pool.query(
+            "INSERT INTO ar_invoices (invoice_number, customer_id, sales_order_id, shipment_id, invoice_date, due_date, subtotal, tax_amount, total, balance, amount_paid, status, payment_terms, created_by) VALUES (?,?,?,?,CURDATE(),?,?,0,?,?,0,'draft',?,?)",
+            [invoiceNumber, soInfo[0].customer_id, sales_order_id, result.insertId, dueDate.toISOString().split('T')[0], subtotal, subtotal, subtotal, payTerms, req.user.id]
+          );
+          autoInvoiceId = invResult.insertId;
+          for (let idx = 0; idx < invLines.length; idx++) {
+            const il = invLines[idx];
+            await pool.query('INSERT INTO ar_invoice_lines (invoice_id, line_number, item_id, description, quantity, unit_price, line_total) VALUES (?,?,?,?,?,?,?)',
+              [autoInvoiceId, idx + 1, il.item_id, il.description, il.quantity, il.unit_price, il.line_total]);
+          }
+          // Update shipment with invoice reference
+          await pool.query('UPDATE shipments SET invoice_id = ? WHERE id = ?', [autoInvoiceId, result.insertId]);
+        }
+      }
+    } catch (invoiceErr) { console.error('Auto-invoice generation error:', invoiceErr.message); }
+    // WebSocket broadcast
+    if (global.wsBroadcast) global.wsBroadcast({ type: 'shipment_created', shipment_id: result.insertId, shipment_number: shipmentNumber, invoice_id: autoInvoiceId });
+    // Notification
+    try { await pool.query("INSERT INTO notification_log (notification_type, subject, details) VALUES ('shipment', CONCAT('Shipment Created: ', ?), JSON_OBJECT('reference_id', ?))", [shipmentNumber + ' created' + (autoInvoiceId ? ' - Draft invoice auto-generated' : ''), result.insertId]); } catch(e) {}
+    res.status(201).json({ id: result.insertId, shipment_number: shipmentNumber, auto_invoice_id: autoInvoiceId });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
