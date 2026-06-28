@@ -88,6 +88,10 @@ const PricingMatrix = lazy(() => import('./pages/PricingMatrix'));
 const DocumentCenter = lazy(() => import('./components/DocumentCenter'));
 const CustomerPortal = lazy(() => import('./components/CustomerPortal'));
 
+// Phase 8 - Dashboard & Promotions
+const ExecutiveDashboard = lazy(() => import('./pages/ExecutiveDashboard'));
+const PromotionsManager = lazy(() => import('./pages/PromotionsManager'));
+
 // Shipping & Logistics (Phase 5)
 const ShippingDashboard = lazy(() => import('./pages/shipping/ShippingDashboard'));
 const DeliveryPlanner = lazy(() => import('./pages/shipping/DeliveryPlanner'));
@@ -269,6 +273,9 @@ function App() {
           <Route path="documents" element={<DocManagement />} />
           <Route path="lamination" element={<ProtectedModule module="manufacturing" permissions={permissions}><Lamination /></ProtectedModule>} />
           <Route path="document-center" element={<DocumentCenter />} />
+          {/* Phase 8 - Dashboard & Promotions */}
+          <Route path="executive-dashboard" element={<ExecutiveDashboard />} />
+          <Route path="promotions" element={<ProtectedModule module="system_setup" permissions={permissions}><PromotionsManager /></ProtectedModule>} />
           {/* Shipping & Logistics (Phase 5) */}
           <Route path="shipping" element={<ShippingDashboard />} />
           <Route path="shipping/routes" element={<DeliveryPlanner />} />

@@ -37,6 +37,9 @@ const navItems = [
   { path: '/accounting/budget-manager', label: 'Budgets', icon: FaCalculator, module: 'accounting', group: 'finance' },
   { path: '/accounting/cash-flow', label: 'Cash Flow', icon: FaDollarSign, module: 'accounting', group: 'finance' },
   { path: '/accounting/tax-reporting', label: 'Tax Reporting', icon: FaFileAlt, module: 'accounting', group: 'finance' },
+  // Phase 8 - Dashboard & Promotions
+  { path: '/executive-dashboard', label: 'Exec Dashboard', icon: FaChartBar, module: null, group: 'admin' },
+  { path: '/promotions', label: 'Promotions', icon: FaBell, module: 'system_setup', group: 'admin' },
   { path: '/setup', label: 'Setup', icon: FaCog, module: 'system_setup', group: 'admin' },
 ];
 

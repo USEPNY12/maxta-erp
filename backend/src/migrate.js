@@ -1152,4 +1152,181 @@ module.exports = async () => {
 
     console.log('Phase 7 tables + seeds: verified');
   } catch(e) { console.log('Phase7 error:', e.message); }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PHASE 8 - Dashboard & Promotions
+  // ═══════════════════════════════════════════════════════════════
+  try {
+    // Promotions / Announcements Engine
+    await pool.query(`CREATE TABLE IF NOT EXISTS promotions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(200) NOT NULL,
+      message TEXT NOT NULL,
+      promo_type ENUM('announcement','promotion','alert','maintenance','feature') DEFAULT 'announcement',
+      priority ENUM('low','normal','high','urgent') DEFAULT 'normal',
+      display_type ENUM('banner','modal','toast','sidebar') DEFAULT 'banner',
+      target_roles JSON COMMENT 'Array of role names to target, null=all',
+      target_departments JSON COMMENT 'Array of department codes, null=all',
+      start_date DATETIME NOT NULL,
+      end_date DATETIME,
+      is_active TINYINT(1) DEFAULT 1,
+      is_dismissible TINYINT(1) DEFAULT 1,
+      action_url VARCHAR(500) COMMENT 'Optional link/route for CTA button',
+      action_label VARCHAR(100) COMMENT 'CTA button text',
+      bg_color VARCHAR(20) DEFAULT '#3b82f6',
+      icon VARCHAR(50) DEFAULT 'info',
+      view_count INT DEFAULT 0,
+      dismiss_count INT DEFAULT 0,
+      click_count INT DEFAULT 0,
+      created_by INT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )`);
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS promotion_interactions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      promotion_id INT NOT NULL,
+      user_id INT NOT NULL,
+      interaction_type ENUM('view','dismiss','click','close') NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_promo_user (promotion_id, user_id),
+      INDEX idx_user_interactions (user_id, interaction_type)
+    )`);
+
+    // Dashboard Configurations (per-user widget layout)
+    await pool.query(`CREATE TABLE IF NOT EXISTS dashboard_configs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      user_id INT,
+      role VARCHAR(50) COMMENT 'Role-level default if user_id is null',
+      layout JSON NOT NULL COMMENT 'Array of widget configs with position/size',
+      is_default TINYINT(1) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_user_config (user_id),
+      INDEX idx_role_config (role)
+    )`);
+
+    // Dashboard Widgets Registry
+    await pool.query(`CREATE TABLE IF NOT EXISTS dashboard_widgets (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      widget_key VARCHAR(100) UNIQUE NOT NULL,
+      title VARCHAR(200) NOT NULL,
+      description TEXT,
+      category ENUM('financial','sales','manufacturing','inventory','purchasing','shipping','system') NOT NULL,
+      widget_type ENUM('kpi','chart','table','list','gauge','map') NOT NULL,
+      data_endpoint VARCHAR(200) NOT NULL,
+      default_size ENUM('small','medium','large','full') DEFAULT 'medium',
+      min_role_level INT DEFAULT 0 COMMENT '0=all, 1=readonly+, 2=dept+, 3=manager+, 4=admin',
+      allowed_roles JSON COMMENT 'Specific roles that can see this widget, null=check min_role_level',
+      is_active TINYINT(1) DEFAULT 1,
+      config_schema JSON COMMENT 'JSON schema for widget-specific settings',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // KPI Snapshots (historical tracking for trend analysis)
+    await pool.query(`CREATE TABLE IF NOT EXISTS kpi_snapshots (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      snapshot_date DATE NOT NULL,
+      kpi_key VARCHAR(100) NOT NULL,
+      kpi_value DECIMAL(14,2) NOT NULL,
+      kpi_metadata JSON,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_kpi_date (kpi_key, snapshot_date)
+    )`);
+
+    // Seed default dashboard widgets
+    const [wc] = await pool.query('SELECT COUNT(*) as cnt FROM dashboard_widgets');
+    if (wc[0].cnt === 0) {
+      await pool.query(`INSERT IGNORE INTO dashboard_widgets (widget_key, title, description, category, widget_type, data_endpoint, default_size, min_role_level, allowed_roles) VALUES
+        ('sales_mtd', 'Sales MTD', 'Month-to-date sales revenue', 'sales', 'kpi', '/api/dashboard-exec/kpi/sales-mtd', 'small', 0, NULL),
+        ('sales_pipeline', 'Sales Pipeline', 'Open quotes and orders value', 'sales', 'kpi', '/api/dashboard-exec/kpi/sales-pipeline', 'small', 0, '["sales","manager","admin"]'),
+        ('open_orders', 'Open Orders', 'Active sales orders count', 'sales', 'kpi', '/api/dashboard-exec/kpi/open-orders', 'small', 0, NULL),
+        ('ar_aging', 'AR Aging', 'Accounts receivable aging breakdown', 'financial', 'chart', '/api/dashboard-exec/charts/ar-aging', 'medium', 2, '["accounting","manager","admin"]'),
+        ('ap_aging', 'AP Aging', 'Accounts payable aging breakdown', 'financial', 'chart', '/api/dashboard-exec/charts/ap-aging', 'medium', 2, '["accounting","purchasing","manager","admin"]'),
+        ('cash_position', 'Cash Position', 'Total bank balance', 'financial', 'kpi', '/api/dashboard-exec/kpi/cash-position', 'small', 3, '["accounting","manager","admin"]'),
+        ('revenue_trend', 'Revenue Trend', '12-month revenue chart', 'financial', 'chart', '/api/dashboard-exec/charts/revenue-trend', 'large', 3, '["accounting","manager","admin"]'),
+        ('production_status', 'Production Status', 'Work orders by status', 'manufacturing', 'chart', '/api/dashboard-exec/charts/production-status', 'medium', 0, '["production","manager","admin"]'),
+        ('wo_throughput', 'WO Throughput', 'Work orders completed this week', 'manufacturing', 'kpi', '/api/dashboard-exec/kpi/wo-throughput', 'small', 0, '["production","shipping","manager","admin"]'),
+        ('inventory_value', 'Inventory Value', 'Total inventory valuation', 'inventory', 'kpi', '/api/dashboard-exec/kpi/inventory-value', 'small', 2, '["purchasing","accounting","manager","admin"]'),
+        ('low_stock_alerts', 'Low Stock Alerts', 'Items below reorder point', 'inventory', 'list', '/api/dashboard-exec/lists/low-stock', 'medium', 0, '["purchasing","production","manager","admin"]'),
+        ('overdue_pos', 'Overdue POs', 'Purchase orders past due date', 'purchasing', 'list', '/api/dashboard-exec/lists/overdue-pos', 'medium', 2, '["purchasing","manager","admin"]'),
+        ('shipments_today', 'Shipments Today', 'Scheduled shipments for today', 'shipping', 'list', '/api/dashboard-exec/lists/shipments-today', 'medium', 0, '["shipping","sales","production","manager","admin"]'),
+        ('top_customers', 'Top Customers MTD', 'Highest revenue customers MTD', 'sales', 'table', '/api/dashboard-exec/tables/top-customers', 'medium', 2, '["sales","accounting","manager","admin"]'),
+        ('profit_margin', 'Profit Margin', 'Gross profit margin MTD', 'financial', 'gauge', '/api/dashboard-exec/kpi/profit-margin', 'small', 3, '["accounting","manager","admin"]'),
+        ('bookings_chart', 'Bookings by Week', 'Weekly sales bookings trend', 'sales', 'chart', '/api/dashboard-exec/charts/bookings-weekly', 'large', 2, '["sales","manager","admin"]'),
+        ('overdue_invoices', 'Overdue Invoices', 'Past-due AR invoices', 'financial', 'list', '/api/dashboard-exec/lists/overdue-invoices', 'medium', 2, '["accounting","sales","manager","admin"]'),
+        ('active_users', 'Active Users', 'Currently logged-in users', 'system', 'kpi', '/api/dashboard-exec/kpi/active-users', 'small', 4, '["admin"]')
+      `);
+    }
+
+    // Seed default role-based dashboard layouts
+    const [dc] = await pool.query('SELECT COUNT(*) as cnt FROM dashboard_configs');
+    if (dc[0].cnt === 0) {
+      const adminLayout = JSON.stringify([
+        { widget: 'sales_mtd', x: 0, y: 0, w: 1, h: 1 },
+        { widget: 'cash_position', x: 1, y: 0, w: 1, h: 1 },
+        { widget: 'profit_margin', x: 2, y: 0, w: 1, h: 1 },
+        { widget: 'inventory_value', x: 3, y: 0, w: 1, h: 1 },
+        { widget: 'revenue_trend', x: 0, y: 1, w: 2, h: 1 },
+        { widget: 'production_status', x: 2, y: 1, w: 2, h: 1 },
+        { widget: 'top_customers', x: 0, y: 2, w: 2, h: 1 },
+        { widget: 'overdue_invoices', x: 2, y: 2, w: 2, h: 1 }
+      ]);
+      const salesLayout = JSON.stringify([
+        { widget: 'sales_mtd', x: 0, y: 0, w: 1, h: 1 },
+        { widget: 'sales_pipeline', x: 1, y: 0, w: 1, h: 1 },
+        { widget: 'open_orders', x: 2, y: 0, w: 1, h: 1 },
+        { widget: 'bookings_chart', x: 0, y: 1, w: 2, h: 1 },
+        { widget: 'top_customers', x: 2, y: 1, w: 2, h: 1 },
+        { widget: 'overdue_invoices', x: 0, y: 2, w: 2, h: 1 }
+      ]);
+      const productionLayout = JSON.stringify([
+        { widget: 'wo_throughput', x: 0, y: 0, w: 1, h: 1 },
+        { widget: 'production_status', x: 1, y: 0, w: 2, h: 1 },
+        { widget: 'shipments_today', x: 3, y: 0, w: 1, h: 1 },
+        { widget: 'low_stock_alerts', x: 0, y: 1, w: 2, h: 1 }
+      ]);
+      const purchasingLayout = JSON.stringify([
+        { widget: 'overdue_pos', x: 0, y: 0, w: 2, h: 1 },
+        { widget: 'inventory_value', x: 2, y: 0, w: 1, h: 1 },
+        { widget: 'low_stock_alerts', x: 0, y: 1, w: 2, h: 1 },
+        { widget: 'ap_aging', x: 2, y: 1, w: 2, h: 1 }
+      ]);
+      const accountingLayout = JSON.stringify([
+        { widget: 'cash_position', x: 0, y: 0, w: 1, h: 1 },
+        { widget: 'profit_margin', x: 1, y: 0, w: 1, h: 1 },
+        { widget: 'sales_mtd', x: 2, y: 0, w: 1, h: 1 },
+        { widget: 'revenue_trend', x: 0, y: 1, w: 2, h: 1 },
+        { widget: 'ar_aging', x: 2, y: 1, w: 2, h: 1 },
+        { widget: 'ap_aging', x: 0, y: 2, w: 2, h: 1 },
+        { widget: 'overdue_invoices', x: 2, y: 2, w: 2, h: 1 }
+      ]);
+      const shippingLayout = JSON.stringify([
+        { widget: 'shipments_today', x: 0, y: 0, w: 2, h: 1 },
+        { widget: 'open_orders', x: 2, y: 0, w: 1, h: 1 },
+        { widget: 'production_status', x: 0, y: 1, w: 2, h: 1 }
+      ]);
+      await pool.query(`INSERT IGNORE INTO dashboard_configs (user_id, role, layout, is_default) VALUES
+        (NULL, 'admin', ?, 1),
+        (NULL, 'manager', ?, 1),
+        (NULL, 'sales', ?, 1),
+        (NULL, 'production', ?, 1),
+        (NULL, 'purchasing', ?, 1),
+        (NULL, 'accounting', ?, 1),
+        (NULL, 'shipping', ?, 1)
+      `, [adminLayout, adminLayout, salesLayout, productionLayout, purchasingLayout, accountingLayout, shippingLayout]);
+    }
+
+    // Seed sample promotions
+    const [pc] = await pool.query('SELECT COUNT(*) as cnt FROM promotions');
+    if (pc[0].cnt === 0) {
+      await pool.query(`INSERT IGNORE INTO promotions (title, message, promo_type, priority, display_type, target_roles, start_date, end_date, is_active, action_url, action_label, bg_color, icon, created_by) VALUES
+        ('System Update Scheduled', 'ERP system maintenance window: Saturday 10PM-2AM EST. Please save all work before 10PM.', 'maintenance', 'high', 'banner', NULL, NOW(), DATE_ADD(NOW(), INTERVAL 7 DAY), 1, NULL, NULL, '#f59e0b', 'warning', 1),
+        ('New Feature: Financial Dashboard', 'The advanced Financial Dashboard is now available! Track budgets, cash flow, and tax reporting in real-time.', 'feature', 'normal', 'modal', NULL, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 1, '/accounting/financial-dashboard', 'Try It Now', '#3b82f6', 'info', 1),
+        ('Q3 Sales Target', 'Q3 sales target: $500K. Current progress: $125K (25%). Keep pushing team!', 'promotion', 'normal', 'sidebar', '["sales","manager","admin"]', NOW(), DATE_ADD(NOW(), INTERVAL 90 DAY), 1, '/sales', 'View Sales', '#10b981', 'chart', 1)
+      `);
+    }
+
+    console.log('Phase 8 tables + seeds: verified');
+  } catch(e) { console.log('Phase8 error:', e.message); }
 };

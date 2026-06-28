@@ -102,6 +102,9 @@ try { app.use('/api/shipping', require('./routes/shipping')); } catch(e) { conso
 // Phase 7 routes - Advanced Accounting & Finance (Multi-currency, Bank Recon, Budgets, Cash Flow, Tax)
 try { app.use('/api/accounting-advanced', require('./routes/accountingAdvanced')); } catch(e) { console.log('Accounting Advanced routes not loaded:', e.message); }
 
+// Phase 8 routes - Dashboard & Promotions (Executive KPI, Role-based Dashboards, Promotions Engine)
+try { app.use('/api/dashboard-exec', require('./routes/dashboardExec')); } catch(e) { console.log('Dashboard Exec routes not loaded:', e.message); }
+
 // Static uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 

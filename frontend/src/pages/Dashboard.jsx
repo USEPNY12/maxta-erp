@@ -25,7 +25,13 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tool
 function Dashboard() {
   const [kpis, setKpis] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [promotions, setPromotions] = useState([]);
   const navigate = useNavigate();
+
+  // Load active promotions
+  useEffect(() => {
+    api.get('/api/dashboard-exec/promotions/active').then(res => setPromotions(res.data)).catch(() => {});
+  }, []);
 
   const loadData = () => {
     setLoading(true);
@@ -131,16 +137,38 @@ function Dashboard() {
     cutout: '65%',
   };
 
+  const dismissPromo = (id) => {
+    api.post(`/api/dashboard-exec/promotions/${id}/interact`, { interaction_type: 'dismiss' }).catch(() => {});
+    setPromotions(prev => prev.filter(p => p.id !== id));
+  };
+
   return (
     <div className="dashboard" style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
+      {/* Active Promotions/Announcements */}
+      {promotions.filter(p => p.display_type === 'banner').map(promo => (
+        <div key={promo.id} style={{ background: promo.bg_color || '#3b82f6', color: '#fff', padding: '10px 16px', borderRadius: '8px', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+          <div style={{ flex: 1 }}>
+            <strong style={{ fontSize: '13px' }}>{promo.title}</strong>
+            <span style={{ fontSize: '12px', marginLeft: '8px', opacity: 0.9 }}>{promo.message}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {promo.action_url && <button onClick={() => navigate(promo.action_url)} style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}>{promo.action_label || 'View'}</button>}
+            {promo.is_dismissible ? <button onClick={() => dismissPromo(promo.id)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '16px' }}>&times;</button> : null}
+          </div>
+        </div>
+      ))}
+
       {/* Welcome Header */}
       <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>Dashboard</h1>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0' }}>Welcome back. Here's your business at a glance.</p>
         </div>
-        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button onClick={() => navigate('/executive-dashboard')} style={{ background: '#3b82f6', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px' }}>Executive View</button>
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </span>
         </div>
       </div>
 
