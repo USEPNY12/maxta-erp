@@ -1,4 +1,5 @@
 import DocumentActions from '../../components/DocumentActions';
+import SerialNumbersTab from '../../components/SerialNumbersTab';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
@@ -133,7 +134,7 @@ function Invoices() {
               </div>
 
               <div className="erp-tabs">
-                {['Lines', 'Payments', 'Credit Memos', 'Audit Trail'].map(tab => (
+                {['Lines', 'Payments', 'Credit Memos', 'Audit Trail', 'Serials'].map(tab => (
                   <div key={tab} className={`erp-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>{tab}</div>
                 ))}
               </div>
@@ -187,6 +188,9 @@ function Invoices() {
                     <p>Created: {formatDate(selected.created_at)}</p>
                     {selected.posted_date && <p>Posted: {formatDate(selected.posted_date)}</p>}
                   </div>
+                )}
+                {activeTab === 'Serials' && (
+                  <SerialNumbersTab salesOrderId={selected?.sales_order_id} />
                 )}
               </div>
             </div>

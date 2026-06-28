@@ -6,6 +6,7 @@ import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 import ScanPanel from '../../components/ScanPanel';
+import SerialNumbersTab from '../../components/SerialNumbersTab';
 import { formatDate } from '../../utils/formatDate';
 import ModulePage from '../../components/ModulePage';
 import { manufacturingMenu } from '../../config/moduleMenus';
@@ -457,7 +458,7 @@ function WorkOrders() {
 
             {/* Tabs */}
             <div className="border-b flex px-2">
-              {['Routing', 'Materials', 'Labor', 'Files & CNC', 'Tracking', 'QC', 'Recuts', 'Receipts', 'Scan Station'].map(tab => (
+              {['Routing', 'Materials', 'Labor', 'Files & CNC', 'Tracking', 'QC', 'Recuts', 'Receipts', 'Serials', 'Scan Station'].map(tab => (
                 <button key={tab} className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${activeTab === tab ? 'border-blue-600 text-blue-700 bg-blue-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`} onClick={() => setActiveTab(tab)}>{tab}</button>
               ))}
             </div>
@@ -539,6 +540,9 @@ function WorkOrders() {
                   <tbody>{(selected.receipts || [])?.map((r, i) => (<tr key={i} className="border-t"><td className="px-3 py-2 font-medium">{r.receipt_number}</td><td className="px-3 py-2">{formatDate(r.receipt_date)}</td><td className="px-3 py-2 text-center font-bold text-green-700">{r.quantity_completed}</td><td className="px-3 py-2 text-center font-bold text-red-600">{r.quantity_scrapped}</td><td className="px-3 py-2 text-center">${r.total_cost || 0}</td></tr>))}
                   {(!selected.receipts || selected.receipts.length === 0) && <tr><td colSpan="5" className="text-center text-gray-500 py-8">No receipts recorded</td></tr>}</tbody></table>
                 </div>
+              )}
+              {activeTab === 'Serials' && (
+                <SerialNumbersTab workOrderId={selected?.id} />
               )}
               {activeTab === 'Scan Station' && (
                 <div style={{padding:'16px', backgroundColor:'#1a1a2e', borderRadius:'8px'}}>

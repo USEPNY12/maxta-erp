@@ -1,5 +1,6 @@
 import FileAttachments from '../../components/FileAttachments';
 import DocumentActions from '../../components/DocumentActions';
+import SerialNumbersTab from '../../components/SerialNumbersTab';
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -197,7 +198,7 @@ function SalesOrders() {
 
               {/* Tabs */}
               <div className="erp-tabs">
-                {['Lines', 'Fabrication', 'Files', 'Production', 'Shipments', 'Invoices', 'Deposits'].map(tab => (
+                {['Lines', 'Fabrication', 'Files', 'Production', 'Shipments', 'Invoices', 'Deposits', 'Serials'].map(tab => (
                   <div key={tab} className={`erp-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>{tab}
                     {tab === 'Production' && selected.work_orders?.length > 0 && <span className="ml-1 bg-orange-200 text-orange-800 px-1 rounded text-[9px]">{selected.work_orders.length}</span>}
                     {tab === 'Shipments' && selected.shipments?.length > 0 && <span className="ml-1 bg-blue-200 text-blue-800 px-1 rounded text-[9px]">{selected.shipments.length}</span>}
@@ -323,6 +324,9 @@ function SalesOrders() {
                       </table>
                     )}
                   </div>
+                )}
+                {activeTab === 'Serials' && (
+                  <SerialNumbersTab salesOrderId={selected?.id} showAssign={true} assignContext={{ sales_order_id: selected?.id }} />
                 )}
                 {activeTab === 'Deposits' && (
                   <div>

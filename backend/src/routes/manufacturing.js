@@ -438,7 +438,7 @@ router.get('/receipts', authenticate, async (req, res) => {
 router.post('/receipts', authenticate, async (req, res) => {
   try {
     const receiptNumber = await getNextNumber('wo_receipt');
-    const { work_order_id, quantity_completed, quantity_scrapped, scrap_code, location_id, lot_number, serial_number_start, serial_number_end, notes } = req.body;
+    const { work_order_id, quantity_completed, quantity_scrapped, scrap_code, location_id, lot_number, serial_number_start, serial_number_end, serial_prefix, serial_pad_length, notes } = req.body;
     if (!work_order_id || !quantity_completed) return res.status(400).json({ error: 'Work order and quantity required' });
     
     const [wos] = await pool.query('SELECT * FROM work_orders WHERE id = ?', [work_order_id]);
@@ -596,14 +596,231 @@ router.post('/receipts', authenticate, async (req, res) => {
         await conn.query("UPDATE work_orders SET status = 'completed', actual_finish_date = NOW() WHERE id = ?", [work_order_id]);
       }
 
+      // ===== SERIAL NUMBER GENERATION =====
+      // Generate individual serial numbers for each piece
+      const generatedSerials = [];
+      if (serial_prefix && quantity_completed > 0) {
+        const padLen = serial_pad_length || 4;
+        // Get or create the sequence for this prefix
+        const [seqRows] = await conn.query(
+          'SELECT next_number FROM serial_number_sequences WHERE prefix = ? FOR UPDATE',
+          [serial_prefix]);
+        let nextNum;
+        if (seqRows.length > 0) {
+          nextNum = seqRows[0].next_number;
+          await conn.query('UPDATE serial_number_sequences SET next_number = ? WHERE prefix = ?',
+            [nextNum + parseInt(quantity_completed), serial_prefix]);
+        } else {
+          nextNum = 1;
+          await conn.query('INSERT INTO serial_number_sequences (prefix, next_number, pad_length) VALUES (?, ?, ?)',
+            [serial_prefix, 1 + parseInt(quantity_completed), padLen]);
+        }
+        // Insert individual serial number records
+        for (let i = 0; i < parseInt(quantity_completed); i++) {
+          const sn = serial_prefix + String(nextNum + i).padStart(padLen, '0');
+          await conn.query(
+            `INSERT INTO serial_numbers (serial_number, item_id, work_order_id, wo_receipt_id, lot_number, location_id, status, manufactured_date, qc_status, qc_notes)
+             VALUES (?, ?, ?, ?, ?, ?, 'available', CURDATE(), 'passed', ?)`,
+            [sn, wo.item_id, work_order_id, result.insertId, lot_number || null, location_id || null, notes || null]);
+          generatedSerials.push(sn);
+        }
+      } else if (serial_number_start && serial_number_end && quantity_completed > 0) {
+        // Legacy: if start/end provided without prefix, still generate individual records
+        // Parse numeric suffix from serial_number_start
+        const match = serial_number_start.match(/^(.+?)(\d+)$/);
+        if (match) {
+          const prefix = match[1];
+          const startNum = parseInt(match[2]);
+          const padLen = match[2].length;
+          for (let i = 0; i < parseInt(quantity_completed); i++) {
+            const sn = prefix + String(startNum + i).padStart(padLen, '0');
+            await conn.query(
+              `INSERT INTO serial_numbers (serial_number, item_id, work_order_id, wo_receipt_id, lot_number, location_id, status, manufactured_date, qc_status, qc_notes)
+               VALUES (?, ?, ?, ?, ?, ?, 'available', CURDATE(), 'passed', ?)`,
+              [sn, wo.item_id, work_order_id, result.insertId, lot_number || null, location_id || null, notes || null]);
+            generatedSerials.push(sn);
+          }
+        }
+      }
+
       await conn.commit();
-      res.status(201).json({ id: result.insertId, receipt_number: receiptNumber, materials_issued: glMaterialLines.length });
+      res.status(201).json({ id: result.insertId, receipt_number: receiptNumber, materials_issued: glMaterialLines.length, serial_numbers: generatedSerials, serial_count: generatedSerials.length });
     } catch (innerError) {
       await conn.rollback();
       throw innerError;
     } finally {
       conn.release();
     }
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ SERIAL NUMBERS ============
+
+// GET all serial numbers with filters
+router.get('/serial-numbers', authenticate, async (req, res) => {
+  try {
+    const { work_order_id, item_id, sales_order_id, customer_id, shipment_id, status, search, lot_number, wo_receipt_id } = req.query;
+    let query = `SELECT sn.*, i.item_number, i.description as item_description,
+      wo.order_number as wo_number, l.name as location_name,
+      c.company_name as customer_name,
+      so.order_number as so_number
+      FROM serial_numbers sn
+      LEFT JOIN items i ON sn.item_id = i.id
+      LEFT JOIN work_orders wo ON sn.work_order_id = wo.id
+      LEFT JOIN locations l ON sn.location_id = l.id
+      LEFT JOIN customers c ON sn.customer_id = c.id
+      LEFT JOIN sales_orders so ON sn.sales_order_id = so.id
+      WHERE 1=1`;
+    const params = [];
+    if (work_order_id) { query += ' AND sn.work_order_id = ?'; params.push(work_order_id); }
+    if (item_id) { query += ' AND sn.item_id = ?'; params.push(item_id); }
+    if (sales_order_id) { query += ' AND sn.sales_order_id = ?'; params.push(sales_order_id); }
+    if (customer_id) { query += ' AND sn.customer_id = ?'; params.push(customer_id); }
+    if (shipment_id) { query += ' AND sn.shipment_id = ?'; params.push(shipment_id); }
+    if (wo_receipt_id) { query += ' AND sn.wo_receipt_id = ?'; params.push(wo_receipt_id); }
+    if (status) { query += ' AND sn.status = ?'; params.push(status); }
+    if (lot_number) { query += ' AND sn.lot_number = ?'; params.push(lot_number); }
+    if (search) { query += ' AND sn.serial_number LIKE ?'; params.push('%' + search + '%'); }
+    query += ' ORDER BY sn.id DESC LIMIT 500';
+    const [rows] = await pool.query(query, params);
+    res.json(rows);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// GET single serial number full traceability
+router.get('/serial-numbers/:serial', authenticate, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT sn.*, i.item_number, i.description as item_description,
+        wo.order_number as wo_number, wo.status as wo_status,
+        wr.receipt_number, wr.receipt_date,
+        l.name as location_name,
+        c.company_name as customer_name, c.id as customer_id,
+        so.order_number as so_number, so.id as so_id,
+        sh.shipment_number, sh.shipment_date as ship_date,
+        inv.invoice_number, inv.id as invoice_id
+      FROM serial_numbers sn
+      LEFT JOIN items i ON sn.item_id = i.id
+      LEFT JOIN work_orders wo ON sn.work_order_id = wo.id
+      LEFT JOIN wo_receipts wr ON sn.wo_receipt_id = wr.id
+      LEFT JOIN locations l ON sn.location_id = l.id
+      LEFT JOIN customers c ON sn.customer_id = c.id
+      LEFT JOIN sales_orders so ON sn.sales_order_id = so.id
+      LEFT JOIN shipments sh ON sn.shipment_id = sh.id
+      LEFT JOIN ar_invoices inv ON inv.sales_order_id = sn.sales_order_id AND inv.customer_id = sn.customer_id
+      WHERE sn.serial_number = ? OR sn.id = ?
+      LIMIT 1`,
+      [req.params.serial, req.params.serial]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Serial number not found' });
+    res.json(rows[0]);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// POST assign serial numbers to a sales order
+router.post('/serial-numbers/assign-to-order', authenticate, async (req, res) => {
+  try {
+    const { serial_ids, sales_order_id, customer_id } = req.body;
+    if (!serial_ids || !serial_ids.length || !sales_order_id) {
+      return res.status(400).json({ error: 'serial_ids array and sales_order_id required' });
+    }
+    // Get customer from SO if not provided
+    let custId = customer_id;
+    if (!custId) {
+      const [so] = await pool.query('SELECT customer_id FROM sales_orders WHERE id = ?', [sales_order_id]);
+      if (so.length) custId = so[0].customer_id;
+    }
+    const placeholders = serial_ids.map(() => '?').join(',');
+    await pool.query(
+      `UPDATE serial_numbers SET sales_order_id = ?, customer_id = ?, status = 'reserved'
+       WHERE id IN (${placeholders}) AND status = 'available'`,
+      [sales_order_id, custId, ...serial_ids]);
+    const [updated] = await pool.query(
+      `SELECT * FROM serial_numbers WHERE id IN (${placeholders})`, serial_ids);
+    res.json({ assigned: updated.length, serial_numbers: updated });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// POST assign serial numbers to a shipment (marks as sold)
+router.post('/serial-numbers/assign-to-shipment', authenticate, async (req, res) => {
+  try {
+    const { serial_ids, shipment_id, sales_order_id, customer_id } = req.body;
+    if (!serial_ids || !serial_ids.length || !shipment_id) {
+      return res.status(400).json({ error: 'serial_ids array and shipment_id required' });
+    }
+    let custId = customer_id;
+    let soId = sales_order_id;
+    if (!custId || !soId) {
+      const [sh] = await pool.query('SELECT sales_order_id FROM shipments WHERE id = ?', [shipment_id]);
+      if (sh.length && sh[0].sales_order_id) {
+        soId = soId || sh[0].sales_order_id;
+        const [so] = await pool.query('SELECT customer_id FROM sales_orders WHERE id = ?', [sh[0].sales_order_id]);
+        if (so.length) custId = custId || so[0].customer_id;
+      }
+    }
+    const placeholders = serial_ids.map(() => '?').join(',');
+    await pool.query(
+      `UPDATE serial_numbers SET shipment_id = ?, sales_order_id = COALESCE(sales_order_id, ?), customer_id = COALESCE(customer_id, ?), status = 'sold', sold_date = CURDATE()
+       WHERE id IN (${placeholders}) AND status IN ('available','reserved')`,
+      [shipment_id, soId, custId, ...serial_ids]);
+    const [updated] = await pool.query(
+      `SELECT * FROM serial_numbers WHERE id IN (${placeholders})`, serial_ids);
+    res.json({ shipped: updated.length, serial_numbers: updated });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// POST unassign serial numbers (return to available)
+router.post('/serial-numbers/unassign', authenticate, async (req, res) => {
+  try {
+    const { serial_ids } = req.body;
+    if (!serial_ids || !serial_ids.length) {
+      return res.status(400).json({ error: 'serial_ids array required' });
+    }
+    const placeholders = serial_ids.map(() => '?').join(',');
+    await pool.query(
+      `UPDATE serial_numbers SET sales_order_id = NULL, customer_id = NULL, shipment_id = NULL, status = 'available', sold_date = NULL
+       WHERE id IN (${placeholders})`,
+      serial_ids);
+    res.json({ unassigned: serial_ids.length });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// POST scrap serial numbers
+router.post('/serial-numbers/scrap', authenticate, async (req, res) => {
+  try {
+    const { serial_ids, notes } = req.body;
+    if (!serial_ids || !serial_ids.length) {
+      return res.status(400).json({ error: 'serial_ids array required' });
+    }
+    const placeholders = serial_ids.map(() => '?').join(',');
+    await pool.query(
+      `UPDATE serial_numbers SET status = 'scrapped', qc_status = 'failed', qc_notes = CONCAT(COALESCE(qc_notes,''), ' | SCRAPPED: ', ?)
+       WHERE id IN (${placeholders})`,
+      [notes || 'Scrapped', ...serial_ids]);
+    res.json({ scrapped: serial_ids.length });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// GET serial number sequences (for prefix auto-complete)
+router.get('/serial-number-sequences', authenticate, async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM serial_number_sequences ORDER BY prefix');
+    res.json(rows);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// GET serial number stats/summary
+router.get('/serial-numbers-summary', authenticate, async (req, res) => {
+  try {
+    const [stats] = await pool.query(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(status = 'available') as available,
+        SUM(status = 'reserved') as reserved,
+        SUM(status = 'sold') as sold,
+        SUM(status = 'scrapped') as scrapped,
+        SUM(status = 'in_service') as in_service
+      FROM serial_numbers`);
+    res.json(stats[0]);
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 

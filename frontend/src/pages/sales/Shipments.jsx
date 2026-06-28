@@ -1,4 +1,5 @@
 import DocumentActions from '../../components/DocumentActions';
+import SerialNumbersTab from '../../components/SerialNumbersTab';
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -156,7 +157,7 @@ function Shipments() {
               </div>
 
               <div className="erp-tabs">
-                {['Items', 'Delivery', 'Scan Verify'].map(tab => (
+                {['Items', 'Delivery', 'Scan Verify', 'Serials'].map(tab => (
                   <div key={tab} className={`erp-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>{tab}</div>
                 ))}
               </div>
@@ -209,6 +210,9 @@ function Shipments() {
                       Scan each item barcode to verify it matches the sales order before shipping. Ensures correct items are packed.
                     </div>
                   </div>
+                )}
+                {activeTab === 'Serials' && (
+                  <SerialNumbersTab shipmentId={selected?.id} showAssign={true} assignContext={{ shipment_id: selected?.id, sales_order_id: selected?.sales_order_id }} />
                 )}
 
               </div>
