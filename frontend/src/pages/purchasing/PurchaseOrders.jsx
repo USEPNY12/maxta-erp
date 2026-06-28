@@ -62,7 +62,7 @@ function PurchaseOrders() {
         vendor_id: parseInt(newPO.vendor_id), ship_to_location: newPO.ship_to_location,
         notes: newPO.notes, required_date: newPO.required_date || null, po_type: newPO.po_type,
         payment_terms: newPO.payment_terms, freight_terms: newPO.freight_terms,
-        lines: newPO.lines.filter(l => l.item_id || l.description).map(l => ({
+        lines: newPO.lines?.filter(l => l.item_id || l.description)?.map(l => ({
           item_id: l.item_id ? parseInt(l.item_id) : null, description: l.description,
           quantity: parseFloat(l.quantity) || 1, unit_price: parseFloat(l.unit_price) || 0,
           glass_type: l.glass_type, thickness: l.thickness, width: l.width ? parseFloat(l.width) : null, height: l.height ? parseFloat(l.height) : null
@@ -85,7 +85,7 @@ function PurchaseOrders() {
       freight_terms: selected.freight_terms || '',
       ship_to_location: selected.ship_to_location || '',
       notes: selected.notes || '',
-      lines: (selected.lines || []).map(l => ({
+      lines: (selected.lines || [])?.map(l => ({
         item_id: l.item_id || '',
         description: l.description || l.item_description || '',
         quantity: parseFloat(l.quantity_ordered || l.quantity || 0),
@@ -110,7 +110,7 @@ function PurchaseOrders() {
         payment_terms: editPO.payment_terms,
         freight_terms: editPO.freight_terms,
         notes: editPO.notes,
-        lines: editPO.lines.filter(l => l.item_id || l.description).map(l => ({
+        lines: editPO.lines?.filter(l => l.item_id || l.description)?.map(l => ({
           item_id: l.item_id ? parseInt(l.item_id) : null,
           description: l.description,
           quantity_ordered: parseFloat(l.quantity) || 1,
@@ -132,7 +132,7 @@ function PurchaseOrders() {
     setEditPO({ ...editPO, lines: [...editPO.lines, { item_id: '', description: '', quantity: 1, unit_price: 0, glass_type: '', thickness: '', width: '', height: '', vendor_item_number: '' }] });
   };
   const removeEditLine = (idx) => {
-    setEditPO({ ...editPO, lines: editPO.lines.filter((_, i) => i !== idx) });
+    setEditPO({ ...editPO, lines: editPO.lines?.filter((_, i) => i !== idx) });
   };
   const updateEditLine = async (idx, field, val) => {
     const lines = [...editPO.lines]; lines[idx][field] = val;
@@ -144,11 +144,11 @@ function PurchaseOrders() {
           lines[idx].vendor_item_number = res.data.vendor_item_number || '';
           lines[idx].description = res.data.vendor_description || lines[idx].description;
         } else {
-          const itm = items.find(i => i.id === parseInt(val));
+          const itm = items?.find(i => i.id === parseInt(val));
           if (itm) lines[idx].description = itm.description || '';
         }
       } catch {
-        const itm = items.find(i => i.id === parseInt(val));
+        const itm = items?.find(i => i.id === parseInt(val));
         if (itm) lines[idx].description = itm.description || '';
       }
     }
@@ -166,7 +166,7 @@ function PurchaseOrders() {
       po_type: selected.po_type || 'standard',
       payment_terms: selected.payment_terms || 'Net 30',
       freight_terms: selected.freight_terms || '',
-      lines: (selected.lines || []).map(l => ({
+      lines: (selected.lines || [])?.map(l => ({
         item_id: l.item_id || '',
         description: l.description || l.item_description || '',
         quantity: parseFloat(l.quantity_ordered || l.quantity || 0),
@@ -202,11 +202,11 @@ function PurchaseOrders() {
 
   // ===== RECEIVE =====
   const openReceiveModal = () => {
-    setReceiveLines((selected.lines || []).filter(l => {
+    setReceiveLines((selected.lines || [])?.filter(l => {
       const ordered = parseFloat(l.quantity_ordered || l.quantity || 0);
       const received = parseFloat(l.qty_received || l.quantity_received || 0);
       return ordered > received;
-    }).map(l => ({
+    })?.map(l => ({
       po_line_id: l.id, item_id: l.item_id, description: l.description || l.item_description,
       item_number: l.item_number,
       qty_ordered: parseFloat(l.quantity_ordered || l.quantity || 0),
@@ -221,7 +221,7 @@ function PurchaseOrders() {
       const res = await api.post(`/api/purchasing/purchase-orders/${selected.id}/receive`, {
         location_id: parseInt(receiveLocation) || null,
         packing_slip_number: '',
-        lines: receiveLines.filter(l => l.qty_to_receive > 0).map(l => ({
+        lines: receiveLines?.filter(l => l.qty_to_receive > 0)?.map(l => ({
           po_line_id: l.po_line_id, item_id: l.item_id,
           quantity_received: parseFloat(l.qty_to_receive),
           location_id: parseInt(l.location_id) || parseInt(receiveLocation) || null,
@@ -247,7 +247,7 @@ function PurchaseOrders() {
   // ===== NEW PO HELPERS =====
   const resetNewPO = () => setNewPO({ vendor_id: '', ship_to_location: '', notes: '', required_date: '', po_type: 'standard', payment_terms: 'Net 30', freight_terms: '', lines: [{ item_id: '', description: '', quantity: 1, unit_price: 0, glass_type: '', thickness: '', width: '', height: '', vendor_item_number: '' }] });
   const addLine = () => setNewPO({ ...newPO, lines: [...newPO.lines, { item_id: '', description: '', quantity: 1, unit_price: 0, glass_type: '', thickness: '', width: '', height: '', vendor_item_number: '' }] });
-  const removeLine = (idx) => setNewPO({ ...newPO, lines: newPO.lines.filter((_, i) => i !== idx) });
+  const removeLine = (idx) => setNewPO({ ...newPO, lines: newPO.lines?.filter((_, i) => i !== idx) });
   const updateLine = async (idx, field, val) => {
     const lines = [...newPO.lines]; lines[idx][field] = val;
     if (field === 'item_id' && val && newPO.vendor_id) {
@@ -258,11 +258,11 @@ function PurchaseOrders() {
           lines[idx].vendor_item_number = res.data.vendor_item_number || '';
           lines[idx].description = res.data.vendor_description || lines[idx].description;
         } else {
-          const itm = items.find(i => i.id === parseInt(val));
+          const itm = items?.find(i => i.id === parseInt(val));
           if (itm) lines[idx].description = itm.description || '';
         }
       } catch {
-        const itm = items.find(i => i.id === parseInt(val));
+        const itm = items?.find(i => i.id === parseInt(val));
         if (itm) lines[idx].description = itm.description || '';
       }
     }
@@ -277,7 +277,7 @@ function PurchaseOrders() {
     fetchVendorItems(vendorId);
   };
 
-  const getTotal = (lines) => lines.reduce((sum, l) => sum + (parseFloat(l.quantity) || 0) * (parseFloat(l.unit_price) || 0), 0);
+  const getTotal = (lines) => lines?.reduce((sum, l) => sum + (parseFloat(l.quantity) || 0) * (parseFloat(l.unit_price) || 0), 0);
   const fmt = (d) => d ? d.split('T')[0] : '-';
   const canEdit = (status) => !['closed', 'cancelled', 'received'].includes(status);
 
@@ -285,7 +285,7 @@ function PurchaseOrders() {
   const printPO = () => {
     const w = window.open('', '_blank');
     const lines = selected.lines || [];
-    const total = lines.reduce((s, l) => s + (parseFloat(l.quantity_ordered || l.quantity || 0) * parseFloat(l.unit_cost || l.unit_price || 0)), 0);
+    const total = lines?.reduce((s, l) => s + (parseFloat(l.quantity_ordered || l.quantity || 0) * parseFloat(l.unit_cost || l.unit_price || 0)), 0);
     w.document.write(`<!DOCTYPE html><html><head><title>PO ${selected.po_number}</title>
       <style>body{font-family:Arial,sans-serif;padding:40px;font-size:12px}
       h1{font-size:18px;margin-bottom:5px}
@@ -304,7 +304,7 @@ function PurchaseOrders() {
         <div class="info-box"><strong>Ship To:</strong><br>${selected.ship_to_location || 'Main Warehouse'}<br><br><strong>Type:</strong> ${selected.po_type || 'standard'}<br><strong>Status:</strong> ${(selected.status || '').toUpperCase()}</div>
       </div>
       <table><thead><tr><th>#</th><th>Item</th><th>Description</th><th>Glass Spec</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>
-      ${(lines || []).map((l, i) => `<tr><td>${i + 1}</td><td>${l.item_number || '-'}</td><td>${l.description || l.item_description || ''}</td><td>${l.glass_type ? l.glass_type + ' ' + (l.thickness || '') + ' ' + (l.width ? l.width + 'x' + l.height + '"' : '') : '-'}</td><td style="text-align:right">${parseFloat(l.quantity_ordered || l.quantity || 0)}</td><td style="text-align:right">$${parseFloat(l.unit_cost || l.unit_price || 0).toFixed(2)}</td><td style="text-align:right">$${(parseFloat(l.quantity_ordered || l.quantity || 0) * parseFloat(l.unit_cost || l.unit_price || 0)).toFixed(2)}</td></tr>`).join('')}
+      ${(lines || [])?.map((l, i) => `<tr><td>${i + 1}</td><td>${l.item_number || '-'}</td><td>${l.description || l.item_description || ''}</td><td>${l.glass_type ? l.glass_type + ' ' + (l.thickness || '') + ' ' + (l.width ? l.width + 'x' + l.height + '"' : '') : '-'}</td><td style="text-align:right">${parseFloat(l.quantity_ordered || l.quantity || 0)}</td><td style="text-align:right">$${parseFloat(l.unit_cost || l.unit_price || 0).toFixed(2)}</td><td style="text-align:right">$${(parseFloat(l.quantity_ordered || l.quantity || 0) * parseFloat(l.unit_cost || l.unit_price || 0)).toFixed(2)}</td></tr>`).join('')}
       <tr class="total-row"><td colspan="6" style="text-align:right">TOTAL:</td><td style="text-align:right">$${total.toFixed(2)}</td></tr>
       </tbody></table>
       ${selected.notes ? `<div style="margin-top:15px;padding:10px;border:1px solid #ccc"><strong>Notes:</strong> ${selected.notes}</div>` : ''}
@@ -321,9 +321,9 @@ function PurchaseOrders() {
   const getItemOptions = (vendorId) => {
     if (vendorItems.length > 0) {
       // Show vendor-assigned items first, then all items
-      const vendorItemIds = vendorItems.map(vi => vi.item_id);
-      const assigned = items.filter(i => vendorItemIds.includes(i.id));
-      const others = items.filter(i => !vendorItemIds.includes(i.id));
+      const vendorItemIds = vendorItems?.map(vi => vi.item_id);
+      const assigned = items?.filter(i => vendorItemIds?.includes(i.id));
+      const others = items?.filter(i => !vendorItemIds?.includes(i.id));
       return { assigned, others };
     }
     return { assigned: [], others: items };
@@ -336,15 +336,15 @@ function PurchaseOrders() {
         <option value="">Select Item...</option>
         {assigned.length > 0 && (
           <optgroup label="--- Vendor Items (Preferred) ---">
-            {assigned.map(i => {
-              const vi = vendorItems.find(v => v.item_id === i.id);
+            {assigned?.map(i => {
+              const vi = vendorItems?.find(v => v.item_id === i.id);
               return <option key={i.id} value={i.id}>{i.item_number} - {i.description} {vi?.vendor_item_number ? `[${vi.vendor_item_number}]` : ''}</option>;
             })}
           </optgroup>
         )}
         {others.length > 0 && (
           <optgroup label="--- All Items ---">
-            {others.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
+            {others?.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
           </optgroup>
         )}
       </select>
@@ -371,7 +371,7 @@ function PurchaseOrders() {
           <thead><tr><th>PO Number</th><th>Date</th><th>Vendor</th><th>Type</th><th>Lines</th><th>Total</th><th>Received</th><th>Status</th></tr></thead>
           <tbody>
             {orders.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No purchase orders found</td></tr> :
-            (orders || []).map(po => (
+            (orders || [])?.map(po => (
               <tr key={po.id} className="cursor-pointer hover:bg-blue-50" onClick={() => openDetail(po)}>
                 <td className="font-bold text-blue-700">{po.po_number}</td>
                 <td>{fmt(po.order_date || po.po_date)}</td>
@@ -437,7 +437,7 @@ function PurchaseOrders() {
                   <div className="grid grid-cols-3 gap-3">
                     <div className="erp-form-group"><label className="erp-form-label text-xs">Vendor</label>
                       <select className="erp-form-select text-xs" value={editPO.vendor_id} onChange={e => handleVendorChange(e.target.value, true)}>
-                        <option value="">Select...</option>{(vendors || []).map(v => <option key={v.id} value={v.id}>{v.company_name || v.name}</option>)}
+                        <option value="">Select...</option>{(vendors || [])?.map(v => <option key={v.id} value={v.id}>{v.company_name || v.name}</option>)}
                       </select>
                     </div>
                     <div className="erp-form-group"><label className="erp-form-label text-xs">Required Date</label>
@@ -468,7 +468,7 @@ function PurchaseOrders() {
                 {activeTab === 'Lines' && !editMode && (
                   <table className="erp-grid"><thead><tr><th>#</th><th>Item</th><th>Vendor Item#</th><th>Description</th><th>Glass Spec</th><th>Qty Ord</th><th>Qty Rec</th><th>Unit Price</th><th>Total</th><th>Status</th></tr></thead>
                     <tbody>{(selected.lines || []).length === 0 ? <tr><td colSpan="10" className="text-center p-4 text-gray-500">No lines</td></tr> :
-                    (selected.lines || []).map((l, i) => {
+                    (selected.lines || [])?.map((l, i) => {
                       const qtyOrd = parseFloat(l.quantity_ordered || l.quantity || 0);
                       const qtyRec = parseFloat(l.qty_received || l.quantity_received || 0);
                       const price = parseFloat(l.unit_cost || l.unit_price || 0);
@@ -495,7 +495,7 @@ function PurchaseOrders() {
                       <span className="text-xs text-gray-500">Total: <strong>${getTotal(editPO.lines).toFixed(2)}</strong></span>
                     </div>
                     <table className="erp-grid text-xs"><thead><tr><th>Item</th><th>Vendor#</th><th>Description</th><th>Glass</th><th>Thick</th><th>W×H</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead>
-                      <tbody>{editPO.lines.map((line, idx) => (
+                      <tbody>{editPO.lines?.map((line, idx) => (
                         <tr key={idx}>
                           <td>{renderItemSelect(line, idx, updateEditLine)}</td>
                           <td><input className="erp-form-input w-20 text-xs bg-gray-50" value={line.vendor_item_number || ''} readOnly title="Auto-filled from vendor setup" /></td>
@@ -514,14 +514,14 @@ function PurchaseOrders() {
                 {activeTab === 'Receipts' && (
                   <table className="erp-grid"><thead><tr><th>Receipt No.</th><th>Date</th><th>Packing Slip</th><th>Location</th><th>Received By</th><th>Lines</th></tr></thead>
                     <tbody>{(selected.receipts || []).length === 0 ? <tr><td colSpan="6" className="text-center p-4 text-gray-500">No receipts yet</td></tr> :
-                    (selected.receipts || []).map((r, i) => (
+                    (selected.receipts || [])?.map((r, i) => (
                       <tr key={i}><td className="font-bold text-green-700">{r.receipt_number}</td><td>{fmt(r.receipt_date)}</td><td>{r.packing_slip_number || '-'}</td><td>{r.location_name || '-'}</td><td>{r.received_by_name || '-'}</td><td>{r.line_count || '-'}</td></tr>
                     ))}</tbody></table>
                 )}
                 {activeTab === 'AP Invoices' && (
                   <table className="erp-grid"><thead><tr><th>Invoice No.</th><th>Date</th><th>Total</th><th>Balance</th><th>Status</th></tr></thead>
                     <tbody>{(selected.invoices || []).length === 0 ? <tr><td colSpan="5" className="text-center p-4 text-gray-500">No AP invoices yet</td></tr> :
-                    (selected.invoices || []).map((inv, i) => (
+                    (selected.invoices || [])?.map((inv, i) => (
                       <tr key={i}><td className="font-bold">{inv.invoice_number}</td><td>{fmt(inv.invoice_date)}</td><td className="text-right">${parseFloat(inv.total || 0).toFixed(2)}</td><td className="text-right">${parseFloat(inv.balance || 0).toFixed(2)}</td><td><span className={`erp-status erp-status-${inv.status}`}>{inv.status}</span></td></tr>
                     ))}</tbody></table>
                 )}
@@ -530,7 +530,7 @@ function PurchaseOrders() {
                     <p className="text-sm text-gray-600 mb-3">Barcode labels are generated automatically when materials are received.</p>
                     {(selected.receipts || []).length > 0 && (
                       <div className="space-y-2">
-                        {(selected.receipts || []).map((r, i) => (
+                        {(selected.receipts || [])?.map((r, i) => (
                           <div key={i} className="flex items-center justify-between bg-gray-50 p-2 rounded border">
                             <span className="text-xs font-bold">{r.receipt_number} - {fmt(r.receipt_date)}</span>
                             <button className="erp-btn text-xs" onClick={() => toast.info('Labels printed to default printer')}>Print Labels</button>
@@ -546,7 +546,7 @@ function PurchaseOrders() {
                     {selected.approved_at && <div className="flex items-center gap-2"><span className="w-2 h-2 bg-green-500 rounded-full"></span>Approved: {fmt(selected.approved_at)} by User #{selected.approved_by}</div>}
                     {selected.sent_at && <div className="flex items-center gap-2"><span className="w-2 h-2 bg-purple-500 rounded-full"></span>Sent to Vendor: {fmt(selected.sent_at)}</div>}
                     {selected.closed_at && <div className="flex items-center gap-2"><span className="w-2 h-2 bg-gray-500 rounded-full"></span>Closed: {fmt(selected.closed_at)} by User #{selected.closed_by}</div>}
-                    {(selected.receipts || []).map((r, i) => (
+                    {(selected.receipts || [])?.map((r, i) => (
                       <div key={i} className="flex items-center gap-2"><span className="w-2 h-2 bg-green-500 rounded-full"></span>Receipt: {r.receipt_number} on {fmt(r.receipt_date)}</div>
                     ))}
                   </div>
@@ -587,12 +587,12 @@ function PurchaseOrders() {
               <div className="mb-3">
                 <label className="erp-form-label text-xs">Receive to Location:</label>
                 <select className="erp-form-select w-48" value={receiveLocation} onChange={e => setReceiveLocation(e.target.value)}>
-                  <option value="">Select Location...</option>{(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  <option value="">Select Location...</option>{(locations || [])?.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
               </div>
               <table className="erp-grid text-xs">
                 <thead><tr><th>Item</th><th>Description</th><th>Ordered</th><th>Already Rec</th><th>Qty to Receive</th><th>Location</th><th>Lot#</th><th>Vendor Lot</th></tr></thead>
-                <tbody>{receiveLines.map((l, i) => (
+                <tbody>{receiveLines?.map((l, i) => (
                   <tr key={i}>
                     <td className="font-mono">{l.item_number || '-'}</td>
                     <td>{l.description}</td>
@@ -600,7 +600,7 @@ function PurchaseOrders() {
                     <td className="text-right text-green-700">{l.qty_received}</td>
                     <td><input className="erp-form-input w-16 text-right" type="number" value={l.qty_to_receive} onChange={e => { const rl = [...receiveLines]; rl[i].qty_to_receive = parseFloat(e.target.value) || 0; setReceiveLines(rl); }} /></td>
                     <td><select className="erp-form-select w-28" value={l.location_id} onChange={e => { const rl = [...receiveLines]; rl[i].location_id = e.target.value; setReceiveLines(rl); }}>
-                      <option value="">Default</option>{(locations || []).map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+                      <option value="">Default</option>{(locations || [])?.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
                     </select></td>
                     <td><input className="erp-form-input w-24" value={l.lot_number} onChange={e => { const rl = [...receiveLines]; rl[i].lot_number = e.target.value; setReceiveLines(rl); }} placeholder="Auto" /></td>
                     <td><input className="erp-form-input w-24" value={l.vendor_lot} onChange={e => { const rl = [...receiveLines]; rl[i].vendor_lot = e.target.value; setReceiveLines(rl); }} /></td>
@@ -609,7 +609,7 @@ function PurchaseOrders() {
               </table>
             </div>
             <div className="erp-modal-footer">
-              <button className="erp-btn erp-btn-primary" onClick={handleReceive} disabled={receiveLines.every(l => l.qty_to_receive <= 0)}>Receive</button>
+              <button className="erp-btn erp-btn-primary" onClick={handleReceive} disabled={receiveLines?.every(l => l.qty_to_receive <= 0)}>Receive</button>
               <button className="erp-btn" onClick={() => setShowReceive(false)}>Cancel</button>
             </div>
           </div>
@@ -625,7 +625,7 @@ function PurchaseOrders() {
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="erp-form-group"><label className="erp-form-label">Vendor *</label>
                   <select className="erp-form-select" value={newPO.vendor_id} onChange={e => handleVendorChange(e.target.value, false)}>
-                    <option value="">Select Vendor...</option>{(vendors || []).map(v => <option key={v.id} value={v.id}>{v.company_name || v.name}</option>)}
+                    <option value="">Select Vendor...</option>{(vendors || [])?.map(v => <option key={v.id} value={v.id}>{v.company_name || v.name}</option>)}
                   </select>
                   {vendorItems.length > 0 && <div className="text-[10px] text-green-600 mt-1">{vendorItems.length} items assigned to this vendor</div>}
                 </div>
@@ -647,7 +647,7 @@ function PurchaseOrders() {
                 <span className="text-xs text-gray-500 ml-auto">Total: <strong className="text-blue-700">${getTotal(newPO.lines).toFixed(2)}</strong></span>
               </div>
               <table className="erp-grid text-xs"><thead><tr><th>Item</th><th>Vendor#</th><th>Description</th><th>Glass</th><th>Thick</th><th>W×H</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead>
-                <tbody>{newPO.lines.map((line, idx) => (
+                <tbody>{newPO.lines?.map((line, idx) => (
                   <tr key={idx}>
                     <td>{renderItemSelect(line, idx, updateLine)}</td>
                     <td><input className="erp-form-input w-20 text-xs bg-gray-50" value={line.vendor_item_number || ''} readOnly title="Auto-filled from vendor setup" /></td>

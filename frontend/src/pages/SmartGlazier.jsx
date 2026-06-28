@@ -171,7 +171,7 @@ export default function SmartGlazier() {
                 </thead>
                 <tbody>
                   {orders.length === 0 && <tr><td colSpan="7" className="p-8 text-center text-gray-400">No Smart Glazier orders synced yet. Configure your API key and click "Sync Now" to pull orders.</td></tr>}
-                  {(orders || []).map(o => (
+                  {(orders || [])?.map(o => (
                     <tr key={o.id} className="hover:bg-blue-50 cursor-pointer" onClick={() => viewOrderDetail(o)}>
                       <td className="p-2 border font-medium">{o.sg_order_number || o.sg_order_id}</td>
                       <td className="p-2 border">{o.sg_customer_name}</td>
@@ -207,7 +207,7 @@ export default function SmartGlazier() {
                 {orderLines.length > 0 && (
                   <div className="mt-3">
                     <h4 className="font-medium text-xs mb-1">Line Items:</h4>
-                    {orderLines.map((l, i) => (
+                    {orderLines?.map((l, i) => (
                       <div key={i} className="border rounded p-2 mb-1 text-xs bg-gray-50">
                         <p className="font-medium">{l.product_type}</p>
                         <p>{l.width}" × {l.height}" × {l.thickness}mm</p>
@@ -238,7 +238,7 @@ export default function SmartGlazier() {
             </thead>
             <tbody>
               {syncLog.length === 0 && <tr><td colSpan="7" className="p-8 text-center text-gray-400">No sync history yet</td></tr>}
-              {syncLog.map(l => (
+              {syncLog?.map(l => (
                 <tr key={l.id} className="hover:bg-gray-50">
                   <td className="p-2 border">{new Date(l.started_at).toLocaleString()}</td>
                   <td className="p-2 border capitalize">{l.sync_type}</td>

@@ -32,12 +32,12 @@ const routeLabels = {
 function Breadcrumb() {
   const location = useLocation();
   const navigate = useNavigate();
-  const segments = location.pathname.split('/').filter(Boolean);
+  const segments = location.pathname.split('/')?.filter(Boolean);
 
   if (segments.length === 0) return null;
 
-  const crumbs = segments.map((seg, idx) => {
-    const path = '/' + segments.slice(0, idx + 1).join('/');
+  const crumbs = segments?.map((seg, idx) => {
+    const path = '/' + segments?.slice(0, idx + 1).join('/');
     const label = routeLabels[seg] || seg.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     const isLast = idx === segments.length - 1;
     return { path, label, isLast };
@@ -48,7 +48,7 @@ function Breadcrumb() {
       <span className="breadcrumb-item" onClick={() => navigate('/')}>
         <FaHome size={11} />
       </span>
-      {crumbs.map((crumb, i) => (
+      {crumbs?.map((crumb, i) => (
         <React.Fragment key={i}>
           <FaChevronRight size={8} className="breadcrumb-separator" />
           <span

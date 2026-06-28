@@ -54,7 +54,7 @@ function Quotes() {
       try {
         const fabRes = await api.get(`/api/sales/quotes/${quote.id}/fabrication`);
         const grouped = {};
-        (fabRes.data || []).forEach(fc => {
+        (fabRes.data || [])?.forEach(fc => {
           if (!grouped[fc.quote_line_id]) grouped[fc.quote_line_id] = [];
           grouped[fc.quote_line_id].push(fc);
         });
@@ -67,7 +67,7 @@ function Quotes() {
 
   const handleCreateQuote = async () => {
     try {
-      const payload = { ...newQuote, customer_id: parseInt(newQuote.customer_id), lines: newQuote.lines.filter(l => l.description) };
+      const payload = { ...newQuote, customer_id: parseInt(newQuote.customer_id), lines: newQuote.lines?.filter(l => l.description) };
       const res = await api.post('/api/sales/quotes', payload);
       const quoteId = res.data.id;
       for (let idx = 0; idx < payload.lines.length; idx++) {
@@ -116,7 +116,7 @@ function Quotes() {
   };
 
   const addLine = () => setNewQuote({ ...newQuote, lines: [...newQuote.lines, { item_id: '', description: '', quantity: 1, unit_price: 0, width_inches: '', height_inches: '', product_type: '', glass_type: '', thickness: '', edge_type: '', interlayer: '', has_holes: false, holes_count: 0, manufacturing_notes: '', fabrication: [] }] });
-  const removeLine = (idx) => setNewQuote({ ...newQuote, lines: newQuote.lines.filter((_, i) => i !== idx) });
+  const removeLine = (idx) => setNewQuote({ ...newQuote, lines: newQuote.lines?.filter((_, i) => i !== idx) });
   const updateLine = (idx, field, value) => {
     const lines = [...newQuote.lines];
     lines[idx] = { ...lines[idx], [field]: value };
@@ -133,7 +133,7 @@ function Quotes() {
     const fab = [...lines[lineIdx].fabrication];
     fab[fabIdx] = { ...fab[fabIdx], [field]: value };
     if (field === 'fabrication_charge_id' && value) {
-      const charge = fabCharges.find(c => c.id === parseInt(value));
+      const charge = fabCharges?.find(c => c.id === parseInt(value));
       if (charge) fab[fabIdx].rate = charge.default_rate;
     }
     lines[lineIdx].fabrication = fab;
@@ -141,12 +141,12 @@ function Quotes() {
   };
   const removeFab = (lineIdx, fabIdx) => {
     const lines = [...newQuote.lines];
-    lines[lineIdx].fabrication = lines[lineIdx].fabrication.filter((_, i) => i !== fabIdx);
+    lines[lineIdx].fabrication = lines[lineIdx].fabrication?.filter((_, i) => i !== fabIdx);
     setNewQuote({ ...newQuote, lines });
   };
-  const getFabTotal = (lineIdx) => (newQuote.lines[lineIdx].fabrication || []).reduce((sum, f) => sum + ((parseFloat(f.quantity) || 0) * (parseFloat(f.rate) || 0)), 0);
+  const getFabTotal = (lineIdx) => (newQuote.lines[lineIdx].fabrication || [])?.reduce((sum, f) => sum + ((parseFloat(f.quantity) || 0) * (parseFloat(f.rate) || 0)), 0);
   const getLineTotalWithFab = (line, lineIdx) => ((parseFloat(line.quantity) || 0) * (parseFloat(line.unit_price) || 0)) + getFabTotal(lineIdx);
-  const getGrandTotal = () => newQuote.lines.reduce((sum, l, idx) => sum + getLineTotalWithFab(l, idx), 0);
+  const getGrandTotal = () => newQuote.lines?.reduce((sum, l, idx) => sum + getLineTotalWithFab(l, idx), 0);
 
   const lookupPrice = async (idx, itemId) => {
     if (!itemId) return;
@@ -154,7 +154,7 @@ function Quotes() {
       const res = await api.get('/api/sales/pricing/lookup', { params: { item_id: itemId, customer_id: newQuote.customer_id, quantity: newQuote.lines[idx]?.quantity || 1 } });
       if (res.data.price) {
         const lines = [...newQuote.lines];
-        const item = items.find(i => i.id === parseInt(itemId));
+        const item = items?.find(i => i.id === parseInt(itemId));
         lines[idx] = { ...lines[idx], unit_price: res.data.price, description: lines[idx].description || item?.description || '' };
         setNewQuote({ ...newQuote, lines });
       }
@@ -173,7 +173,7 @@ function Quotes() {
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
   const formatSqft = (w, h) => w && h ? ((parseFloat(w) * parseFloat(h)) / 144).toFixed(2) : '-';
 
-  const fabChargesByCategory = fabCharges.reduce((acc, fc) => {
+  const fabChargesByCategory = fabCharges?.reduce((acc, fc) => {
     if (!acc[fc.category]) acc[fc.category] = [];
     acc[fc.category].push(fc);
     return acc;
@@ -195,7 +195,7 @@ function Quotes() {
         <table className="erp-grid">
           <thead><tr><th>Quote#</th><th>Date</th><th>Customer</th><th>Project</th><th>Lines</th><th>Total</th><th>Expires</th><th>Status</th></tr></thead>
           <tbody>
-            {quotes.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No quotes found</td></tr> : (quotes || []).map(q => (
+            {quotes.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No quotes found</td></tr> : (quotes || [])?.map(q => (
               <tr key={q.id} className="cursor-pointer" onClick={() => openDetail(q)}>
                 <td className="text-blue-700 font-bold">{q.quote_number}</td>
                 <td>{formatDate(q.quote_date)}</td>
@@ -232,7 +232,7 @@ function Quotes() {
                   <table className="erp-grid text-xs">
                     <thead><tr><th>#</th><th>Description</th><th>Glass</th><th>Thickness</th><th>Size</th><th>Sq Ft</th><th>Edge</th><th>Qty</th><th>Unit $</th><th>Line Total</th></tr></thead>
                     <tbody>
-                      {(selected.lines || []).map((l, i) => (
+                      {(selected.lines || [])?.map((l, i) => (
                         <tr key={i}>
                           <td>{i + 1}</td><td>{l.description}</td><td>{l.glass_type || '-'}</td><td>{l.thickness || '-'}</td>
                           <td>{l.width_inches && l.height_inches ? `${l.width_inches}" x ${l.height_inches}"` : '-'}</td>
@@ -248,7 +248,7 @@ function Quotes() {
                 )}
                 {activeTab === 'Fabrication' && (
                   <div>
-                    {(selected.lines || []).map((line, lineIdx) => {
+                    {(selected.lines || [])?.map((line, lineIdx) => {
                       const lineFabs = quoteFabCharges[line.id] || [];
                       if (lineFabs.length === 0) return null;
                       return (
@@ -257,7 +257,7 @@ function Quotes() {
                           <table className="erp-grid text-xs" style={{ width: '100%' }}>
                             <thead><tr><th>Category</th><th>Charge</th><th>Qty</th><th>Rate</th><th>Total</th><th>Notes</th></tr></thead>
                             <tbody>
-                              {lineFabs.map((fc, fi) => (
+                              {lineFabs?.map((fc, fi) => (
                                 <tr key={fi}>
                                   <td><span style={{ background: getCategoryColor(fc.category), color: '#fff', padding: '1px 6px', borderRadius: 3, fontSize: 10 }}>{fc.category}</span></td>
                                   <td>{fc.name}</td><td className="text-right">{fc.quantity}</td>
@@ -266,7 +266,7 @@ function Quotes() {
                                   <td className="text-gray-500">{fc.notes || '-'}</td>
                                 </tr>
                               ))}
-                              <tr className="bg-gray-50 font-bold"><td colSpan="4" className="text-right">Fabrication Total:</td><td className="text-right">${lineFabs.reduce((s, f) => s + parseFloat(f.total), 0).toFixed(2)}</td><td></td></tr>
+                              <tr className="bg-gray-50 font-bold"><td colSpan="4" className="text-right">Fabrication Total:</td><td className="text-right">${lineFabs?.reduce((s, f) => s + parseFloat(f.total), 0).toFixed(2)}</td><td></td></tr>
                             </tbody>
                           </table>
                         </div>
@@ -302,7 +302,7 @@ function Quotes() {
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="erp-form-group"><label className="erp-form-label">Customer*:</label>
                   <select className="erp-form-select" value={newQuote.customer_id} onChange={e => setNewQuote({ ...newQuote, customer_id: e.target.value })}>
-                    <option value="">Select Customer...</option>{(customers || []).map(c => <option key={c.id} value={c.id}>{c.company_name || c.name}</option>)}
+                    <option value="">Select Customer...</option>{(customers || [])?.map(c => <option key={c.id} value={c.id}>{c.company_name || c.name}</option>)}
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Project Name:</label><input className="erp-form-input" value={newQuote.project_name} onChange={e => setNewQuote({ ...newQuote, project_name: e.target.value })} placeholder="e.g. Office Tower Level 3" /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Expiry Date:</label><input className="erp-form-input" type="date" value={newQuote.expiry_date} onChange={e => setNewQuote({ ...newQuote, expiry_date: e.target.value })} /></div>
@@ -314,7 +314,7 @@ function Quotes() {
                 <div className="erp-form-group"><label className="erp-form-label">Notes:</label><input className="erp-form-input" value={newQuote.notes} onChange={e => setNewQuote({ ...newQuote, notes: e.target.value })} /></div>
               </div>
 
-              {newQuote.lines.map((line, idx) => (
+              {newQuote.lines?.map((line, idx) => (
                 <div key={idx} style={{ border: '1px solid #e2e8f0', borderRadius: 8, marginBottom: 12, padding: 12, background: '#fafbfc' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: '#1e40af' }}>Line {idx + 1}</span>
@@ -323,21 +323,21 @@ function Quotes() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8, marginBottom: 8 }}>
                     <div><label className="text-[10px] text-gray-500">Item</label>
                       <select className="erp-form-select w-full text-xs" value={line.item_id || ''} onChange={e => { updateLine(idx, 'item_id', e.target.value); lookupPrice(idx, e.target.value); }}>
-                        <option value="">Custom...</option>{(items || []).map(it => <option key={it.id} value={it.id}>{it.item_number}</option>)}
+                        <option value="">Custom...</option>{(items || [])?.map(it => <option key={it.id} value={it.id}>{it.item_number}</option>)}
                       </select></div>
                     <div style={{ gridColumn: 'span 2' }}><label className="text-[10px] text-gray-500">Description*</label>
                       <input className="erp-form-input w-full text-xs" value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} placeholder="Panel description" /></div>
                     <div><label className="text-[10px] text-gray-500">Product Type</label>
                       <select className="erp-form-select w-full text-xs" value={line.product_type} onChange={e => updateLine(idx, 'product_type', e.target.value)}>
-                        <option value="">Select...</option>{productTypes.map(pt => <option key={pt} value={pt}>{pt.replace(/_/g, ' ')}</option>)}
+                        <option value="">Select...</option>{productTypes?.map(pt => <option key={pt} value={pt}>{pt.replace(/_/g, ' ')}</option>)}
                       </select></div>
                     <div><label className="text-[10px] text-gray-500">Glass Type</label>
                       <select className="erp-form-select w-full text-xs" value={line.glass_type} onChange={e => updateLine(idx, 'glass_type', e.target.value)}>
-                        <option value="">Select...</option>{glassTypes.map(gt => <option key={gt} value={gt}>{gt}</option>)}
+                        <option value="">Select...</option>{glassTypes?.map(gt => <option key={gt} value={gt}>{gt}</option>)}
                       </select></div>
                     <div><label className="text-[10px] text-gray-500">Thickness</label>
                       <select className="erp-form-select w-full text-xs" value={line.thickness} onChange={e => updateLine(idx, 'thickness', e.target.value)}>
-                        <option value="">-</option>{thicknesses.map(t => <option key={t} value={t}>{t}</option>)}
+                        <option value="">-</option>{thicknesses?.map(t => <option key={t} value={t}>{t}</option>)}
                       </select></div>
                     <div><label className="text-[10px] text-gray-500">Width"</label>
                       <input className="erp-form-input w-full text-xs text-right" type="number" value={line.width_inches} onChange={e => updateLine(idx, 'width_inches', e.target.value)} /></div>
@@ -345,7 +345,7 @@ function Quotes() {
                       <input className="erp-form-input w-full text-xs text-right" type="number" value={line.height_inches} onChange={e => updateLine(idx, 'height_inches', e.target.value)} /></div>
                     <div><label className="text-[10px] text-gray-500">Edge</label>
                       <select className="erp-form-select w-full text-xs" value={line.edge_type} onChange={e => updateLine(idx, 'edge_type', e.target.value)}>
-                        <option value="">-</option>{edgeTypes.map(et => <option key={et} value={et}>{et}</option>)}
+                        <option value="">-</option>{edgeTypes?.map(et => <option key={et} value={et}>{et}</option>)}
                       </select></div>
                     <div><label className="text-[10px] text-gray-500">Qty</label>
                       <input className="erp-form-input w-full text-xs text-right" type="number" value={line.quantity} onChange={e => updateLine(idx, 'quantity', e.target.value)} /></div>
@@ -369,14 +369,14 @@ function Quotes() {
                           <th style={{ width: 30 }}></th>
                         </tr></thead>
                         <tbody>
-                          {line.fabrication.map((fab, fabIdx) => (
+                          {line.fabrication?.map((fab, fabIdx) => (
                             <tr key={fabIdx} style={{ borderBottom: '1px solid #e0e7ff' }}>
                               <td style={{ padding: '3px 6px' }}>
                                 <select className="erp-form-select text-xs" style={{ width: '100%', fontSize: 11 }} value={fab.fabrication_charge_id} onChange={e => updateFab(idx, fabIdx, 'fabrication_charge_id', e.target.value)}>
                                   <option value="">Select charge...</option>
-                                  {Object.entries(fabChargesByCategory).map(([cat, charges]) => (
+                                  {Object.entries(fabChargesByCategory)?.map(([cat, charges]) => (
                                     <optgroup key={cat} label={cat}>
-                                      {charges.map(c => <option key={c.id} value={c.id}>{c.name} (${c.default_rate}{getPricingMethodLabel(c.pricing_method)})</option>)}
+                                      {charges?.map(c => <option key={c.id} value={c.id}>{c.name} (${c.default_rate}{getPricingMethodLabel(c.pricing_method)})</option>)}
                                     </optgroup>
                                   ))}
                                 </select>
@@ -410,7 +410,7 @@ function Quotes() {
               </div>
             </div>
             <div className="erp-modal-footer">
-              <button className="erp-btn erp-btn-primary" onClick={handleCreateQuote} disabled={!newQuote.customer_id || !newQuote.lines.some(l => l.description)}>Save Quote</button>
+              <button className="erp-btn erp-btn-primary" onClick={handleCreateQuote} disabled={!newQuote.customer_id || !newQuote.lines?.some(l => l.description)}>Save Quote</button>
               <button className="erp-btn" onClick={() => setShowNew(false)}>Cancel</button>
             </div>
           </div>

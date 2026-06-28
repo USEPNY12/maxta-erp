@@ -28,11 +28,11 @@ function JournalVouchers() {
   };
 
   const addLine = () => { setForm({ ...form, lines: [...form.lines, { gl_account_id: '', description: '', debit: '', credit: '' }] }); };
-  const removeLine = (i) => { setForm({ ...form, lines: form.lines.filter((_, idx) => idx !== i) }); };
+  const removeLine = (i) => { setForm({ ...form, lines: form.lines?.filter((_, idx) => idx !== i) }); };
   const updateLine = (i, field, val) => { const lines = [...form.lines]; lines[i][field] = val; setForm({ ...form, lines }); };
 
-  const totalDebits = form.lines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0);
-  const totalCredits = form.lines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0);
+  const totalDebits = form.lines?.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0);
+  const totalCredits = form.lines?.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0);
   const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01 && totalDebits > 0;
 
   const handleSave = async () => {
@@ -40,7 +40,7 @@ function JournalVouchers() {
     try {
       await api.post('/api/accounting/journal-vouchers', {
         voucher_date: form.voucher_date, reference: form.reference, memo: form.memo,
-        lines: form.lines.filter(l => l.gl_account_id).map(l => ({ gl_account_id: parseInt(l.gl_account_id), description: l.description || l.memo, debit: parseFloat(l.debit) || 0, credit: parseFloat(l.credit) || 0 }))
+        lines: form.lines?.filter(l => l.gl_account_id)?.map(l => ({ gl_account_id: parseInt(l.gl_account_id), description: l.description || l.memo, debit: parseFloat(l.debit) || 0, credit: parseFloat(l.credit) || 0 }))
       });
       toast.success('Journal Voucher created'); setShowNew(false); fetchVouchers();
       setForm({ voucher_date: new Date().toISOString().split('T')[0], reference: '', memo: '', lines: [{ gl_account_id: '', description: '', debit: '', credit: '' }] });
@@ -69,7 +69,7 @@ function JournalVouchers() {
         <table className="erp-grid">
           <thead><tr><th>JV Number</th><th>Date</th><th>Reference</th><th>Memo</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
-            {vouchers.length === 0 ? <tr><td colSpan="7" className="text-center p-4 text-gray-500">No journal vouchers</td></tr> : vouchers.map(jv => (
+            {vouchers.length === 0 ? <tr><td colSpan="7" className="text-center p-4 text-gray-500">No journal vouchers</td></tr> : vouchers?.map(jv => (
               <tr key={jv.id} className="cursor-pointer" onClick={() => openDetail(jv)}>
                 <td className="text-blue-700 font-bold">{jv.voucher_number}</td>
                 <td>{jv.voucher_date?.split('T')[0]}</td>
@@ -100,10 +100,10 @@ function JournalVouchers() {
               <table className="erp-grid">
                 <thead><tr><th>Account#</th><th>Account Name</th><th>Description</th><th>Debit</th><th>Credit</th></tr></thead>
                 <tbody>
-                  {(selected.lines || []).map((l, i) => (
+                  {(selected.lines || [])?.map((l, i) => (
                     <tr key={i}><td className="font-mono">{l.account_number}</td><td>{l.account_name}</td><td>{l.description || l.memo || '-'}</td><td className="text-right">{parseFloat(l.debit || 0) > 0 ? `$${parseFloat(l.debit).toFixed(2)}` : ''}</td><td className="text-right">{parseFloat(l.credit || 0) > 0 ? `$${parseFloat(l.credit).toFixed(2)}` : ''}</td></tr>
                   ))}
-                  <tr className="font-bold bg-gray-100"><td colSpan="3" className="text-right">Totals:</td><td className="text-right">${(selected.lines || []).reduce((s, l) => s + (parseFloat(l.debit) || 0), 0).toFixed(2)}</td><td className="text-right">${(selected.lines || []).reduce((s, l) => s + (parseFloat(l.credit) || 0), 0).toFixed(2)}</td></tr>
+                  <tr className="font-bold bg-gray-100"><td colSpan="3" className="text-right">Totals:</td><td className="text-right">${(selected.lines || [])?.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0).toFixed(2)}</td><td className="text-right">${(selected.lines || [])?.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0).toFixed(2)}</td></tr>
                 </tbody>
               </table>
             </div>
@@ -129,10 +129,10 @@ function JournalVouchers() {
               <table className="erp-grid">
                 <thead><tr><th>Account</th><th>Description</th><th>Debit</th><th>Credit</th><th></th></tr></thead>
                 <tbody>
-                  {form.lines.map((line, i) => (
+                  {form.lines?.map((line, i) => (
                     <tr key={i}>
                       <td><select className="erp-form-select w-full" value={line.gl_account_id} onChange={e => updateLine(i, 'gl_account_id', e.target.value)}>
-                        <option value="">Select Account...</option>{glAccounts.map(a => <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>)}
+                        <option value="">Select Account...</option>{glAccounts?.map(a => <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>)}
                       </select></td>
                       <td><input className="erp-form-input w-full" value={line.description} onChange={e => updateLine(i, 'description', e.target.value)} /></td>
                       <td><input className="erp-form-input w-24 text-right" type="number" step="0.01" value={line.debit} onChange={e => updateLine(i, 'debit', e.target.value)} /></td>

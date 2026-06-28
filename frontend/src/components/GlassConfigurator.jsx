@@ -93,7 +93,7 @@ export default function GlassConfigurator({ onPriceCalculated, initialValues = {
   const removeCutout = (index) => {
     setConfig(prev => ({
       ...prev,
-      cutouts: prev.cutouts.filter((_, i) => i !== index)
+      cutouts: prev.cutouts?.filter((_, i) => i !== index)
     }));
   };
 
@@ -107,7 +107,7 @@ export default function GlassConfigurator({ onPriceCalculated, initialValues = {
   const removeNotch = (index) => {
     setConfig(prev => ({
       ...prev,
-      notches: prev.notches.filter((_, i) => i !== index)
+      notches: prev.notches?.filter((_, i) => i !== index)
     }));
   };
 
@@ -149,7 +149,7 @@ export default function GlassConfigurator({ onPriceCalculated, initialValues = {
               <label>Shape</label>
               <select value={config.shape} onChange={e => updateConfig('shape', e.target.value)}>
                 {options?.shapes?.map(s => (
-                  <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  <option key={s} value={s}>{s.charAt(0).toUpperCase() + s?.slice(1)}</option>
                 ))}
               </select>
             </div>
@@ -250,7 +250,7 @@ export default function GlassConfigurator({ onPriceCalculated, initialValues = {
               <span>Cutouts</span>
               <button type="button" className="cpq-add-btn" onClick={addCutout}>+ Add Cutout</button>
             </div>
-            {config.cutouts.map((cutout, i) => (
+            {config.cutouts?.map((cutout, i) => (
               <div key={i} className="cpq-row cpq-inline-item">
                 <select value={cutout.type} onChange={e => {
                   const updated = [...config.cutouts];
@@ -276,7 +276,7 @@ export default function GlassConfigurator({ onPriceCalculated, initialValues = {
               <span>Notches</span>
               <button type="button" className="cpq-add-btn" onClick={addNotch}>+ Add Notch</button>
             </div>
-            {config.notches.map((notch, i) => (
+            {config.notches?.map((notch, i) => (
               <div key={i} className="cpq-row cpq-inline-item">
                 <select value={notch.type} onChange={e => {
                   const updated = [...config.notches];
@@ -313,7 +313,7 @@ export default function GlassConfigurator({ onPriceCalculated, initialValues = {
               <span className="cpq-result-value">${result.glass_cost.toFixed(2)}</span>
             </div>
 
-            {result.fabrication_charges.map((fc, i) => (
+            {result.fabrication_charges?.map((fc, i) => (
               <div key={i} className="cpq-result-item cpq-result-fab">
                 <span className="cpq-result-label">{fc.name}</span>
                 <span className="cpq-result-value">${fc.cost.toFixed(2)}</span>

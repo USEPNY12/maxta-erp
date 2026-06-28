@@ -65,7 +65,7 @@ export function DocumentInfoGrid({ left, right }) {
 export function DocumentTotals({ items }) {
   return (
     <div className="totals" style={{ textAlign: 'right', marginTop: 16 }}>
-      {(items || []).map((item, idx) => (
+      {(items || [])?.map((item, idx) => (
         <div
           key={idx}
           className={item.isTotal ? 'grand-total' : ''}

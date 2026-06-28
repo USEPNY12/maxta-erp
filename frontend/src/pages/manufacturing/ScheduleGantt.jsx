@@ -86,7 +86,7 @@ export default function ScheduleGantt() {
       <div className="bg-white rounded-lg shadow p-4">
         <h2 className="text-sm font-semibold mb-2 text-gray-600">Capacity Utilization</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-          {capacityView.map(wc => (
+          {capacityView?.map(wc => (
             <div key={wc.id} className="text-center">
               <div className="text-xs font-medium mb-1">{wc.code}</div>
               <div className="w-full bg-gray-200 rounded-full h-4 relative">
@@ -124,7 +124,7 @@ export default function ScheduleGantt() {
 
             {/* Gantt Rows */}
             {ganttData?.workCenters?.map(wc => {
-              const wcBlocks = ganttData.blocks.filter(b => b.work_center_id === wc.id);
+              const wcBlocks = ganttData.blocks?.filter(b => b.work_center_id === wc.id);
               return (
                 <div key={wc.id} className="flex border-b hover:bg-gray-50">
                   <div className="w-40 flex-shrink-0 px-3 py-3 text-sm font-medium border-r flex items-center gap-1">
@@ -141,7 +141,7 @@ export default function ScheduleGantt() {
                       return null;
                     })}
                     {/* Blocks */}
-                    {wcBlocks.map(block => {
+                    {wcBlocks?.map(block => {
                       const pos = getBlockPosition(block);
                       const typeColors = { production: '#3b82f6', setup: '#f59e0b', maintenance: '#ef4444', reserved: '#8b5cf6', break: '#6b7280' };
                       return (

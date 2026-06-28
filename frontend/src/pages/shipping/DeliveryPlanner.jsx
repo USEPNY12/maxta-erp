@@ -99,7 +99,7 @@ export default function DeliveryPlanner() {
             Routes ({routes.length})
           </div>
           <div style={{ maxHeight: '600px', overflow: 'auto' }}>
-            {routes.map(route => (
+            {routes?.map(route => (
               <div key={route.id} onClick={() => loadRouteDetail(route.id)}
                 style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: selectedRoute?.id === route.id ? '#eff6ff' : 'white' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -179,8 +179,8 @@ export default function DeliveryPlanner() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Route Name *</label><input value={newRoute.route_name} onChange={e => setNewRoute({...newRoute, route_name: e.target.value})} placeholder="e.g. Houston Metro - Monday" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }} /></div>
               <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Date *</label><input type="date" value={newRoute.route_date} onChange={e => setNewRoute({...newRoute, route_date: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }} /></div>
-              <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Driver</label><select value={newRoute.driver_id} onChange={e => setNewRoute({...newRoute, driver_id: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }}><option value="">Select Driver</option>{drivers.map(d => <option key={d.id} value={d.id}>{d.employee_name}</option>)}</select></div>
-              <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Vehicle</label><select value={newRoute.vehicle_id} onChange={e => setNewRoute({...newRoute, vehicle_id: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }}><option value="">Select Vehicle</option>{vehicles.map(v => <option key={v.id} value={v.id}>{v.vehicle_number} - {v.make} {v.model}</option>)}</select></div>
+              <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Driver</label><select value={newRoute.driver_id} onChange={e => setNewRoute({...newRoute, driver_id: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }}><option value="">Select Driver</option>{drivers?.map(d => <option key={d.id} value={d.id}>{d.employee_name}</option>)}</select></div>
+              <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Vehicle</label><select value={newRoute.vehicle_id} onChange={e => setNewRoute({...newRoute, vehicle_id: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }}><option value="">Select Vehicle</option>{vehicles?.map(v => <option key={v.id} value={v.id}>{v.vehicle_number} - {v.make} {v.model}</option>)}</select></div>
               <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Notes</label><textarea value={newRoute.notes} onChange={e => setNewRoute({...newRoute, notes: e.target.value})} rows={2} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }} /></div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
@@ -197,7 +197,7 @@ export default function DeliveryPlanner() {
           <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '480px', maxHeight: '90vh', overflow: 'auto' }}>
             <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px' }}>Add Delivery Stop</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Customer *</label><select value={newStop.customer_id} onChange={e => setNewStop({...newStop, customer_id: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }}><option value="">Select Customer</option>{(customers || []).map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}</select></div>
+              <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Customer *</label><select value={newStop.customer_id} onChange={e => setNewStop({...newStop, customer_id: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }}><option value="">Select Customer</option>{(customers || [])?.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}</select></div>
               <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Delivery Address *</label><input value={newStop.delivery_address} onChange={e => setNewStop({...newStop, delivery_address: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }} /></div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 100px', gap: '8px' }}>
                 <div><label style={{ fontSize: '13px', fontWeight: '500' }}>City</label><input value={newStop.city} onChange={e => setNewStop({...newStop, city: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }} /></div>

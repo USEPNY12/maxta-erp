@@ -22,7 +22,7 @@ export default function Lamination() {
       </div>
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex space-x-4 overflow-x-auto">
-          {tabs.map(t => (
+          {tabs?.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 ${tab === t.id ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
               {t.label}
@@ -152,7 +152,7 @@ function RollsTab() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {(rolls || []).map(roll => (
+            {(rolls || [])?.map(roll => (
               <tr key={roll.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm font-medium">{roll.roll_number}</td>
                 <td className="px-4 py-3 text-sm">{roll.material_type}</td>
@@ -297,7 +297,7 @@ function BOMBuilderTab() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {bomData.bom_lines.map(line => (
+                {bomData.bom_lines?.map(line => (
                   <tr key={line.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm">{line.sequence}</td>
                     <td className="px-4 py-3"><span className={`px-2 py-1 rounded-full text-xs font-medium ${typeColors[line.component_type] || typeColors.other}`}>{line.component_type}</span></td>
@@ -330,7 +330,7 @@ function BOMBuilderTab() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {bomData.child_work_orders.map(cwo => (
+                  {bomData.child_work_orders?.map(cwo => (
                     <tr key={cwo.id} className="hover:bg-gray-50">
                       <td className="px-4 py-2 text-sm font-medium">{cwo.order_number}</td>
                       <td className="px-4 py-2"><span className={`px-2 py-1 rounded-full text-xs font-medium ${cwo.wo_category === 'glass_component' ? 'bg-blue-100 text-blue-800' : cwo.wo_category === 'interlayer_component' ? 'bg-green-100 text-green-800' : 'bg-gray-100'}`}>{cwo.wo_category}</span></td>
@@ -366,7 +366,7 @@ function BOMBuilderTab() {
                 <label className="text-xs font-medium text-gray-600">Item *</label>
                 <select className="w-full border rounded px-3 py-2 text-sm" value={lineForm.component_item_id} onChange={e => setLineForm({...lineForm, component_item_id: e.target.value})}>
                   <option value="">Select item...</option>
-                  {(items || []).map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
+                  {(items || [])?.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
                 </select>
               </div>
               <div><label className="text-xs font-medium text-gray-600">Quantity</label><input type="number" step="0.01" className="w-full border rounded px-3 py-2 text-sm" value={lineForm.quantity_per} onChange={e => setLineForm({...lineForm, quantity_per: e.target.value})} /></div>
@@ -405,7 +405,7 @@ function InterlayerOptimizerTab() {
   }, []);
 
   const toggleWO = (id) => {
-    setSelectedWOs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    setSelectedWOs(prev => prev?.includes(id) ? prev?.filter(x => x !== id) : [...prev, id]);
   };
 
   const generatePlan = async () => {
@@ -445,7 +445,7 @@ function InterlayerOptimizerTab() {
                 <label className="text-xs font-medium text-gray-600">Select Roll</label>
                 <select className="border rounded px-3 py-2 text-sm" value={selectedRoll} onChange={e => setSelectedRoll(e.target.value)}>
                   <option value="">Choose roll...</option>
-                  {(rolls || []).map(r => <option key={r.id} value={r.id}>{r.roll_number} ({r.material_type} {r.thickness_mm}mm, {r.width_mm}mm wide, {r.current_length_m}m left)</option>)}
+                  {(rolls || [])?.map(r => <option key={r.id} value={r.id}>{r.roll_number} ({r.material_type} {r.thickness_mm}mm, {r.width_mm}mm wide, {r.current_length_m}m left)</option>)}
                 </select>
               </div>
               <button onClick={generatePlan} className="bg-green-600 text-white px-4 py-2 rounded text-sm" disabled={!selectedRoll || selectedWOs.length === 0}>
@@ -458,7 +458,7 @@ function InterlayerOptimizerTab() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"><input type="checkbox" onChange={e => setSelectedWOs(e.target.checked ? (queue || []).map(q => q.id) : [])} /></th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"><input type="checkbox" onChange={e => setSelectedWOs(e.target.checked ? (queue || [])?.map(q => q.id) : [])} /></th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">WO #</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Parent WO</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Width × Height</th>
@@ -468,9 +468,9 @@ function InterlayerOptimizerTab() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {(queue || []).map(wo => (
-                  <tr key={wo.id} className={`hover:bg-gray-50 ${selectedWOs.includes(wo.id) ? 'bg-blue-50' : ''}`}>
-                    <td className="px-4 py-3"><input type="checkbox" checked={selectedWOs.includes(wo.id)} onChange={() => toggleWO(wo.id)} /></td>
+                {(queue || [])?.map(wo => (
+                  <tr key={wo.id} className={`hover:bg-gray-50 ${selectedWOs?.includes(wo.id) ? 'bg-blue-50' : ''}`}>
+                    <td className="px-4 py-3"><input type="checkbox" checked={selectedWOs?.includes(wo.id)} onChange={() => toggleWO(wo.id)} /></td>
                     <td className="px-4 py-3 text-sm font-medium">{wo.order_number}</td>
                     <td className="px-4 py-3 text-sm">{wo.parent_wo_number || '-'}</td>
                     <td className="px-4 py-3 text-sm">{wo.width} × {wo.height}mm</td>
@@ -501,7 +501,7 @@ function InterlayerOptimizerTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {(plans || []).map(plan => (
+              {(plans || [])?.map(plan => (
                 <tr key={plan.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium">{plan.plan_number}</td>
                   <td className="px-4 py-3 text-sm">{plan.roll_number}</td>
@@ -553,7 +553,7 @@ function CleanRoomTab() {
 
   const recordLayup = async () => {
     try {
-      const activeSession = sessions.find(s => s.status === 'active');
+      const activeSession = sessions?.find(s => s.status === 'active');
       await api.post('/api/lamination/layups', { ...layupForm, cleanroom_session_id: activeSession?.id });
       alert('Layup recorded!');
       setShowNewLayup(false);
@@ -566,7 +566,7 @@ function CleanRoomTab() {
     api.get('/api/lamination/layups').then(r => setLayups(Array.isArray(r.data) ? r.data : []));
   };
 
-  const activeSession = sessions.find(s => s.status === 'active');
+  const activeSession = sessions?.find(s => s.status === 'active');
 
   return (
     <div className="space-y-4">
@@ -606,7 +606,7 @@ function CleanRoomTab() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {(layups || []).map(l => (
+            {(layups || [])?.map(l => (
               <tr key={l.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm font-medium">{l.order_number}</td>
                 <td className="px-4 py-3 text-sm">{l.roll_number} ({l.material_type})</td>
@@ -653,7 +653,7 @@ function CleanRoomTab() {
               <div><label className="text-xs font-medium text-gray-600">Interlayer Roll *</label>
                 <select className="w-full border rounded px-3 py-2 text-sm" value={layupForm.roll_id} onChange={e => setLayupForm({...layupForm, roll_id: e.target.value})}>
                   <option value="">Select roll (scan barcode)...</option>
-                  {(rolls || []).map(r => <option key={r.id} value={r.id}>{r.roll_number} - {r.material_type} {r.thickness_mm}mm (Lot: {r.lot_number})</option>)}
+                  {(rolls || [])?.map(r => <option key={r.id} value={r.id}>{r.roll_number} - {r.material_type} {r.thickness_mm}mm (Lot: {r.lot_number})</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -761,7 +761,7 @@ function AutoclaveTab() {
         <div className="bg-white border rounded-lg overflow-hidden">
           <div className="px-4 py-3 border-b bg-gray-50"><h4 className="font-medium text-sm">Batches</h4></div>
           <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
-            {(batches || []).map(batch => (
+            {(batches || [])?.map(batch => (
               <div key={batch.id} onClick={() => loadBatchDetail(batch.id)} className={`px-4 py-3 cursor-pointer hover:bg-gray-50 ${selectedBatch === batch.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`}>
                 <div className="flex items-center justify-between">
                   <div>
@@ -809,7 +809,7 @@ function AutoclaveTab() {
             </div>
           ) : (
             <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
-              {(readyLayups || []).map(l => (
+              {(readyLayups || [])?.map(l => (
                 <div key={l.id} className="px-4 py-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium">{l.order_number}</p>
@@ -838,7 +838,7 @@ function AutoclaveTab() {
               <div><label className="text-xs font-medium text-gray-600">Recipe *</label>
                 <select className="w-full border rounded px-3 py-2 text-sm" value={createForm.recipe_id} onChange={e => setCreateForm({...createForm, recipe_id: e.target.value})}>
                   <option value="">Select recipe...</option>
-                  {recipes.filter(r => r.interlayer_type === createForm.interlayer_type).map(r => <option key={r.id} value={r.id}>{r.recipe_name} ({r.total_cycle_hours}h, {r.target_temperature_c}°C, {r.max_pressure_bar}bar)</option>)}
+                  {recipes?.filter(r => r.interlayer_type === createForm.interlayer_type)?.map(r => <option key={r.id} value={r.id}>{r.recipe_name} ({r.total_cycle_hours}h, {r.target_temperature_c}°C, {r.max_pressure_bar}bar)</option>)}
                 </select>
               </div>
               <div><label className="text-xs font-medium text-gray-600">Notes</label><input className="w-full border rounded px-3 py-2 text-sm" value={createForm.notes} onChange={e => setCreateForm({...createForm, notes: e.target.value})} /></div>
@@ -878,7 +878,7 @@ function RecipesTab() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {(recipes || []).map(recipe => (
+        {(recipes || [])?.map(recipe => (
           <div key={recipe.id} className="bg-white border rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-semibold">{recipe.recipe_name}</h4>

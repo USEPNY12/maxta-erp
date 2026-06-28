@@ -89,19 +89,19 @@ function Layout() {
     return location.pathname.startsWith(path);
   };
 
-  const visibleNavItems = navItems.filter(item => {
+  const visibleNavItems = navItems?.filter(item => {
     if (!item.module) return true;
     if (!permissions) return true;
     return permissions[item.module] && permissions[item.module].length > 0;
   });
 
   const groupedItems = {
-    main: visibleNavItems.filter(i => i.group === 'main'),
-    production: visibleNavItems.filter(i => i.group === 'production'),
-    shipping: visibleNavItems.filter(i => i.group === 'shipping'),
-    finance: visibleNavItems.filter(i => i.group === 'finance'),
-    tools: visibleNavItems.filter(i => i.group === 'tools'),
-    admin: visibleNavItems.filter(i => i.group === 'admin'),
+    main: visibleNavItems?.filter(i => i.group === 'main'),
+    production: visibleNavItems?.filter(i => i.group === 'production'),
+    shipping: visibleNavItems?.filter(i => i.group === 'shipping'),
+    finance: visibleNavItems?.filter(i => i.group === 'finance'),
+    tools: visibleNavItems?.filter(i => i.group === 'tools'),
+    admin: visibleNavItems?.filter(i => i.group === 'admin'),
   };
 
   return (
@@ -143,7 +143,7 @@ function Layout() {
       {/* Desktop Navigation Bar */}
       {!isMobile && (
         <nav className="erp-navbar" role="navigation" aria-label="Module navigation">
-          {visibleNavItems.map(item => (
+          {visibleNavItems?.map(item => (
             <div
               key={item.path}
               className={`erp-nav-item ${isActive(item.path) ? 'active' : ''}`}
@@ -175,7 +175,7 @@ function Layout() {
 
             <div className="mobile-menu-section">
               <div className="mobile-menu-section-title">Core Modules</div>
-              {groupedItems.main.map(item => (
+              {groupedItems.main?.map(item => (
                 <div
                   key={item.path}
                   className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
@@ -189,7 +189,7 @@ function Layout() {
 
             <div className="mobile-menu-section">
               <div className="mobile-menu-section-title">Production</div>
-              {groupedItems.production.map(item => (
+              {groupedItems.production?.map(item => (
                 <div
                   key={item.path}
                   className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
@@ -203,7 +203,7 @@ function Layout() {
 
             <div className="mobile-menu-section">
               <div className="mobile-menu-section-title">Tools & Reports</div>
-              {groupedItems.tools.map(item => (
+              {groupedItems.tools?.map(item => (
                 <div
                   key={item.path}
                   className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
@@ -218,7 +218,7 @@ function Layout() {
             {groupedItems.finance.length > 0 && (
               <div className="mobile-menu-section">
                 <div className="mobile-menu-section-title">Finance</div>
-                {groupedItems.finance.map(item => (
+                {groupedItems.finance?.map(item => (
                   <div
                     key={item.path}
                     className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
@@ -234,7 +234,7 @@ function Layout() {
             {groupedItems.admin.length > 0 && (
               <div className="mobile-menu-section">
                 <div className="mobile-menu-section-title">Administration</div>
-                {groupedItems.admin.map(item => (
+                {groupedItems.admin?.map(item => (
                   <div
                     key={item.path}
                     className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
@@ -268,7 +268,7 @@ function Layout() {
       {/* Mobile Bottom Navigation */}
       {isMobile && (
         <nav className="mobile-bottom-nav" role="navigation" aria-label="Quick access navigation">
-          {mobileBottomNav.map(item => (
+          {mobileBottomNav?.map(item => (
             <div
               key={item.path}
               className={`bottom-nav-item ${isActive(item.path) ? 'active' : ''}`}

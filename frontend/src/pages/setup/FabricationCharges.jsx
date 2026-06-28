@@ -61,10 +61,10 @@ export default function FabricationCharges() {
     } catch (e) { alert('Error: ' + e.message); }
   };
 
-  const filtered = filterCategory === 'All' ? charges : charges.filter(c => c.category === filterCategory);
+  const filtered = filterCategory === 'All' ? charges : charges?.filter(c => c.category === filterCategory);
 
   const getPricingLabel = (method) => {
-    const m = PRICING_METHODS.find(p => p.value === method);
+    const m = PRICING_METHODS?.find(p => p.value === method);
     return m ? m.label : method;
   };
 
@@ -83,7 +83,7 @@ export default function FabricationCharges() {
       {/* Category Filter */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
         <button onClick={() => setFilterCategory('All')} className={`erp-btn ${filterCategory === 'All' ? 'erp-btn-primary' : ''}`} style={{ fontSize: 12, padding: '4px 10px' }}>All</button>
-        {CATEGORIES.map(cat => (
+        {CATEGORIES?.map(cat => (
           <button key={cat} onClick={() => setFilterCategory(cat)} className={`erp-btn ${filterCategory === cat ? 'erp-btn-primary' : ''}`} style={{ fontSize: 12, padding: '4px 10px' }}>{cat}</button>
         ))}
       </div>
@@ -103,7 +103,7 @@ export default function FabricationCharges() {
             </tr>
           </thead>
           <tbody>
-            {(filtered || []).map(item => (
+            {(filtered || [])?.map(item => (
               <tr key={item.id} style={{ opacity: item.is_active ? 1 : 0.5 }}>
                 <td><span style={{ background: getCategoryColor(item.category), color: '#fff', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 }}>{item.category}</span></td>
                 <td style={{ fontWeight: 500 }}>{item.name}</td>
@@ -137,7 +137,7 @@ export default function FabricationCharges() {
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Category</label>
                 <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="erp-input" style={{ width: '100%' }}>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  {CATEGORIES?.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
@@ -152,7 +152,7 @@ export default function FabricationCharges() {
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>Pricing Method</label>
                   <select value={form.pricing_method} onChange={e => setForm({ ...form, pricing_method: e.target.value })} className="erp-input" style={{ width: '100%' }}>
-                    {PRICING_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                    {PRICING_METHODS?.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                   </select>
                 </div>
                 <div>

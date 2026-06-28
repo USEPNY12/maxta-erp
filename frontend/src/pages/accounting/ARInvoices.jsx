@@ -59,7 +59,7 @@ function ARInvoices() {
             <tr><th>Invoice #</th><th>Customer</th><th>Date</th><th>Due Date</th><th>Total</th><th>Balance</th><th>Status</th></tr>
           </thead>
           <tbody>
-            {(invoices || []).map(inv => (
+            {(invoices || [])?.map(inv => (
               <tr key={inv.id}>
                 <td className="text-blue-700 font-bold">{inv.invoice_number}</td>
                 <td>{inv.customer_name}</td>
@@ -84,7 +84,7 @@ function ARInvoices() {
                   <div className="erp-form-group"><label className="erp-form-label">Customer:</label>
                     <select className="erp-form-select" value={form.customer_id} onChange={e => setForm({...form, customer_id: e.target.value})}>
                       <option value="">Select Customer...</option>
-                      {(customers || []).map(c => <option key={c.id} value={c.id}>{c.customer_no} - {c.company_name}</option>)}
+                      {(customers || [])?.map(c => <option key={c.id} value={c.id}>{c.customer_no} - {c.company_name}</option>)}
                     </select>
                   </div>
                   <div className="erp-form-group"><label className="erp-form-label">Invoice Date:</label><input type="date" className="erp-form-input" value={form.invoice_date} onChange={e => setForm({...form, invoice_date: e.target.value})} /></div>

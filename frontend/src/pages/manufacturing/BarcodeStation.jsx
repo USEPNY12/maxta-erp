@@ -98,7 +98,7 @@ export default function BarcodeStation() {
             <label className="text-sm font-medium text-gray-700">Current Station</label>
             <select value={workCenterId} onChange={e => { setWorkCenterId(e.target.value); }} className="w-full mt-1 border rounded px-3 py-2 text-sm">
               <option value="">-- Select Work Center --</option>
-              {workCenters.map(wc => <option key={wc.id} value={wc.id}>{wc.code} - {wc.name}</option>)}
+              {workCenters?.map(wc => <option key={wc.id} value={wc.id}>{wc.code} - {wc.name}</option>)}
             </select>
           </div>
 
@@ -106,7 +106,7 @@ export default function BarcodeStation() {
           <div className="bg-white rounded-lg shadow p-4">
             <label className="text-sm font-medium text-gray-700 mb-2 block">Scan Action</label>
             <div className="grid grid-cols-2 gap-2">
-              {Object.entries(scanTypeConfig).map(([key, cfg]) => (
+              {Object.entries(scanTypeConfig)?.map(([key, cfg]) => (
                 <button
                   key={key}
                   onClick={() => setScanType(key)}
@@ -196,7 +196,7 @@ export default function BarcodeStation() {
                 <div className="mt-3">
                   <h3 className="font-semibold text-sm mb-1">Recent Scans</h3>
                   <div className="space-y-1 max-h-32 overflow-y-auto">
-                    {woStatus.recent_scans.map(scan => (
+                    {woStatus.recent_scans?.map(scan => (
                       <div key={scan.id} className="flex justify-between text-xs border-b py-1">
                         <span className="font-medium">{scan.scan_type}</span>
                         <span className="text-gray-400">{new Date(scan.scanned_at).toLocaleString()}</span>
@@ -229,7 +229,7 @@ export default function BarcodeStation() {
                   </tr>
                 </thead>
                 <tbody>
-                  {scanHistory.map(scan => (
+                  {scanHistory?.map(scan => (
                     <tr key={scan.id} className="border-t">
                       <td className="px-2 py-1">{new Date(scan.scanned_at).toLocaleTimeString()}</td>
                       <td className="px-2 py-1 font-mono">{scan.barcode}</td>

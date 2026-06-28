@@ -11,7 +11,7 @@ export default function MachineUtilization() {
   const [showDowntimeForm, setShowDowntimeForm] = useState(false);
   const [workCenters, setWorkCenters] = useState([]);
   const [logForm, setLogForm] = useState({ work_center_id: '', log_date: new Date().toISOString().split('T')[0], shift: 'day', available_hours: 8, productive_hours: 0, setup_hours: 0, idle_hours: 0, downtime_hours: 0, total_pieces_produced: 0, total_sqft_produced: 0, scrap_pieces: 0 });
-  const [dtForm, setDtForm] = useState({ work_center_id: '', reason_code: 'breakdown', reason_detail: '', severity: 'medium', downtime_start: new Date().toISOString().slice(0, 16) });
+  const [dtForm, setDtForm] = useState({ work_center_id: '', reason_code: 'breakdown', reason_detail: '', severity: 'medium', downtime_start: new Date().toISOString()?.slice(0, 16) });
 
   useEffect(() => {
     fetchAll();
@@ -85,7 +85,7 @@ export default function MachineUtilization() {
       {/* OEE Summary Tab */}
       {tab === 'oee' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {summary.map(wc => (
+          {summary?.map(wc => (
             <div key={wc.id} className="bg-white rounded-lg shadow p-4">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold">{wc.code} - {wc.name}</h3>
@@ -126,7 +126,7 @@ export default function MachineUtilization() {
               </tr>
             </thead>
             <tbody>
-              {downtime.map(dt => (
+              {downtime?.map(dt => (
                 <tr key={dt.id} className="border-t hover:bg-gray-50">
                   <td className="px-3 py-2 font-medium">{dt.work_center_code}</td>
                   <td className="px-3 py-2"><span className="bg-gray-100 px-2 py-0.5 rounded text-xs">{dt.reason_code}</span></td>
@@ -151,8 +151,8 @@ export default function MachineUtilization() {
         <div className="bg-white rounded-lg shadow p-4">
           <h2 className="font-semibold mb-3">Downtime Pareto (Last 30 Days)</h2>
           <div className="space-y-2">
-            {paretoData.map((item, i) => {
-              const maxMinutes = Math.max(...paretoData.map(p => p.total_minutes || 0), 1);
+            {paretoData?.map((item, i) => {
+              const maxMinutes = Math.max(...paretoData?.map(p => p.total_minutes || 0), 1);
               const pct = ((item.total_minutes || 0) / maxMinutes) * 100;
               return (
                 <div key={i} className="flex items-center gap-3">
@@ -188,7 +188,7 @@ export default function MachineUtilization() {
               </tr>
             </thead>
             <tbody>
-              {logs.map(log => (
+              {logs?.map(log => (
                 <tr key={log.id} className="border-t">
                   <td className="px-3 py-2">{new Date(log.log_date).toLocaleDateString()}</td>
                   <td className="px-3 py-2 font-medium">{log.work_center_code}</td>
@@ -214,7 +214,7 @@ export default function MachineUtilization() {
                 <label className="text-xs font-medium">Work Center</label>
                 <select value={logForm.work_center_id} onChange={e => setLogForm(f => ({ ...f, work_center_id: e.target.value }))} className="w-full border rounded px-2 py-1 text-sm" required>
                   <option value="">Select...</option>
-                  {workCenters.map(wc => <option key={wc.id} value={wc.id}>{wc.code} - {wc.name}</option>)}
+                  {workCenters?.map(wc => <option key={wc.id} value={wc.id}>{wc.code} - {wc.name}</option>)}
                 </select>
               </div>
               <div>
@@ -270,7 +270,7 @@ export default function MachineUtilization() {
                 <label className="text-xs font-medium">Work Center</label>
                 <select value={dtForm.work_center_id} onChange={e => setDtForm(f => ({ ...f, work_center_id: e.target.value }))} className="w-full border rounded px-2 py-1 text-sm" required>
                   <option value="">Select...</option>
-                  {workCenters.map(wc => <option key={wc.id} value={wc.id}>{wc.code} - {wc.name}</option>)}
+                  {workCenters?.map(wc => <option key={wc.id} value={wc.id}>{wc.code} - {wc.name}</option>)}
                 </select>
               </div>
               <div>

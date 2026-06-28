@@ -75,7 +75,7 @@ function ChartWidget({ widget, data, onDrillDown }) {
 
   const chartData = {
     labels: data.labels,
-    datasets: data.datasets.map((ds, i) => ({
+    datasets: data.datasets?.map((ds, i) => ({
       ...ds,
       backgroundColor: isDoughnut ? ['#10b981','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4'] : isLine ? `${color}20` : `${color}cc`,
       borderColor: isLine ? color : undefined,
@@ -104,7 +104,7 @@ function ListWidget({ widget, data, onDrillDown }) {
         <span style={{ background: '#ef4444', color: '#fff', borderRadius: '10px', padding: '1px 8px', fontSize: '11px' }}>{data.length}</span>
       </div>
       <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-        {data.slice(0, 8).map((item, i) => (
+        {data?.slice(0, 8)?.map((item, i) => (
           <div key={i} style={{ padding: '6px 0', borderBottom: '1px solid #f3f4f6', fontSize: '12px', display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ color: '#374151' }}>{item.item_number || item.po_number || item.shipment_number || item.invoice_number || item.description || `Item ${i+1}`}</span>
             <span style={{ color: '#6b7280' }}>
@@ -131,7 +131,7 @@ function TableWidget({ widget, data }) {
           </tr>
         </thead>
         <tbody>
-          {data.slice(0, 8).map((row, i) => (
+          {data?.slice(0, 8)?.map((row, i) => (
             <tr key={i} style={{ borderBottom: '1px solid #f9fafb' }}>
               <td style={{ padding: '4px', color: '#1f2937' }}>{row.company_name}</td>
               <td style={{ padding: '4px', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>{formatCurrency(parseFloat(row.mtd_revenue))}</td>
@@ -158,15 +158,15 @@ function DrillDownModal({ widget, data, onClose }) {
           <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                {Object.keys(drilldown[0]).map(k => (
+                {Object.keys(drilldown[0])?.map(k => (
                   <th key={k} style={{ textAlign: 'left', padding: '8px', color: '#6b7280', textTransform: 'capitalize' }}>{k.replace(/_/g, ' ')}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {drilldown.map((row, i) => (
+              {drilldown?.map((row, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  {Object.values(row).map((v, j) => (
+                  {Object.values(row)?.map((v, j) => (
                     <td key={j} style={{ padding: '8px', color: '#1f2937' }}>{typeof v === 'number' && v > 100 ? formatCurrency(v) : String(v ?? '')}</td>
                   ))}
                 </tr>
@@ -201,7 +201,7 @@ function PromoBanner({ promotions, onDismiss, onAction }) {
   if (!promotions || !promotions.length) return null;
   return (
     <div style={{ marginBottom: '16px' }}>
-      {promotions.filter(p => p.display_type === 'banner').map(promo => (
+      {promotions?.filter(p => p.display_type === 'banner')?.map(promo => (
         <div key={promo.id} style={{ background: promo.bg_color || '#3b82f6', color: '#fff', padding: '10px 16px', borderRadius: '8px', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
             <FaBullhorn size={16} />
@@ -244,7 +244,8 @@ export default function ExecutiveDashboard() {
         api.get('/api/dashboard-exec/config'),
         api.get('/api/dashboard-exec/promotions/active')
       ]);
-      setWidgets(Array.isArray(widgetsRes.data) ? widgetsRes.data : []);
+      const safeWidgets = Array.isArray(widgetsRes.data) ? widgetsRes.data : (widgetsRes.data?.widgets || []);
+      setWidgets(safeWidgets);
       setPromotions(Array.isArray(promosRes.data) ? promosRes.data : []);
       
       const config = configRes.data;
@@ -252,11 +253,11 @@ export default function ExecutiveDashboard() {
       setLayout(layoutData);
 
       // Load data for each widget in layout
-      const allowedKeys = new Set(widgetsRes.data.map(w => w.widget_key));
-      const activeWidgets = layoutData.filter(l => allowedKeys.has(l.widget));
+      const allowedKeys = new Set(safeWidgets.map(w => w.widget_key));
+      const activeWidgets = layoutData?.filter(l => allowedKeys.has(l.widget));
       
-      const dataPromises = activeWidgets.map(async (l) => {
-        const w = widgetsRes.data.find(wd => wd.widget_key === l.widget);
+      const dataPromises = activeWidgets?.map(async (l) => {
+        const w = safeWidgets.find(wd => wd.widget_key === l.widget);
         if (!w) return null;
         try {
           const res = await api.get(w.data_endpoint);
@@ -266,7 +267,7 @@ export default function ExecutiveDashboard() {
       
       const results = await Promise.all(dataPromises);
       const dataMap = {};
-      results.forEach(r => { if (r) dataMap[r.key] = r.data; });
+      results?.forEach(r => { if (r) dataMap[r.key] = r.data; });
       setWidgetData(dataMap);
     } catch (e) { console.error('Dashboard load error:', e); }
     finally { setLoading(false); }
@@ -277,7 +278,7 @@ export default function ExecutiveDashboard() {
   const handleDismiss = async (promoId) => {
     try {
       await api.post(`/api/dashboard-exec/promotions/${promoId}/interact`, { interaction_type: 'dismiss' });
-      setPromotions(prev => prev.filter(p => p.id !== promoId));
+      setPromotions(prev => prev?.filter(p => p.id !== promoId));
     } catch (e) { console.error(e); }
   };
 
@@ -296,20 +297,20 @@ export default function ExecutiveDashboard() {
     setShowWidgetPicker(false);
     try { await api.put('/api/dashboard-exec/config', { layout: newLayout }); } catch (e) { console.error(e); }
     // Load data for new widget
-    const w = widgets.find(wd => wd.widget_key === widgetKey);
+    const w = widgets?.find(wd => wd.widget_key === widgetKey);
     if (w) {
       try { const res = await api.get(w.data_endpoint); setWidgetData(prev => ({ ...prev, [widgetKey]: res.data })); } catch {}
     }
   };
 
   const removeWidget = async (widgetKey) => {
-    const newLayout = layout.filter(l => l.widget !== widgetKey);
+    const newLayout = layout?.filter(l => l.widget !== widgetKey);
     setLayout(newLayout);
     try { await api.put('/api/dashboard-exec/config', { layout: newLayout }); } catch (e) { console.error(e); }
   };
 
   const renderWidget = (layoutItem) => {
-    const widget = widgets.find(w => w.widget_key === layoutItem.widget);
+    const widget = widgets?.find(w => w.widget_key === layoutItem.widget);
     if (!widget) return null;
     const data = widgetData[layoutItem.widget];
 
@@ -330,9 +331,9 @@ export default function ExecutiveDashboard() {
   if (loading) return <div style={{ padding: '40px', textAlign: 'center', color: '#6b7280' }}>Loading dashboard...</div>;
 
   // Separate KPIs from larger widgets for grid layout
-  const kpiWidgets = layout.filter(l => { const w = widgets.find(wd => wd.widget_key === l.widget); return w && (w.widget_type === 'kpi' || w.widget_type === 'gauge'); });
-  const chartWidgets = layout.filter(l => { const w = widgets.find(wd => wd.widget_key === l.widget); return w && w.widget_type === 'chart'; });
-  const listWidgets = layout.filter(l => { const w = widgets.find(wd => wd.widget_key === l.widget); return w && (w.widget_type === 'list' || w.widget_type === 'table'); });
+  const kpiWidgets = layout?.filter(l => { const w = widgets?.find(wd => wd.widget_key === l.widget); return w && (w.widget_type === 'kpi' || w.widget_type === 'gauge'); });
+  const chartWidgets = layout?.filter(l => { const w = widgets?.find(wd => wd.widget_key === l.widget); return w && w.widget_type === 'chart'; });
+  const listWidgets = layout?.filter(l => { const w = widgets?.find(wd => wd.widget_key === l.widget); return w && (w.widget_type === 'list' || w.widget_type === 'table'); });
 
   return (
     <div className="exec-dashboard" style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
@@ -358,21 +359,21 @@ export default function ExecutiveDashboard() {
       {/* KPI Row */}
       {kpiWidgets.length > 0 && (
         <div className="exec-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px', marginBottom: '20px' }}>
-          {kpiWidgets.map(l => renderWidget(l))}
+          {kpiWidgets?.map(l => renderWidget(l))}
         </div>
       )}
 
       {/* Charts Row */}
       {chartWidgets.length > 0 && (
         <div className="exec-chart-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-          {chartWidgets.map(l => renderWidget(l))}
+          {chartWidgets?.map(l => renderWidget(l))}
         </div>
       )}
 
       {/* Lists/Tables Row */}
       {listWidgets.length > 0 && (
         <div className="exec-list-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-          {listWidgets.map(l => renderWidget(l))}
+          {listWidgets?.map(l => renderWidget(l))}
         </div>
       )}
 
@@ -390,8 +391,8 @@ export default function ExecutiveDashboard() {
             <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '16px' }}>Add or remove widgets based on your permissions. Only widgets you have access to are shown.</p>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              {(widgets || []).map(w => {
-                const isActive = layout.some(l => l.widget === w.widget_key);
+              {(widgets || [])?.map(w => {
+                const isActive = layout?.some(l => l.widget === w.widget_key);
                 const Icon = ICON_MAP[w.widget_key] || FaChartLine;
                 return (
                   <div key={w.widget_key} style={{ padding: '10px', border: `1px solid ${isActive ? '#3b82f6' : '#e5e7eb'}`, borderRadius: '8px', background: isActive ? '#eff6ff' : '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>

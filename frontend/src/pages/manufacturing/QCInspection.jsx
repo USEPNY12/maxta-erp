@@ -37,10 +37,10 @@ export default function QCInspection() {
     try {
       const res = await api.get(`/manufacturing-advanced/qc/inspect/${woRoutingId}`);
       setInspectionData(res.data);
-      setInspectionResults(res.data.checkpoints.map(cp => ({
+      setInspectionResults(res.data.checkpoints?.map(cp => ({
         checkpoint_id: cp.id,
-        result: res.data.existing_results.find(r => r.checkpoint_id === cp.id)?.result || '',
-        measured_value: res.data.existing_results.find(r => r.checkpoint_id === cp.id)?.measured_value || '',
+        result: res.data.existing_results?.find(r => r.checkpoint_id === cp.id)?.result || '',
+        measured_value: res.data.existing_results?.find(r => r.checkpoint_id === cp.id)?.measured_value || '',
         notes: ''
       })));
       setInspectionMode(true);
@@ -48,7 +48,7 @@ export default function QCInspection() {
   }
 
   async function submitInspection() {
-    const incomplete = inspectionResults.filter(r => !r.result);
+    const incomplete = inspectionResults?.filter(r => !r.result);
     if (incomplete.length > 0) { alert(`${incomplete.length} checkpoints not completed`); return; }
     try {
       const res = await api.post(`/manufacturing-advanced/qc/inspect/${woRoutingId}`, { results: inspectionResults });
@@ -115,7 +115,7 @@ export default function QCInspection() {
           </div>
 
           <div className="space-y-3">
-            {inspectionData.checkpoints.map((cp, i) => {
+            {inspectionData.checkpoints?.map((cp, i) => {
               const result = inspectionResults[i];
               return (
                 <div key={cp.id} className={`border rounded-lg p-3 ${result?.result === 'pass' ? 'border-green-300 bg-green-50' : result?.result === 'fail' ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}>
@@ -191,7 +191,7 @@ export default function QCInspection() {
           <div className="p-3 border-b">
             <select value={selectedWC} onChange={e => setSelectedWC(e.target.value)} className="border rounded px-2 py-1 text-sm">
               <option value="">All Work Centers</option>
-              {workCenters.map(wc => <option key={wc.id} value={wc.id}>{wc.code} - {wc.name}</option>)}
+              {workCenters?.map(wc => <option key={wc.id} value={wc.id}>{wc.code} - {wc.name}</option>)}
             </select>
           </div>
           <table className="w-full text-sm">
@@ -207,7 +207,7 @@ export default function QCInspection() {
               </tr>
             </thead>
             <tbody>
-              {checkpoints.filter(cp => !selectedWC || cp.work_center_id == selectedWC).map(cp => (
+              {checkpoints?.filter(cp => !selectedWC || cp.work_center_id == selectedWC)?.map(cp => (
                 <tr key={cp.id} className="border-t hover:bg-gray-50">
                   <td className="px-3 py-2 font-mono text-xs">{cp.checkpoint_code}</td>
                   <td className="px-3 py-2 font-medium">{cp.checkpoint_name}</td>
@@ -242,7 +242,7 @@ export default function QCInspection() {
               </tr>
             </thead>
             <tbody>
-              {(results || []).map(r => (
+              {(results || [])?.map(r => (
                 <tr key={r.id} className={`border-t ${r.result === 'fail' ? 'bg-red-50' : ''}`}>
                   <td className="px-3 py-2 font-mono text-xs text-blue-600">{r.wo_number}</td>
                   <td className="px-3 py-2">
@@ -268,7 +268,7 @@ export default function QCInspection() {
       {/* Pass Rate Summary Tab */}
       {tab === 'summary' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {summary.map(s => (
+          {summary?.map(s => (
             <div key={s.code} className="bg-white rounded-lg shadow p-4">
               <h3 className="font-semibold mb-2">{s.code} - {s.work_center}</h3>
               <div className="flex items-center gap-3 mb-2">
@@ -301,7 +301,7 @@ export default function QCInspection() {
                   <label className="text-xs font-medium">Work Center</label>
                   <select value={cpForm.work_center_id} onChange={e => setCpForm(f => ({ ...f, work_center_id: e.target.value }))} className="w-full border rounded px-2 py-1 text-sm" required>
                     <option value="">Select...</option>
-                    {workCenters.map(wc => <option key={wc.id} value={wc.id}>{wc.code} - {wc.name}</option>)}
+                    {workCenters?.map(wc => <option key={wc.id} value={wc.id}>{wc.code} - {wc.name}</option>)}
                   </select>
                 </div>
                 <div>

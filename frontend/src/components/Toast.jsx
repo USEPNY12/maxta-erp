@@ -55,7 +55,7 @@ export function ToastProvider({ children }) {
   }, []);
 
   const removeToast = useCallback((id) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
+    setToasts(prev => prev?.filter(t => t.id !== id));
   }, []);
 
   const toast = {
@@ -69,7 +69,7 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={toast}>
       {children}
       <div className="toast-container">
-        {toasts.map(t => (
+        {toasts?.map(t => (
           <ToastItem key={t.id} toast={t} onRemove={removeToast} />
         ))}
       </div>

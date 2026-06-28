@@ -50,7 +50,7 @@ function SalesOrders() {
       try {
         const fabRes = await api.get(`/api/sales/orders/${order.id}/fabrication`);
         const grouped = {};
-        (fabRes.data || []).forEach(fc => {
+        (fabRes.data || [])?.forEach(fc => {
           if (!grouped[fc.so_line_id]) grouped[fc.so_line_id] = [];
           grouped[fc.so_line_id].push(fc);
         });
@@ -62,7 +62,7 @@ function SalesOrders() {
 
   const handleCreateOrder = async () => {
     try {
-      const payload = { ...newOrder, customer_id: parseInt(newOrder.customer_id), lines: newOrder.lines.filter(l => l.description).map(l => ({ ...l, quantity_ordered: parseFloat(l.quantity_ordered) || 1, unit_price: parseFloat(l.unit_price) || 0 })) };
+      const payload = { ...newOrder, customer_id: parseInt(newOrder.customer_id), lines: newOrder.lines?.filter(l => l.description)?.map(l => ({ ...l, quantity_ordered: parseFloat(l.quantity_ordered) || 1, unit_price: parseFloat(l.unit_price) || 0 })) };
       await api.post('/api/sales/orders', payload);
       toast.success('Sales Order created');
       setShowNew(false);
@@ -88,7 +88,7 @@ function SalesOrders() {
         ship_via: shipForm.ship_via,
         freight_charge: parseFloat(shipForm.freight_charge) || 0,
         notes: shipForm.notes,
-        lines: shipForm.lines.filter(l => parseFloat(l.ship_qty) > 0).map(l => ({
+        lines: shipForm.lines?.filter(l => parseFloat(l.ship_qty) > 0)?.map(l => ({
           sales_order_line_id: l.id, quantity_shipped: parseFloat(l.ship_qty), description: l.description
         }))
       };
@@ -109,7 +109,7 @@ function SalesOrders() {
   };
 
   const openShipDialog = () => {
-    const lines = (selected.lines || []).map(l => ({
+    const lines = (selected.lines || [])?.map(l => ({
       ...l, ship_qty: Math.max(0, (parseFloat(l.quantity_ordered) || 0) - (parseFloat(l.quantity_shipped) || 0))
     }));
     setShipForm({ carrier: '', tracking_number: '', ship_via: '', freight_charge: 0, notes: '', lines });
@@ -129,7 +129,7 @@ function SalesOrders() {
       const res = await api.get('/api/sales/pricing/lookup', { params: { item_id: itemId, customer_id: newOrder.customer_id, quantity: newOrder.lines[idx]?.quantity_ordered || 1 } });
       if (res.data.price) {
         const lines = [...newOrder.lines];
-        const item = items.find(i => i.id === parseInt(itemId));
+        const item = items?.find(i => i.id === parseInt(itemId));
         lines[idx] = { ...lines[idx], unit_price: res.data.price, description: lines[idx].description || item?.description || '' };
         setNewOrder({ ...newOrder, lines });
       }
@@ -138,7 +138,7 @@ function SalesOrders() {
 
   const addLine = () => setNewOrder({ ...newOrder, lines: [...newOrder.lines, { description: '', quantity_ordered: 1, unit_price: 0, product_type: '', glass_type: '', thickness: '', width_inches: '', height_inches: '', edge_type: '', manufacturing_notes: '' }] });
   const updateLine = (idx, field, value) => { const lines = [...newOrder.lines]; lines[idx] = { ...lines[idx], [field]: value }; setNewOrder({ ...newOrder, lines }); };
-  const removeLine = (idx) => setNewOrder({ ...newOrder, lines: newOrder.lines.filter((_, i) => i !== idx) });
+  const removeLine = (idx) => setNewOrder({ ...newOrder, lines: newOrder.lines?.filter((_, i) => i !== idx) });
 
   const hasPendingLines = selected?.lines?.some(l => l.production_status === 'pending');
   const hasShippableLines = selected?.lines?.some(l => (parseFloat(l.quantity_ordered) || 0) > (parseFloat(l.quantity_shipped) || 0));
@@ -160,7 +160,7 @@ function SalesOrders() {
         <table className="erp-grid">
           <thead><tr><th>Order#</th><th>Date</th><th>Customer</th><th>Project</th><th>PO#</th><th>Total</th><th>WOs</th><th>Status</th></tr></thead>
           <tbody>
-            {orders.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No orders found</td></tr> : (orders || []).map(o => (
+            {orders.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No orders found</td></tr> : (orders || [])?.map(o => (
               <tr key={o.id} className="cursor-pointer" onClick={() => openDetail(o)}>
                 <td className="text-blue-700 font-bold">{o.order_number}</td>
                 <td>{formatDate(o.order_date)}</td>
@@ -209,7 +209,7 @@ function SalesOrders() {
                   <table className="erp-grid">
                     <thead><tr><th>#</th><th>Description</th><th>Product Type</th><th>Glass</th><th>Size</th><th>Edge</th><th>Qty</th><th>Shipped</th><th>Price</th><th>Total</th><th>Prod Status</th><th>WO#</th></tr></thead>
                     <tbody>
-                      {(selected.lines || []).map((l, i) => (
+                      {(selected.lines || [])?.map((l, i) => (
                         <tr key={i}>
                           <td>{l.line_number}</td>
                           <td className="font-medium">{l.description}</td>
@@ -230,7 +230,7 @@ function SalesOrders() {
                 )}
                 {activeTab === 'Fabrication' && (
                   <div>
-                    {(selected.lines || []).map((line, lineIdx) => {
+                    {(selected.lines || [])?.map((line, lineIdx) => {
                       const lineFabs = soFabCharges[line.id] || [];
                       if (lineFabs.length === 0) return null;
                       return (
@@ -239,7 +239,7 @@ function SalesOrders() {
                           <table className="erp-grid text-xs" style={{ width: '100%' }}>
                             <thead><tr><th>Category</th><th>Charge</th><th>Qty</th><th>Rate</th><th>Total</th><th>Notes</th></tr></thead>
                             <tbody>
-                              {lineFabs.map((fc, fi) => (
+                              {lineFabs?.map((fc, fi) => (
                                 <tr key={fi}>
                                   <td><span style={{ background: fc.category === 'Holes' ? '#7c3aed' : fc.category === 'Edgework' ? '#2563eb' : fc.category === 'Notches' ? '#dc2626' : '#64748b', color: '#fff', padding: '1px 6px', borderRadius: 3, fontSize: 10 }}>{fc.category}</span></td>
                                   <td>{fc.name}</td>
@@ -271,7 +271,7 @@ function SalesOrders() {
                       <table className="erp-grid">
                         <thead><tr><th>WO#</th><th>Product Type</th><th>Qty</th><th>Status</th></tr></thead>
                         <tbody>
-                          {selected.work_orders.map((wo, i) => (
+                          {selected.work_orders?.map((wo, i) => (
                             <tr key={i}>
                               <td className="text-blue-700 font-bold">{wo.order_number}</td>
                               <td><span className="bg-blue-100 text-blue-800 px-1 rounded text-[10px]">{(wo.product_type || '').replace(/_/g, ' ')}</span></td>
@@ -291,7 +291,7 @@ function SalesOrders() {
                     ) : (
                       <table className="erp-grid">
                         <thead><tr><th>Shipment#</th><th>Date</th><th>Carrier</th><th>Tracking</th><th>Status</th></tr></thead>
-                        <tbody>{selected.shipments.map((s, i) => (
+                        <tbody>{selected.shipments?.map((s, i) => (
                           <tr key={i}>
                             <td className="text-blue-700 font-bold">{s.shipment_number}</td>
                             <td>{formatDate(s.shipment_date || s.ship_date)}</td>
@@ -311,7 +311,7 @@ function SalesOrders() {
                     ) : (
                       <table className="erp-grid">
                         <thead><tr><th>Invoice#</th><th>Date</th><th>Total</th><th>Balance</th><th>Status</th></tr></thead>
-                        <tbody>{selected.invoices.map((inv, i) => (
+                        <tbody>{selected.invoices?.map((inv, i) => (
                           <tr key={i}>
                             <td className="text-blue-700 font-bold">{inv.invoice_number}</td>
                             <td>{formatDate(inv.invoice_date)}</td>
@@ -330,7 +330,7 @@ function SalesOrders() {
                     {(selected.deposits || []).length === 0 ? <p className="text-gray-500 text-center py-4">No deposits</p> : (
                       <table className="erp-grid">
                         <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th><th>Status</th></tr></thead>
-                        <tbody>{selected.deposits.map((d, i) => (
+                        <tbody>{selected.deposits?.map((d, i) => (
                           <tr key={i}><td>{formatDate(d.deposit_date)}</td><td className="text-right font-bold">${parseFloat(d.amount || 0).toFixed(2)}</td><td>{d.payment_method}</td><td>{d.reference_number || '-'}</td><td><span className={`erp-status erp-status-${(d.status || '').toLowerCase()}`}>{d.status}</span></td></tr>
                         ))}</tbody>
                       </table>
@@ -360,7 +360,7 @@ function SalesOrders() {
               <div className="text-xs mb-2 font-bold">Lines to release:</div>
               <table className="erp-grid">
                 <thead><tr><th>#</th><th>Description</th><th>Product Type</th><th>Qty</th></tr></thead>
-                <tbody>{(selected?.lines || []).filter(l => l.production_status === 'pending').map((l, i) => (
+                <tbody>{(selected?.lines || [])?.filter(l => l.production_status === 'pending')?.map((l, i) => (
                   <tr key={i}><td>{l.line_number}</td><td>{l.description}</td><td>{(l.product_type || '').replace(/_/g, ' ')}</td><td>{l.quantity_ordered}</td></tr>
                 ))}</tbody>
               </table>
@@ -387,7 +387,7 @@ function SalesOrders() {
               <div className="text-xs font-bold mb-1">Select quantities to ship:</div>
               <table className="erp-grid">
                 <thead><tr><th>Description</th><th>Glass</th><th>Ordered</th><th>Already Shipped</th><th>Ship Now</th></tr></thead>
-                <tbody>{shipForm.lines.map((l, i) => (
+                <tbody>{shipForm.lines?.map((l, i) => (
                   <tr key={i}>
                     <td>{l.description}</td>
                     <td className="text-[10px]">{l.glass_type} {l.thickness} {l.width_inches && l.height_inches ? `${l.width_inches}"×${l.height_inches}"` : ''}</td>
@@ -399,7 +399,7 @@ function SalesOrders() {
               </table>
             </div>
             <div className="erp-modal-footer">
-              <button className="erp-btn erp-btn-primary" onClick={handleCreateShipment} disabled={!shipForm.lines.some(l => parseFloat(l.ship_qty) > 0)}>🚚 Ship</button>
+              <button className="erp-btn erp-btn-primary" onClick={handleCreateShipment} disabled={!shipForm.lines?.some(l => parseFloat(l.ship_qty) > 0)}>🚚 Ship</button>
               <button className="erp-btn" onClick={() => setShowShipDialog(false)}>Cancel</button>
             </div>
           </div>
@@ -438,7 +438,7 @@ function SalesOrders() {
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="erp-form-group"><label className="erp-form-label">Customer*:</label>
                   <select className="erp-form-select" value={newOrder.customer_id} onChange={e => setNewOrder({ ...newOrder, customer_id: e.target.value })}>
-                    <option value="">Select...</option>{(customers || []).map(c => <option key={c.id} value={c.id}>{c.company_name || c.name}</option>)}
+                    <option value="">Select...</option>{(customers || [])?.map(c => <option key={c.id} value={c.id}>{c.company_name || c.name}</option>)}
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Project:</label><input className="erp-form-input" value={newOrder.project_name} onChange={e => setNewOrder({ ...newOrder, project_name: e.target.value })} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Customer PO#:</label><input className="erp-form-input" value={newOrder.customer_po} onChange={e => setNewOrder({ ...newOrder, customer_po: e.target.value })} /></div>
@@ -449,15 +449,15 @@ function SalesOrders() {
               <div className="overflow-x-auto">
                 <table className="erp-grid" style={{ minWidth: '850px' }}>
                   <thead><tr><th>Description*</th><th>Product Type</th><th>Glass</th><th>Thickness</th><th>W"</th><th>H"</th><th>Edge</th><th>Qty</th><th>Price</th><th></th></tr></thead>
-                  <tbody>{newOrder.lines.map((line, idx) => (
+                  <tbody>{newOrder.lines?.map((line, idx) => (
                     <tr key={idx}>
                       <td><input className="erp-form-input w-full" value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} /></td>
-                      <td><select className="erp-form-select w-full" value={line.product_type} onChange={e => updateLine(idx, 'product_type', e.target.value)}><option value="">-</option>{productTypes.map(pt => <option key={pt} value={pt}>{pt.replace(/_/g,' ')}</option>)}</select></td>
-                      <td><select className="erp-form-select w-full" value={line.glass_type} onChange={e => updateLine(idx, 'glass_type', e.target.value)}><option value="">-</option>{glassTypes.map(gt => <option key={gt} value={gt}>{gt}</option>)}</select></td>
-                      <td><select className="erp-form-select w-20" value={line.thickness} onChange={e => updateLine(idx, 'thickness', e.target.value)}><option value="">-</option>{thicknesses.map(t => <option key={t} value={t}>{t}</option>)}</select></td>
+                      <td><select className="erp-form-select w-full" value={line.product_type} onChange={e => updateLine(idx, 'product_type', e.target.value)}><option value="">-</option>{productTypes?.map(pt => <option key={pt} value={pt}>{pt.replace(/_/g,' ')}</option>)}</select></td>
+                      <td><select className="erp-form-select w-full" value={line.glass_type} onChange={e => updateLine(idx, 'glass_type', e.target.value)}><option value="">-</option>{glassTypes?.map(gt => <option key={gt} value={gt}>{gt}</option>)}</select></td>
+                      <td><select className="erp-form-select w-20" value={line.thickness} onChange={e => updateLine(idx, 'thickness', e.target.value)}><option value="">-</option>{thicknesses?.map(t => <option key={t} value={t}>{t}</option>)}</select></td>
                       <td><input className="erp-form-input w-14 text-right" type="number" value={line.width_inches} onChange={e => updateLine(idx, 'width_inches', e.target.value)} /></td>
                       <td><input className="erp-form-input w-14 text-right" type="number" value={line.height_inches} onChange={e => updateLine(idx, 'height_inches', e.target.value)} /></td>
-                      <td><select className="erp-form-select w-full" value={line.edge_type} onChange={e => updateLine(idx, 'edge_type', e.target.value)}><option value="">-</option>{edgeTypes.map(et => <option key={et} value={et}>{et}</option>)}</select></td>
+                      <td><select className="erp-form-select w-full" value={line.edge_type} onChange={e => updateLine(idx, 'edge_type', e.target.value)}><option value="">-</option>{edgeTypes?.map(et => <option key={et} value={et}>{et}</option>)}</select></td>
                       <td><input className="erp-form-input w-14 text-right" type="number" value={line.quantity_ordered} onChange={e => updateLine(idx, 'quantity_ordered', e.target.value)} /></td>
                       <td><input className="erp-form-input w-20 text-right" type="number" step="0.01" value={line.unit_price} onChange={e => updateLine(idx, 'unit_price', e.target.value)} /></td>
                       <td><button className="text-red-600 text-xs" onClick={() => removeLine(idx)}>✕</button></td>

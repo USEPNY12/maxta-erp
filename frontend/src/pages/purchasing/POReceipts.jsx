@@ -44,7 +44,7 @@ function POReceipts() {
           <thead><tr><th>Receipt No.</th><th>Date</th><th>PO Number</th><th>Vendor</th><th>Packing Slip</th><th>Location</th><th>Items</th><th>Status</th></tr></thead>
           <tbody>
             {receipts.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No receipts found</td></tr> :
-            (receipts || []).map(r => (
+            (receipts || [])?.map(r => (
               <tr key={r.id} className="cursor-pointer hover:bg-blue-50" onClick={() => openDetail(r)}>
                 <td className="font-bold text-green-700">{r.receipt_number}</td>
                 <td>{fmt(r.receipt_date)}</td>
@@ -83,7 +83,7 @@ function POReceipts() {
                 <fieldset className="border border-gray-400 p-3 rounded"><legend className="text-xs font-bold px-1">Stocking</legend>
                   <div className="space-y-1 text-xs">
                     <div className="flex justify-between"><span className="text-gray-600">Location:</span><span>{selected.location_name || 'Default'}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Lots Created:</span><span className="font-bold text-green-700">{(selected.lines || []).filter(l => l.lot_number).length}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Lots Created:</span><span className="font-bold text-green-700">{(selected.lines || [])?.filter(l => l.lot_number).length}</span></div>
                     <div className="flex justify-between"><span className="text-gray-600">AP Invoice:</span><span>{selected.ap_invoice_number || 'Not created'}</span></div>
                   </div>
                 </fieldset>
@@ -96,7 +96,7 @@ function POReceipts() {
               <div className="border border-gray-300 p-2 min-h-[180px]">
                 {activeTab === 'Lines' && (
                   <table className="erp-grid"><thead><tr><th>#</th><th>Item</th><th>Description</th><th>Qty Received</th><th>Location</th><th>Lot #</th><th>Vendor Lot</th></tr></thead>
-                    <tbody>{(selected.lines || []).map((l, i) => (
+                    <tbody>{(selected.lines || [])?.map((l, i) => (
                       <tr key={i}>
                         <td>{i + 1}</td><td>{l.item_number || '-'}</td><td>{l.description || l.item_description || '-'}</td>
                         <td className="text-right font-bold">{l.quantity_received}</td>
@@ -109,7 +109,7 @@ function POReceipts() {
                 {activeTab === 'Lots & Inventory' && (
                   <div className="space-y-2">
                     <p className="text-xs text-gray-600 mb-2">Each received line creates an inventory lot with tracking:</p>
-                    {(selected.lines || []).map((l, i) => (
+                    {(selected.lines || [])?.map((l, i) => (
                       <div key={i} className="bg-green-50 border border-green-200 rounded p-2 flex items-center justify-between">
                         <div>
                           <div className="text-xs font-bold">{l.description || l.item_description}</div>
@@ -133,7 +133,7 @@ function POReceipts() {
                       <button className="erp-btn text-xs" onClick={() => toast.info('All labels sent to printer')}>🖨️ Print All Labels</button>
                     </div>
                     {labels.length === 0 ? <p className="text-center text-gray-500 p-4 text-xs">No labels generated</p> :
-                    labels.map((label, i) => (
+                    labels?.map((label, i) => (
                       <div key={i} className="border border-gray-300 rounded p-3 bg-white">
                         <div className="flex items-center justify-between">
                           <div>

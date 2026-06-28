@@ -68,7 +68,7 @@ function APInvoices() {
             <tr><th>Invoice #</th><th>Vendor</th><th>PO #</th><th>Date</th><th>Due Date</th><th>Amount</th><th>Balance</th><th>Status</th></tr>
           </thead>
           <tbody>
-            {(invoices || []).map(inv => (
+            {(invoices || [])?.map(inv => (
               <tr key={inv.id}>
                 <td className="text-blue-700 font-bold">{inv.invoice_number}</td>
                 <td>{inv.vendor_name}</td>
@@ -94,13 +94,13 @@ function APInvoices() {
                   <div className="erp-form-group"><label className="erp-form-label">Vendor:</label>
                     <select className="erp-form-select" value={form.vendor_id} onChange={e => handleVendorChange(e.target.value)}>
                       <option value="">Select Vendor...</option>
-                      {(vendors || []).map(v => <option key={v.id} value={v.id}>{v.vendor_no} - {v.name}</option>)}
+                      {(vendors || [])?.map(v => <option key={v.id} value={v.id}>{v.vendor_no} - {v.name}</option>)}
                     </select>
                   </div>
                   <div className="erp-form-group"><label className="erp-form-label">PO Reference:</label>
                     <select className="erp-form-select" value={form.purchase_order_id} onChange={e => setForm({...form, purchase_order_id: e.target.value})}>
                       <option value="">None</option>
-                      {purchaseOrders.map(po => <option key={po.id} value={po.id}>{po.po_number}</option>)}
+                      {purchaseOrders?.map(po => <option key={po.id} value={po.id}>{po.po_number}</option>)}
                     </select>
                   </div>
                   <div className="erp-form-group"><label className="erp-form-label">Vendor Invoice #:</label><input className="erp-form-input" value={form.invoice_number} onChange={e => setForm({...form, invoice_number: e.target.value})} /></div>

@@ -101,7 +101,7 @@ export default function MRP() {
             </tr>
           </thead>
           <tbody>
-            {filteredItems.map(item => (
+            {filteredItems?.map(item => (
               <tr key={item.item_id} 
                 className={`border-b hover:bg-blue-50 cursor-pointer ${item.available < 0 ? 'bg-red-50' : item.available < item.reorder_point ? 'bg-yellow-50' : ''}`}
                 onClick={() => setSelectedItem(selectedItem?.item_id === item.item_id ? null : item)}>

@@ -25,7 +25,7 @@ function ModulePage({ title, quickActions, setupItems, menuItems, reports, child
 
       {quickActions && quickActions.length > 0 && (
         <div className="erp-sidebar-section">
-          {quickActions.map((action, i) => (
+          {quickActions?.map((action, i) => (
             <div key={i} className="erp-sidebar-item text-blue-700" onClick={() => action.onClick ? action.onClick() : navigate(action.path)}>
               <span className="text-green-600">+</span>
               <span>{action.label}</span>
@@ -37,7 +37,7 @@ function ModulePage({ title, quickActions, setupItems, menuItems, reports, child
       {setupItems && setupItems.length > 0 && (
         <div className="erp-sidebar-section">
           <div className="erp-sidebar-section-title">Setup</div>
-          {setupItems.map((item, i) => (
+          {setupItems?.map((item, i) => (
             <div key={i} className="erp-sidebar-item" onClick={() => navigate(item.path)}>
               <span className="text-gray-500">&#9632;</span>
               <span>{item.label}</span>
@@ -48,7 +48,7 @@ function ModulePage({ title, quickActions, setupItems, menuItems, reports, child
 
       {menuItems && menuItems.length > 0 && (
         <div className="erp-sidebar-section">
-          {menuItems.map((item, i) => (
+          {menuItems?.map((item, i) => (
             <div
               key={i}
               className={`erp-sidebar-item ${location.pathname === item.path ? 'active' : ''}`}
@@ -74,7 +74,7 @@ function ModulePage({ title, quickActions, setupItems, menuItems, reports, child
             <div className="text-xs">
               <label className="block text-gray-600">Report:</label>
               <select className="erp-form-select w-full">
-                {reports.options.map((opt, i) => (
+                {reports.options?.map((opt, i) => (
                   <option key={i}>{opt}</option>
                 ))}
               </select>
@@ -96,7 +96,7 @@ function ModulePage({ title, quickActions, setupItems, menuItems, reports, child
             <span>{title}</span>
           </button>
           <div className="mobile-module-tabs">
-            {(menuItems || []).map((item, i) => (
+            {(menuItems || [])?.map((item, i) => (
               <button
                 key={i}
                 className={`mobile-module-tab ${location.pathname === item.path ? 'active' : ''}`}

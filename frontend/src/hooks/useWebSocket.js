@@ -43,7 +43,7 @@ export function useWebSocket(options = {}) {
 
           // Call type-specific listeners
           if (data.type && listeners.current.has(data.type)) {
-            listeners.current.get(data.type).forEach(cb => cb(data));
+            listeners.current.get(data.type)?.forEach(cb => cb(data));
           }
         } catch (e) {
           console.error('[WS] Parse error:', e);

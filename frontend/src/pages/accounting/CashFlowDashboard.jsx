@@ -40,7 +40,7 @@ export default function CashFlowDashboard() {
     return Math.min(Math.abs(amount) / max * 100, 100);
   };
 
-  const maxWeeklyAmount = projection ? Math.max(...(projection.weekly_breakdown || []).map(w => Math.max(w.inflows, w.outflows)), 1) : 1;
+  const maxWeeklyAmount = projection ? Math.max(...(projection.weekly_breakdown || [])?.map(w => Math.max(w.inflows, w.outflows)), 1) : 1;
 
   return (
     <ModulePage {...accountingMenu}>
@@ -101,7 +101,7 @@ export default function CashFlowDashboard() {
                   <div className="grid grid-cols-[80px_1fr_1fr_100px] gap-2 text-xs font-medium text-gray-500 border-b pb-1">
                     <span>Week</span><span>Inflows</span><span>Outflows</span><span className="text-right">Balance</span>
                   </div>
-                  {(projection.weekly_breakdown || []).map(week => (
+                  {(projection.weekly_breakdown || [])?.map(week => (
                     <div key={week.week} className="grid grid-cols-[80px_1fr_1fr_100px] gap-2 items-center text-xs">
                       <span className="font-medium text-gray-600">Wk {week.week}</span>
                       <div className="flex items-center gap-1">
@@ -127,7 +127,7 @@ export default function CashFlowDashboard() {
                     <tr><th>Week</th><th>Start</th><th>End</th><th className="text-right">Inflows</th><th className="text-right">Outflows</th><th className="text-right">Net</th><th className="text-right">Projected Balance</th></tr>
                   </thead>
                   <tbody>
-                    {(projection.weekly_breakdown || []).map(week => (
+                    {(projection.weekly_breakdown || [])?.map(week => (
                       <tr key={week.week}>
                         <td className="font-medium">Week {week.week}</td>
                         <td>{week.start_date}</td>
@@ -194,7 +194,7 @@ export default function CashFlowDashboard() {
                 <tbody>
                   {categories.length === 0 ? (
                     <tr><td colSpan="4" className="text-center p-4 text-gray-500">No categories defined</td></tr>
-                  ) : (categories || []).map(c => (
+                  ) : (categories || [])?.map(c => (
                     <tr key={c.id}>
                       <td className="font-medium">{c.name}</td>
                       <td><span className={`px-2 py-0.5 rounded text-xs ${

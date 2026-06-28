@@ -83,7 +83,7 @@ function WOTransactions() {
               <tr><th>Date</th><th>Receipt No.</th><th>Type</th><th>Order No.</th><th>WO Type</th><th>Qty Received</th><th>Item No</th></tr>
             </thead>
             <tbody>
-              {(receipts || []).map(r => (
+              {(receipts || [])?.map(r => (
                 <tr key={r.id} className={`cursor-pointer ${selectedReceipt?.id === r.id ? 'bg-blue-200' : ''}`} onClick={() => setSelectedReceipt(r)}>
                   <td>{r.receipt_date}</td>
                   <td className="font-bold">{r.receipt_no}</td>
@@ -149,7 +149,7 @@ function WOTransactions() {
                   <table className="erp-grid text-xs">
                     <thead><tr><th>Seq</th><th>Item No.</th><th>Description</th><th>Remaining</th><th>Qty Used</th><th>Total Qty</th><th>Qty To Date</th></tr></thead>
                     <tbody>
-                      {(selectedReceipt.materials || []).map((m, i) => (
+                      {(selectedReceipt.materials || [])?.map((m, i) => (
                         <tr key={i}>
                           <td>{m.seq}</td><td className="text-blue-700">{m.item_no}</td><td>{m.description}</td>
                           <td className="text-right">{m.remaining}</td><td className="text-right">{m.qty_used}</td>

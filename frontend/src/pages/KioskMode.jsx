@@ -94,7 +94,7 @@ export default function KioskMode() {
         body: JSON.stringify({ stationId: station.id, actionType, actionData })
       });
       const data = await res.json();
-      setLastActions(prev => [{ type: actionType, time: new Date(), result: data }, ...prev.slice(0, 9)]);
+      setLastActions(prev => [{ type: actionType, time: new Date(), result: data }, ...prev?.slice(0, 9)]);
       return data;
     } catch (e) { return { success: false, error: 'Connection error' }; }
   };
@@ -164,7 +164,7 @@ export default function KioskMode() {
                 className="w-full p-4 bg-gray-700 text-white rounded-xl text-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
               >
                 <option value="">Select Station...</option>
-                {(stations || []).map(s => (
+                {(stations || [])?.map(s => (
                   <option key={s.station_code} value={s.station_code}>{s.station_name} ({s.station_code})</option>
                 ))}
               </select>
@@ -331,7 +331,7 @@ export default function KioskMode() {
         {/* Main Action Grid */}
         {!currentAction && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
-            {allowedActions.map(action => {
+            {allowedActions?.map(action => {
               const btn = actionButtons[action] || { label: action, icon: '⚡', color: 'bg-gray-600' };
               return (
                 <button
@@ -362,7 +362,7 @@ export default function KioskMode() {
           <div className="mt-8 max-w-3xl mx-auto">
             <h3 className="text-lg font-bold text-gray-400 mb-2">Recent Activity</h3>
             <div className="space-y-2">
-              {lastActions.slice(0, 5).map((a, i) => (
+              {lastActions?.slice(0, 5)?.map((a, i) => (
                 <div key={i} className="flex items-center justify-between bg-gray-800 rounded-lg px-4 py-2">
                   <span className="text-gray-300">{actionButtons[a.type]?.icon} {actionButtons[a.type]?.label || a.type}</span>
                   <span className="text-gray-500 text-sm">{a.time.toLocaleTimeString()}</span>

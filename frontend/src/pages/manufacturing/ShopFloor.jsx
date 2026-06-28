@@ -39,7 +39,7 @@ function ShopFloor() {
     } catch { setQueue([]); }
   };
 
-  const station = stations.find(s => s.id === activeStation);
+  const station = stations?.find(s => s.id === activeStation);
 
   const handleScan = () => {
     if (!scanInput.trim()) return;
@@ -108,7 +108,7 @@ function ShopFloor() {
           <h3 className="font-bold text-sm">Stations</h3>
           <p className="text-[10px] text-gray-400">Select department</p>
         </div>
-        {(stations || []).map(s => (
+        {(stations || [])?.map(s => (
           <button
             key={s.id}
             className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-gray-800 border-b border-gray-800 ${activeStation === s.id ? 'bg-blue-900 border-l-4 border-l-blue-400' : ''}`}
@@ -127,7 +127,7 @@ function ShopFloor() {
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-xl font-bold">{station?.icon} {station?.name || 'Select Station'}</h2>
-              <p className="text-sm opacity-80">{station?.department} Department - {queue.length} items in queue ({queue.filter(q => q.op_status === 'in_progress').length} active)</p>
+              <p className="text-sm opacity-80">{station?.department} Department - {queue.length} items in queue ({queue?.filter(q => q.op_status === 'in_progress').length} active)</p>
             </div>
             <div className="flex gap-2 items-center">
               <input
@@ -152,7 +152,7 @@ function ShopFloor() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
-              {(queue || []).map(item => (
+              {(queue || [])?.map(item => (
                 <div key={item.routing_id} className="bg-white border border-gray-300 rounded shadow-sm hover:shadow-md transition-shadow">
                   {/* Card Header */}
                   <div className="bg-gray-100 border-b border-gray-300 px-3 py-2 flex justify-between items-center">

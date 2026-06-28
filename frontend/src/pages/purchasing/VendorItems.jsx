@@ -24,9 +24,9 @@ function VendorItems() {
     }
   };
 
-  const filtered = items.filter(i =>
+  const filtered = items?.filter(i =>
     !search || [i.item_number, i.description, i.company_name, i.vendor_item_number]
-      .some(f => f && f.toLowerCase().includes(search.toLowerCase()))
+      ?.some(f => f && f.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
@@ -62,7 +62,7 @@ function VendorItems() {
             </tr>
           </thead>
           <tbody>
-            {(filtered || []).map((item, idx) => (
+            {(filtered || [])?.map((item, idx) => (
               <tr key={idx}>
                 <td style={{ color: '#1a73e8', fontWeight: 500 }}>{item.item_number}</td>
                 <td>{item.description}</td>

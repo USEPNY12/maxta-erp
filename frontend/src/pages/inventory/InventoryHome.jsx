@@ -64,7 +64,7 @@ function InventoryHome() {
               <th className="text-right p-2">Value</th><th className="text-center p-2">Status</th>
             </tr></thead>
             <tbody>
-              {stockStatus.map(s => (
+              {stockStatus?.map(s => (
                 <tr key={s.id} className="border-b hover:bg-blue-50 cursor-pointer" onClick={() => navigate(`/inventory/items/${s.id}`)}>
                   <td className="p-2 font-medium text-blue-700">{s.item_number}</td>
                   <td className="p-2">{s.description}</td>
@@ -95,7 +95,7 @@ function InventoryHome() {
               <th className="text-left p-2">PO #</th>
             </tr></thead>
             <tbody>
-              {lots.map(l => (
+              {lots?.map(l => (
                 <tr key={l.id} className="border-b hover:bg-blue-50">
                   <td className="p-2 font-medium">{l.lot_number}</td>
                   <td className="p-2">{l.item_number || `Item #${l.item_id}`}</td>
@@ -169,8 +169,8 @@ function AdjustmentsPanel() {
       </div>
       {showNew && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded grid grid-cols-4 gap-3">
-          <select className="border rounded px-2 py-1 text-sm" value={form.item_id} onChange={e => setForm({...form, item_id: e.target.value})}><option value="">Select Item</option>{(items || []).map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}</select>
-          <select className="border rounded px-2 py-1 text-sm" value={form.location_id} onChange={e => setForm({...form, location_id: e.target.value})}><option value="">Select Location</option>{(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
+          <select className="border rounded px-2 py-1 text-sm" value={form.item_id} onChange={e => setForm({...form, item_id: e.target.value})}><option value="">Select Item</option>{(items || [])?.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}</select>
+          <select className="border rounded px-2 py-1 text-sm" value={form.location_id} onChange={e => setForm({...form, location_id: e.target.value})}><option value="">Select Location</option>{(locations || [])?.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
           <select className="border rounded px-2 py-1 text-sm" value={form.adjustment_type} onChange={e => setForm({...form, adjustment_type: e.target.value})}><option value="increase">Increase</option><option value="decrease">Decrease</option></select>
           <input type="number" placeholder="Quantity" className="border rounded px-2 py-1 text-sm" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} />
           <input placeholder="Reason Code" className="border rounded px-2 py-1 text-sm" value={form.reason_code} onChange={e => setForm({...form, reason_code: e.target.value})} />
@@ -181,7 +181,7 @@ function AdjustmentsPanel() {
       )}
       <table className="w-full text-sm">
         <thead><tr className="bg-gray-100 border-b"><th className="text-left p-2">Adj #</th><th className="text-left p-2">Item</th><th className="text-left p-2">Type</th><th className="text-right p-2">Qty</th><th className="text-left p-2">Location</th><th className="text-left p-2">Reason</th><th className="text-left p-2">Date</th></tr></thead>
-        <tbody>{adjustments.map(a => (<tr key={a.id} className="border-b hover:bg-blue-50"><td className="p-2 font-medium">{a.adjustment_number}</td><td className="p-2">{a.item_number}</td><td className="p-2"><span className={`px-2 py-0.5 rounded text-xs ${a.adjustment_type === 'increase' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{a.adjustment_type}</span></td><td className="p-2 text-right font-medium">{Number(a.quantity).toFixed(0)}</td><td className="p-2">{a.location_name || ''}</td><td className="p-2 text-xs">{a.reason_code || ''}</td><td className="p-2 text-xs">{a.adjustment_date ? new Date(a.adjustment_date).toLocaleDateString() : ''}</td></tr>))}</tbody>
+        <tbody>{adjustments?.map(a => (<tr key={a.id} className="border-b hover:bg-blue-50"><td className="p-2 font-medium">{a.adjustment_number}</td><td className="p-2">{a.item_number}</td><td className="p-2"><span className={`px-2 py-0.5 rounded text-xs ${a.adjustment_type === 'increase' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{a.adjustment_type}</span></td><td className="p-2 text-right font-medium">{Number(a.quantity).toFixed(0)}</td><td className="p-2">{a.location_name || ''}</td><td className="p-2 text-xs">{a.reason_code || ''}</td><td className="p-2 text-xs">{a.adjustment_date ? new Date(a.adjustment_date).toLocaleDateString() : ''}</td></tr>))}</tbody>
       </table>
       {adjustments.length === 0 && <p className="text-center py-4 text-gray-400 text-sm">No adjustments</p>}
     </div>
@@ -214,9 +214,9 @@ function TransfersPanel() {
       </div>
       {showNew && (
         <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded grid grid-cols-4 gap-3">
-          <select className="border rounded px-2 py-1 text-sm" value={form.item_id} onChange={e => setForm({...form, item_id: e.target.value})}><option value="">Select Item</option>{(items || []).map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}</select>
-          <select className="border rounded px-2 py-1 text-sm" value={form.from_location_id} onChange={e => setForm({...form, from_location_id: e.target.value})}><option value="">From Location</option>{(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
-          <select className="border rounded px-2 py-1 text-sm" value={form.to_location_id} onChange={e => setForm({...form, to_location_id: e.target.value})}><option value="">To Location</option>{(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
+          <select className="border rounded px-2 py-1 text-sm" value={form.item_id} onChange={e => setForm({...form, item_id: e.target.value})}><option value="">Select Item</option>{(items || [])?.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}</select>
+          <select className="border rounded px-2 py-1 text-sm" value={form.from_location_id} onChange={e => setForm({...form, from_location_id: e.target.value})}><option value="">From Location</option>{(locations || [])?.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
+          <select className="border rounded px-2 py-1 text-sm" value={form.to_location_id} onChange={e => setForm({...form, to_location_id: e.target.value})}><option value="">To Location</option>{(locations || [])?.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
           <input type="number" placeholder="Quantity" className="border rounded px-2 py-1 text-sm" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} />
           <input placeholder="Lot Number" className="border rounded px-2 py-1 text-sm" value={form.lot_number} onChange={e => setForm({...form, lot_number: e.target.value})} />
           <input placeholder="Reason" className="border rounded px-2 py-1 text-sm" value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} />
@@ -226,7 +226,7 @@ function TransfersPanel() {
       )}
       <table className="w-full text-sm">
         <thead><tr className="bg-gray-100 border-b"><th className="text-left p-2">Transfer #</th><th className="text-left p-2">Item</th><th className="text-left p-2">From</th><th className="text-left p-2">To</th><th className="text-right p-2">Qty</th><th className="text-left p-2">Lot</th><th className="text-left p-2">Date</th><th className="text-left p-2">Status</th></tr></thead>
-        <tbody>{transfers.map(t => (<tr key={t.id} className="border-b hover:bg-blue-50"><td className="p-2 font-medium">{t.transfer_number}</td><td className="p-2">{t.item_number}</td><td className="p-2">{t.from_location_name}</td><td className="p-2">{t.to_location_name}</td><td className="p-2 text-right font-medium">{Number(t.quantity).toFixed(0)}</td><td className="p-2 text-xs">{t.lot_number || ''}</td><td className="p-2 text-xs">{t.transfer_date ? new Date(t.transfer_date).toLocaleDateString() : ''}</td><td className="p-2"><span className="px-2 py-0.5 rounded text-xs bg-green-100 text-green-700">{t.status}</span></td></tr>))}</tbody>
+        <tbody>{transfers?.map(t => (<tr key={t.id} className="border-b hover:bg-blue-50"><td className="p-2 font-medium">{t.transfer_number}</td><td className="p-2">{t.item_number}</td><td className="p-2">{t.from_location_name}</td><td className="p-2">{t.to_location_name}</td><td className="p-2 text-right font-medium">{Number(t.quantity).toFixed(0)}</td><td className="p-2 text-xs">{t.lot_number || ''}</td><td className="p-2 text-xs">{t.transfer_date ? new Date(t.transfer_date).toLocaleDateString() : ''}</td><td className="p-2"><span className="px-2 py-0.5 rounded text-xs bg-green-100 text-green-700">{t.status}</span></td></tr>))}</tbody>
       </table>
       {transfers.length === 0 && <p className="text-center py-4 text-gray-400 text-sm">No transfers</p>}
     </div>

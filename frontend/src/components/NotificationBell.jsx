@@ -32,7 +32,7 @@ export default function NotificationBell() {
   const fetchNotifications = async () => {
     try {
       const res = await api.get('/api/notifications', { params: { unread_only: 'true' } });
-      setNotifications((res.data.notifications || []).slice(0, 5));
+      setNotifications((res.data.notifications || [])?.slice(0, 5));
     } catch (err) { /* silent */ }
   };
 
@@ -44,7 +44,7 @@ export default function NotificationBell() {
   const markRead = async (id) => {
     try {
       await api.put(`/api/notifications/${id}/read`);
-      setNotifications(notifications.filter(n => n.id !== id));
+      setNotifications(notifications?.filter(n => n.id !== id));
       setUnreadCount(Math.max(0, unreadCount - 1));
     } catch (err) { /* silent */ }
   };
@@ -65,7 +65,7 @@ export default function NotificationBell() {
           </div>
           <div className="max-h-60 overflow-auto">
             {notifications.length === 0 && <div className="p-4 text-center text-gray-400 text-xs">No unread notifications</div>}
-            {(notifications || []).map(n => (
+            {(notifications || [])?.map(n => (
               <div key={n.id} className="p-2 border-b hover:bg-gray-50 cursor-pointer text-xs" onClick={() => markRead(n.id)}>
                 <div className="font-medium">{n.title}</div>
                 <div className="text-gray-500 truncate">{n.message}</div>

@@ -38,7 +38,7 @@ export default function GLDefaults() {
     try {
       const res = await api.get('/api/setup/gl-defaults');
       const settingsMap = {};
-      (res.data.settings || []).forEach(s => {
+      (res.data.settings || [])?.forEach(s => {
         settingsMap[s.setting_key] = s.setting_value;
       });
       setSettings(settingsMap);
@@ -89,19 +89,19 @@ export default function GLDefaults() {
 
       {/* Settings by Group */}
       <div className="space-y-6">
-        {GROUPS.map(group => {
-          const groupSettings = Object.entries(GL_SETTING_LABELS).filter(([_, v]) => v.group === group);
+        {GROUPS?.map(group => {
+          const groupSettings = Object.entries(GL_SETTING_LABELS)?.filter(([_, v]) => v.group === group);
           return (
             <div key={group} className="bg-white rounded shadow p-4">
               <h3 className="font-semibold text-sm text-gray-700 mb-3 pb-2 border-b">{group}</h3>
               <div className="grid grid-cols-2 gap-4">
-                {groupSettings.map(([key, meta]) => (
+                {groupSettings?.map(([key, meta]) => (
                   <div key={key} className="flex items-center gap-3">
                     <label className="text-sm text-gray-600 w-48 flex-shrink-0">{meta.label}:</label>
                     <select value={settings[key] || ''} onChange={e => handleChange(key, e.target.value)}
                       className="flex-1 border rounded px-2 py-1.5 text-sm bg-white">
                       <option value="">-- Not Set --</option>
-                      {(accounts || []).map(a => (
+                      {(accounts || [])?.map(a => (
                         <option key={a.account_number} value={a.account_number}>
                           {a.account_number} - {a.account_name}
                         </option>

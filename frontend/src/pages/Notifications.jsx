@@ -126,14 +126,14 @@ export default function Notifications() {
           <div>
             {/* Category Filter */}
             <div className="flex gap-1 mb-3">
-              {(categories || []).map(c => (
+              {(categories || [])?.map(c => (
                 <button key={c} onClick={() => setFilter(c)} className={`px-2 py-1 text-xs rounded capitalize ${filter === c ? 'bg-amber-100 text-amber-700 font-medium' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{c}</button>
               ))}
             </div>
             {/* Notifications List */}
             <div className="space-y-1">
               {notifications.length === 0 && <div className="text-center text-gray-400 py-8">No notifications. Click "Run Checks" to scan for alerts.</div>}
-              {(notifications || []).map(n => (
+              {(notifications || [])?.map(n => (
                 <div key={n.id} className={`flex items-start gap-3 p-3 rounded border ${n.is_read ? 'bg-white' : 'bg-amber-50 border-amber-200'}`}>
                   <div className="mt-0.5">{typeIcon(n.type)}</div>
                   <div className="flex-1 min-w-0">
@@ -169,7 +169,7 @@ export default function Notifications() {
                 </tr>
               </thead>
               <tbody>
-                {rules.map(r => (
+                {rules?.map(r => (
                   <tr key={r.id} className="hover:bg-gray-50">
                     <td className="p-2 border font-medium">{r.rule_name}</td>
                     <td className="p-2 border capitalize">{r.rule_type?.replace(/_/g, ' ')}</td>

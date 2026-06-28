@@ -102,7 +102,7 @@ function Items() {
                 <tr><td colSpan="9" className="text-center p-4">Loading...</td></tr>
               ) : items.length === 0 ? (
                 <tr><td colSpan="9" className="text-center p-4">No items found. Click "New" to create one.</td></tr>
-              ) : (items || []).map(item => (
+              ) : (items || [])?.map(item => (
                 <tr key={item.id} className="cursor-pointer" onDoubleClick={() => navigate(`/inventory/items/${item.id}`)}>
                   <td className="text-blue-700 font-bold">{item.item_number}</td>
                   <td>{item.description}</td>

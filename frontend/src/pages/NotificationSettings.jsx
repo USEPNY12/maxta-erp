@@ -134,7 +134,7 @@ export default function NotificationSettings() {
       </div>
 
       {message && (
-        <div className={`p-3 rounded-lg text-center ${message.includes('Error') ? 'bg-red-900/50 text-red-200' : 'bg-green-900/50 text-green-200'}`}>
+        <div className={`p-3 rounded-lg text-center ${message?.includes('Error') ? 'bg-red-900/50 text-red-200' : 'bg-green-900/50 text-green-200'}`}>
           {message}
         </div>
       )}
@@ -172,7 +172,7 @@ export default function NotificationSettings() {
               <div className="mt-4">
                 <h3 className="text-sm font-medium text-gray-400 mb-2">Registered Devices</h3>
                 <div className="space-y-2">
-                  {subscriptions.map(sub => (
+                  {subscriptions?.map(sub => (
                     <div key={sub.id} className="flex items-center justify-between bg-gray-700 rounded-lg p-3">
                       <div>
                         <div className="text-white text-sm">{sub.device_name}</div>
@@ -208,7 +208,7 @@ export default function NotificationSettings() {
               </tr>
             </thead>
             <tbody>
-              {preferences.map((pref, idx) => {
+              {preferences?.map((pref, idx) => {
                 const info = categoryLabels[pref.category] || { label: pref.category, desc: '' };
                 return (
                   <tr key={pref.category} className="border-b border-gray-700/50">

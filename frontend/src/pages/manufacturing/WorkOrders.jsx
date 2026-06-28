@@ -79,8 +79,8 @@ function WorkOrders() {
   const glassTypeColors = { 'Clear Float': '#e0f2fe', 'Low Iron': '#f0fdf4', 'Low-E': '#dcfce7', 'Tinted Gray': '#e5e7eb', 'Tinted Bronze': '#fef3c7', 'Tinted Green': '#d1fae5', 'Reflective': '#dbeafe', 'Patterned': '#fce7f3', 'Wired': '#e5e7eb', 'Spandrel Black': '#374151' };
   const productTypes = [{ value: 'tempered_panel', label: 'Tempered Panel', icon: '🔥' }, { value: 'laminated', label: 'Laminated Glass', icon: '🧱' }, { value: 'tempered_laminated', label: 'Tempered Laminated', icon: '🔥🧱' }, { value: 'igu', label: 'Standard IGU', icon: '🪟' }, { value: 'igu_low_e', label: 'Low-E IGU', icon: '🪟' }, { value: 'low_e_igu', label: 'Low-E IGU', icon: '🪟' }, { value: 'heat_soaked', label: 'Heat Soaked', icon: '♨️' }, { value: 'custom', label: 'Custom', icon: '⚙️' }];
 
-  const getProductLabel = (type) => productTypes.find(p => p.value === type)?.label || type?.replace(/_/g, ' ') || 'Custom';
-  const getProductIcon = (type) => productTypes.find(p => p.value === type)?.icon || '⚙️';
+  const getProductLabel = (type) => productTypes?.find(p => p.value === type)?.label || type?.replace(/_/g, ' ') || 'Custom';
+  const getProductIcon = (type) => productTypes?.find(p => p.value === type)?.icon || '⚙️';
   const getGlassColor = (type) => glassTypeColors[type] || '#f3f4f6';
   const isOverdue = (date) => date && new Date(date) < new Date();
   const daysUntilDue = (date) => { if (!date) return null; const diff = Math.ceil((new Date(date) - new Date()) / (1000*60*60*24)); return diff; };
@@ -101,16 +101,16 @@ function WorkOrders() {
   // Summary stats
   const stats = {
     total: orders.length,
-    inProgress: orders.filter(o => o.status === 'in_progress').length,
-    planned: orders.filter(o => o.status === 'planned' || o.status === 'scheduled').length,
-    overdue: orders.filter(o => isOverdue(o.finish_date) && o.status !== 'completed' && o.status !== 'closed').length,
-    urgent: orders.filter(o => o.priority === 'urgent' || o.priority === 'high').length
+    inProgress: orders?.filter(o => o.status === 'in_progress').length,
+    planned: orders?.filter(o => o.status === 'planned' || o.status === 'scheduled').length,
+    overdue: orders?.filter(o => isOverdue(o.finish_date) && o.status !== 'completed' && o.status !== 'closed').length,
+    urgent: orders?.filter(o => o.priority === 'urgent' || o.priority === 'high').length
   };
 
   // ===== CARD VIEW =====
   const renderCardView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
-      {(orders || []).map(wo => {
+      {(orders || [])?.map(wo => {
         const pri = priorityConfig[wo.priority] || priorityConfig.normal;
         const st = statusConfig[wo.status] || statusConfig.planned;
         const progress = getProgress(wo);
@@ -218,7 +218,7 @@ function WorkOrders() {
           </tr>
         </thead>
         <tbody>
-          {(orders || []).map(wo => {
+          {(orders || [])?.map(wo => {
             const pri = priorityConfig[wo.priority] || priorityConfig.normal;
             const st = statusConfig[wo.status] || statusConfig.planned;
             const progress = getProgress(wo);
@@ -307,8 +307,8 @@ function WorkOrders() {
     ];
     return (
       <div className="flex gap-3 p-4 overflow-x-auto h-full">
-        {columns.map(col => {
-          const colOrders = orders.filter(o => col.statuses.includes(o.status));
+        {columns?.map(col => {
+          const colOrders = orders?.filter(o => col.statuses?.includes(o.status));
           const colSt = statusConfig[col.key] || statusConfig.planned;
           return (
             <div key={col.key} className="flex-shrink-0 w-72 bg-gray-50 rounded-lg border flex flex-col">
@@ -319,7 +319,7 @@ function WorkOrders() {
               </div>
               {/* Cards */}
               <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                {colOrders.map(wo => {
+                {colOrders?.map(wo => {
                   const pri = priorityConfig[wo.priority] || priorityConfig.normal;
                   const overdue = isOverdue(wo.finish_date) && wo.status !== 'completed';
                   return (
@@ -395,7 +395,7 @@ function WorkOrders() {
         </select>
         <select className="erp-form-select text-xs" value={productFilter} onChange={e => setProductFilter(e.target.value)}>
           <option value="">All Products</option>
-          {productTypes.map(pt => <option key={pt.value} value={pt.value}>{pt.icon} {pt.label}</option>)}
+          {productTypes?.map(pt => <option key={pt.value} value={pt.value}>{pt.icon} {pt.label}</option>)}
         </select>
         <input className="erp-form-input text-xs w-48" placeholder="Search WO#, item, customer..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchOrders()} />
         <button className="erp-toolbar-btn text-xs" onClick={fetchOrders}>🔍 Find</button>
@@ -468,7 +468,7 @@ function WorkOrders() {
                 <div>
                   <h4 className="font-bold text-sm mb-3">Production Routing Steps</h4>
                   <div className="space-y-2">
-                    {(selected.routing || []).map((r, i) => (
+                    {(selected.routing || [])?.map((r, i) => (
                       <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border ${r.status === 'complete' ? 'bg-green-50 border-green-200' : r.status === 'in_progress' ? 'bg-yellow-50 border-yellow-300 shadow-sm' : 'bg-white border-gray-200'}`}>
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow" style={{ backgroundColor: r.color || '#6b7280' }}>{r.icon || (i+1)}</div>
                         <div className="flex-1">
@@ -489,7 +489,7 @@ function WorkOrders() {
                 <div>
                   <h4 className="font-bold text-sm mb-3">Bill of Materials</h4>
                   <table className="w-full text-sm border"><thead className="bg-gray-100"><tr><th className="px-3 py-2 text-left">Item#</th><th className="px-3 py-2 text-left">Description</th><th className="px-3 py-2">UOM</th><th className="px-3 py-2">Required</th><th className="px-3 py-2">Issued</th><th className="px-3 py-2">Remaining</th></tr></thead>
-                  <tbody>{(selected.materials || []).map((m, i) => (<tr key={i} className="border-t"><td className="px-3 py-2 font-medium">{m.item_number}</td><td className="px-3 py-2">{m.item_description}</td><td className="px-3 py-2 text-center">{m.uom}</td><td className="px-3 py-2 text-center font-bold">{m.quantity_required}</td><td className="px-3 py-2 text-center">{m.quantity_issued || 0}</td><td className="px-3 py-2 text-center font-bold text-amber-600">{(m.quantity_required - (m.quantity_issued || 0)) || 0}</td></tr>))}
+                  <tbody>{(selected.materials || [])?.map((m, i) => (<tr key={i} className="border-t"><td className="px-3 py-2 font-medium">{m.item_number}</td><td className="px-3 py-2">{m.item_description}</td><td className="px-3 py-2 text-center">{m.uom}</td><td className="px-3 py-2 text-center font-bold">{m.quantity_required}</td><td className="px-3 py-2 text-center">{m.quantity_issued || 0}</td><td className="px-3 py-2 text-center font-bold text-amber-600">{(m.quantity_required - (m.quantity_issued || 0)) || 0}</td></tr>))}
                   {(!selected.materials || selected.materials.length === 0) && <tr><td colSpan="6" className="text-center text-gray-500 py-8">No materials assigned</td></tr>}</tbody></table>
                 </div>
               )}
@@ -497,7 +497,7 @@ function WorkOrders() {
                 <div>
                   <h4 className="font-bold text-sm mb-3">Labor Time Log</h4>
                   <table className="w-full text-sm border"><thead className="bg-gray-100"><tr><th className="px-3 py-2 text-left">Date</th><th className="px-3 py-2 text-left">Station</th><th className="px-3 py-2">Hours</th><th className="px-3 py-2 text-left">Type</th><th className="px-3 py-2 text-left">Notes</th></tr></thead>
-                  <tbody>{(selected.labor || []).map((l, i) => (<tr key={i} className="border-t"><td className="px-3 py-2">{formatDate(l.work_date)}</td><td className="px-3 py-2">{l.work_center_name}</td><td className="px-3 py-2 text-center font-bold">{l.hours}h</td><td className="px-3 py-2">{l.labor_type}</td><td className="px-3 py-2 text-gray-600">{l.notes}</td></tr>))}
+                  <tbody>{(selected.labor || [])?.map((l, i) => (<tr key={i} className="border-t"><td className="px-3 py-2">{formatDate(l.work_date)}</td><td className="px-3 py-2">{l.work_center_name}</td><td className="px-3 py-2 text-center font-bold">{l.hours}h</td><td className="px-3 py-2">{l.labor_type}</td><td className="px-3 py-2 text-gray-600">{l.notes}</td></tr>))}
                   {(!selected.labor || selected.labor.length === 0) && <tr><td colSpan="5" className="text-center text-gray-500 py-8">No labor logged</td></tr>}</tbody></table>
                 </div>
               )}
@@ -512,7 +512,7 @@ function WorkOrders() {
                 <div>
                   <h4 className="font-bold text-sm mb-3">Station Tracking History</h4>
                   <table className="w-full text-sm border"><thead className="bg-gray-100"><tr><th className="px-3 py-2 text-left">Station</th><th className="px-3 py-2">Status</th><th className="px-3 py-2 text-left">Started</th><th className="px-3 py-2 text-left">Completed</th><th className="px-3 py-2">Qty Good</th><th className="px-3 py-2">Qty Scrap</th></tr></thead>
-                  <tbody>{(selected.tracking || []).map((t, i) => (<tr key={i} className="border-t"><td className="px-3 py-2">{t.station_icon} {t.station_name}</td><td className="px-3 py-2 text-center"><span className={`text-xs px-2 py-0.5 rounded ${t.status === 'complete' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{t.status}</span></td><td className="px-3 py-2">{formatDate(t.started_at)}</td><td className="px-3 py-2">{formatDate(t.completed_at)}</td><td className="px-3 py-2 text-center font-bold text-green-700">{t.quantity_good || '-'}</td><td className="px-3 py-2 text-center font-bold text-red-600">{t.quantity_scrap || '-'}</td></tr>))}
+                  <tbody>{(selected.tracking || [])?.map((t, i) => (<tr key={i} className="border-t"><td className="px-3 py-2">{t.station_icon} {t.station_name}</td><td className="px-3 py-2 text-center"><span className={`text-xs px-2 py-0.5 rounded ${t.status === 'complete' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{t.status}</span></td><td className="px-3 py-2">{formatDate(t.started_at)}</td><td className="px-3 py-2">{formatDate(t.completed_at)}</td><td className="px-3 py-2 text-center font-bold text-green-700">{t.quantity_good || '-'}</td><td className="px-3 py-2 text-center font-bold text-red-600">{t.quantity_scrap || '-'}</td></tr>))}
                   {(!selected.tracking || selected.tracking.length === 0) && <tr><td colSpan="6" className="text-center text-gray-500 py-8">No tracking data</td></tr>}</tbody></table>
                 </div>
               )}
@@ -520,7 +520,7 @@ function WorkOrders() {
                 <div>
                   <h4 className="font-bold text-sm mb-3">Quality Control Inspections</h4>
                   <table className="w-full text-sm border"><thead className="bg-gray-100"><tr><th className="px-3 py-2 text-left">Date</th><th className="px-3 py-2 text-left">Station</th><th className="px-3 py-2">Type</th><th className="px-3 py-2">Result</th><th className="px-3 py-2">Inspected</th><th className="px-3 py-2">Failed</th><th className="px-3 py-2 text-left">Defect</th></tr></thead>
-                  <tbody>{(selected.qc_inspections || []).map((q, i) => (<tr key={i} className={`border-t ${q.result === 'fail' ? 'bg-red-50' : ''}`}><td className="px-3 py-2">{formatDate(q.inspection_date)}</td><td className="px-3 py-2">{q.work_center_name}</td><td className="px-3 py-2 text-center">{q.inspection_type}</td><td className="px-3 py-2 text-center"><span className={`font-bold ${q.result === 'pass' ? 'text-green-700' : 'text-red-700'}`}>{q.result === 'pass' ? '✓ PASS' : '✗ FAIL'}</span></td><td className="px-3 py-2 text-center">{q.quantity_inspected}</td><td className="px-3 py-2 text-center font-bold text-red-600">{q.quantity_failed}</td><td className="px-3 py-2">{q.defect_type}</td></tr>))}
+                  <tbody>{(selected.qc_inspections || [])?.map((q, i) => (<tr key={i} className={`border-t ${q.result === 'fail' ? 'bg-red-50' : ''}`}><td className="px-3 py-2">{formatDate(q.inspection_date)}</td><td className="px-3 py-2">{q.work_center_name}</td><td className="px-3 py-2 text-center">{q.inspection_type}</td><td className="px-3 py-2 text-center"><span className={`font-bold ${q.result === 'pass' ? 'text-green-700' : 'text-red-700'}`}>{q.result === 'pass' ? '✓ PASS' : '✗ FAIL'}</span></td><td className="px-3 py-2 text-center">{q.quantity_inspected}</td><td className="px-3 py-2 text-center font-bold text-red-600">{q.quantity_failed}</td><td className="px-3 py-2">{q.defect_type}</td></tr>))}
                   {(!selected.qc_inspections || selected.qc_inspections.length === 0) && <tr><td colSpan="7" className="text-center text-gray-500 py-8">No inspections recorded</td></tr>}</tbody></table>
                 </div>
               )}
@@ -528,7 +528,7 @@ function WorkOrders() {
                 <div>
                   <h4 className="font-bold text-sm mb-3">Recuts / Rework</h4>
                   <table className="w-full text-sm border"><thead className="bg-gray-100"><tr><th className="px-3 py-2 text-left">Date</th><th className="px-3 py-2 text-left">Station</th><th className="px-3 py-2">Qty</th><th className="px-3 py-2 text-left">Reason</th><th className="px-3 py-2 text-left">Notes</th></tr></thead>
-                  <tbody>{(selected.recuts || []).map((r, i) => (<tr key={i} className="border-t bg-red-50/30"><td className="px-3 py-2">{formatDate(r.reported_at)}</td><td className="px-3 py-2">{r.work_center_name}</td><td className="px-3 py-2 text-center font-bold text-red-600">{r.quantity}</td><td className="px-3 py-2">{r.reason_code}</td><td className="px-3 py-2 text-gray-600">{r.notes}</td></tr>))}
+                  <tbody>{(selected.recuts || [])?.map((r, i) => (<tr key={i} className="border-t bg-red-50/30"><td className="px-3 py-2">{formatDate(r.reported_at)}</td><td className="px-3 py-2">{r.work_center_name}</td><td className="px-3 py-2 text-center font-bold text-red-600">{r.quantity}</td><td className="px-3 py-2">{r.reason_code}</td><td className="px-3 py-2 text-gray-600">{r.notes}</td></tr>))}
                   {(!selected.recuts || selected.recuts.length === 0) && <tr><td colSpan="5" className="text-center text-gray-500 py-8">No recuts recorded</td></tr>}</tbody></table>
                 </div>
               )}
@@ -536,7 +536,7 @@ function WorkOrders() {
                 <div>
                   <h4 className="font-bold text-sm mb-3">Production Receipts</h4>
                   <table className="w-full text-sm border"><thead className="bg-gray-100"><tr><th className="px-3 py-2 text-left">Receipt#</th><th className="px-3 py-2 text-left">Date</th><th className="px-3 py-2">Qty Completed</th><th className="px-3 py-2">Qty Scrapped</th><th className="px-3 py-2">Total Cost</th></tr></thead>
-                  <tbody>{(selected.receipts || []).map((r, i) => (<tr key={i} className="border-t"><td className="px-3 py-2 font-medium">{r.receipt_number}</td><td className="px-3 py-2">{formatDate(r.receipt_date)}</td><td className="px-3 py-2 text-center font-bold text-green-700">{r.quantity_completed}</td><td className="px-3 py-2 text-center font-bold text-red-600">{r.quantity_scrapped}</td><td className="px-3 py-2 text-center">${r.total_cost || 0}</td></tr>))}
+                  <tbody>{(selected.receipts || [])?.map((r, i) => (<tr key={i} className="border-t"><td className="px-3 py-2 font-medium">{r.receipt_number}</td><td className="px-3 py-2">{formatDate(r.receipt_date)}</td><td className="px-3 py-2 text-center font-bold text-green-700">{r.quantity_completed}</td><td className="px-3 py-2 text-center font-bold text-red-600">{r.quantity_scrapped}</td><td className="px-3 py-2 text-center">${r.total_cost || 0}</td></tr>))}
                   {(!selected.receipts || selected.receipts.length === 0) && <tr><td colSpan="5" className="text-center text-gray-500 py-8">No receipts recorded</td></tr>}</tbody></table>
                 </div>
               )}
@@ -580,13 +580,13 @@ function WorkOrders() {
               <div className="grid grid-cols-2 gap-4">
                 <div><label className="text-xs font-bold text-gray-700 block mb-1">Product Type *</label>
                   <select className="erp-form-select w-full" value={newWO.product_type} onChange={e => setNewWO({...newWO, product_type: e.target.value})}>
-                    {productTypes.map(pt => <option key={pt.value} value={pt.value}>{pt.icon} {pt.label}</option>)}
+                    {productTypes?.map(pt => <option key={pt.value} value={pt.value}>{pt.icon} {pt.label}</option>)}
                   </select>
                 </div>
                 <div><label className="text-xs font-bold text-gray-700 block mb-1">Item *</label>
                   <select className="erp-form-select w-full" value={newWO.item_id} onChange={e => setNewWO({...newWO, item_id: e.target.value})}>
                     <option value="">Select item...</option>
-                    {(items || []).map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
+                    {(items || [])?.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
                   </select>
                 </div>
               </div>

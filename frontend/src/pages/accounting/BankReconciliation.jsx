@@ -50,16 +50,16 @@ export default function BankReconciliation() {
     setTransactions(updated);
   };
 
-  const selectAll = () => setTransactions((transactions || []).map(t => ({ ...t, _selected: true })));
-  const deselectAll = () => setTransactions((transactions || []).map(t => ({ ...t, _selected: false })));
+  const selectAll = () => setTransactions((transactions || [])?.map(t => ({ ...t, _selected: true })));
+  const deselectAll = () => setTransactions((transactions || [])?.map(t => ({ ...t, _selected: false })));
 
-  const selectedTotal = transactions.filter(t => t._selected).reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-  const bankInfo = banks.find(b => String(b.id) === String(selectedBank));
+  const selectedTotal = transactions?.filter(t => t._selected)?.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+  const bankInfo = banks?.find(b => String(b.id) === String(selectedBank));
   const bookBalance = bankInfo ? parseFloat(bankInfo.current_balance || 0) : 0;
   const difference = parseFloat(statementBalance || 0) - (bookBalance + selectedTotal);
 
   const handleReconcile = async () => {
-    const selectedIds = transactions.filter(t => t._selected).map(t => t.id);
+    const selectedIds = transactions?.filter(t => t._selected)?.map(t => t.id);
     if (selectedIds.length === 0) { toast.error('No transactions selected'); return; }
     if (!statementBalance) { toast.error('Enter statement balance'); return; }
     try {
@@ -98,7 +98,7 @@ export default function BankReconciliation() {
         <span className="text-xs font-bold">Bank Account:</span>
         <select className="erp-form-select w-64" value={selectedBank} onChange={e => handleBankChange(e.target.value)}>
           <option value="">Select Bank Account...</option>
-          {banks.map(b => <option key={b.id} value={b.id}>{b.bank_name || b.account_name} - {b.account_number}</option>)}
+          {banks?.map(b => <option key={b.id} value={b.id}>{b.bank_name || b.account_name} - {b.account_number}</option>)}
         </select>
         {selectedBank && (
           <>
@@ -140,7 +140,7 @@ export default function BankReconciliation() {
               <tbody>
                 {transactions.length === 0 ? (
                   <tr><td colSpan="7" className="text-center p-4 text-gray-500">No transactions found</td></tr>
-                ) : (transactions || []).map((t, i) => (
+                ) : (transactions || [])?.map((t, i) => (
                   <tr key={t.id || i} className={t._selected ? 'bg-blue-50' : t.cleared ? 'bg-green-50' : ''}>
                     <td className="text-center">{!t.cleared ? <input type="checkbox" checked={t._selected || false} onChange={() => toggleCleared(i)} /> : <span className="text-green-600">✓</span>}</td>
                     <td>{t.transaction_date?.split('T')[0] || '-'}</td>
@@ -162,7 +162,7 @@ export default function BankReconciliation() {
               <tbody>
                 {history.length === 0 ? (
                   <tr><td colSpan="6" className="text-center p-4 text-gray-500">No reconciliation history</td></tr>
-                ) : history.map(h => (
+                ) : history?.map(h => (
                   <tr key={h.id}>
                     <td>{h.statement_date?.split('T')[0]}</td>
                     <td className="text-right font-mono">${parseFloat(h.statement_balance || 0).toFixed(2)}</td>

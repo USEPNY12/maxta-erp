@@ -64,7 +64,7 @@ export default function SystemSetup() {
   const [activeSection, setActiveSection] = useState(tabParam || 'users');
   const [expandedGroups, setExpandedGroups] = useState(() => {
     if (tabParam) {
-      const group = NAV_SECTIONS.find(s => s.items.some(i => i.key === tabParam));
+      const group = NAV_SECTIONS?.find(s => s.items?.some(i => i.key === tabParam));
       if (group) return ['Security', 'General', group.group];
     }
     return ['Security', 'General'];
@@ -74,15 +74,15 @@ export default function SystemSetup() {
   useEffect(() => {
     if (tabParam) {
       setActiveSection(tabParam);
-      const group = NAV_SECTIONS.find(s => s.items.some(i => i.key === tabParam));
-      if (group && !expandedGroups.includes(group.group)) {
+      const group = NAV_SECTIONS?.find(s => s.items?.some(i => i.key === tabParam));
+      if (group && !expandedGroups?.includes(group.group)) {
         setExpandedGroups(prev => [...prev, group.group]);
       }
     }
   }, [tabParam]);
 
   const toggleGroup = (group) => {
-    setExpandedGroups(prev => prev.includes(group) ? prev.filter(g => g !== group) : [...prev, group]);
+    setExpandedGroups(prev => prev?.includes(group) ? prev?.filter(g => g !== group) : [...prev, group]);
   };
 
   const handleNavClick = (key) => {
@@ -91,8 +91,8 @@ export default function SystemSetup() {
   };
 
   // Get current section label for mobile dropdown
-  const currentLabel = NAV_SECTIONS.flatMap(s => s.items).find(i => i.key === activeSection)?.label || 'Users';
-  const currentGroup = NAV_SECTIONS.find(s => s.items.some(i => i.key === activeSection));
+  const currentLabel = NAV_SECTIONS?.flatMap(s => s.items)?.find(i => i.key === activeSection)?.label || 'Users';
+  const currentGroup = NAV_SECTIONS?.find(s => s.items?.some(i => i.key === activeSection));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
@@ -107,12 +107,12 @@ export default function SystemSetup() {
         </button>
         {mobileNavOpen && (
           <div className="setup-mobile-dropdown">
-            {NAV_SECTIONS.map(section => (
+            {NAV_SECTIONS?.map(section => (
               <div key={section.group}>
                 <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', background: '#f1f5f9' }}>
                   {section.icon} {section.group}
                 </div>
-                {section.items.map(item => (
+                {section.items?.map(item => (
                   <div key={item.key} onClick={() => handleNavClick(item.key)} style={{ padding: '10px 16px', fontSize: 14, cursor: 'pointer', color: activeSection === item.key ? '#2563eb' : '#334155', background: activeSection === item.key ? '#eff6ff' : '#fff', fontWeight: activeSection === item.key ? 600 : 400, borderLeft: activeSection === item.key ? '3px solid #2563eb' : '3px solid transparent' }}>
                     {item.label}
                   </div>
@@ -130,14 +130,14 @@ export default function SystemSetup() {
       {/* Left Navigation */}
       <div className="setup-left-nav" style={{ width: 240, minWidth: 240, background: '#1e293b', color: '#e2e8f0', overflowY: 'auto', borderRight: '1px solid #334155' }}>
         <div style={{ padding: '16px 12px 8px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', letterSpacing: 1 }}>System Setup</div>
-        {NAV_SECTIONS.map(section => (
+        {NAV_SECTIONS?.map(section => (
           <div key={section.group}>
-            <div onClick={() => toggleGroup(section.group)} style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#cbd5e1', background: expandedGroups.includes(section.group) ? '#334155' : 'transparent', borderBottom: '1px solid #334155' }}>
+            <div onClick={() => toggleGroup(section.group)} style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#cbd5e1', background: expandedGroups?.includes(section.group) ? '#334155' : 'transparent', borderBottom: '1px solid #334155' }}>
               <span style={{ marginRight: 8 }}>{section.icon}</span>
               <span style={{ flex: 1 }}>{section.group}</span>
-              <span style={{ fontSize: 10 }}>{expandedGroups.includes(section.group) ? '▼' : '▶'}</span>
+              <span style={{ fontSize: 10 }}>{expandedGroups?.includes(section.group) ? '▼' : '▶'}</span>
             </div>
-            {expandedGroups.includes(section.group) && section.items.map(item => (
+            {expandedGroups?.includes(section.group) && section.items?.map(item => (
               <div key={item.key} onClick={() => handleNavClick(item.key)} style={{ padding: '8px 12px 8px 36px', cursor: 'pointer', fontSize: 13, color: activeSection === item.key ? '#fff' : '#94a3b8', background: activeSection === item.key ? '#2563eb' : 'transparent', borderLeft: activeSection === item.key ? '3px solid #60a5fa' : '3px solid transparent', transition: 'all 0.15s' }}>
                 {item.label}
               </div>
@@ -276,7 +276,7 @@ function UsersSection() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 20, color: '#1e293b' }}>User Management</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>{users.length} total users, {users.filter(u => u.is_active).length} active</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>{users.length} total users, {users?.filter(u => u.is_active).length} active</p>
         </div>
         <button onClick={openAdd} style={{ padding: '8px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>+ Add User</button>
       </div>
@@ -296,7 +296,7 @@ function UsersSection() {
             </tr>
           </thead>
           <tbody>
-            {users.map(u => (
+            {users?.map(u => (
               <tr key={u.id} style={{ borderBottom: '1px solid #e2e8f0', opacity: u.is_active ? 1 : 0.6 }}>
                 <td style={tdStyle}><strong>{u.username}</strong></td>
                 <td style={tdStyle}>{u.first_name} {u.last_name}</td>
@@ -332,7 +332,7 @@ function UsersSection() {
             <div>
               <label style={labelStyle}>Role</label>
               <select value={form.role} onChange={e => setForm({...form, role: e.target.value})} style={inputStyle}>
-                {roles.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                {roles?.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
               </select>
             </div>
             <FormField label="Department" value={form.department || ''} onChange={v => setForm({...form, department: v})} />
@@ -387,7 +387,7 @@ function RolesSection() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const getUserCount = (roleName) => users.filter(u => u.role === roleName).length;
+  const getUserCount = (roleName) => users?.filter(u => u.role === roleName).length;
 
   const openAdd = () => { setEditRole(null); setForm({ name: '', description: '', is_active: true }); setError(''); setShowModal(true); };
   const openEdit = (r) => { setEditRole(r); setForm({ name: r.name, description: r.description, is_active: !!r.is_active }); setError(''); setShowModal(true); };
@@ -421,13 +421,13 @@ function RolesSection() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 20, color: '#1e293b' }}>Role Management</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>{roles.length} roles configured ({roles.filter(r => r.is_system).length} system, {roles.filter(r => !r.is_system).length} custom)</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>{roles.length} roles configured ({roles?.filter(r => r.is_system).length} system, {roles?.filter(r => !r.is_system).length} custom)</p>
         </div>
         <button onClick={openAdd} style={{ padding: '8px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>+ Add Custom Role</button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-        {roles.map(r => (
+        {roles?.map(r => (
           <div key={r.id} style={{ background: '#fff', borderRadius: 8, padding: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', opacity: r.is_active ? 1 : 0.6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
               <div>
@@ -504,10 +504,10 @@ function PermissionsMatrix() {
   const togglePerm = (roleId, module, perm) => {
     const key = `${roleId}`;
     // Initialize from current data if not yet modified
-    const current = changes[key] || Object.fromEntries(MODULES.map(m => [m, [...(data?.matrix?.[roleId]?.permissions?.[m] || [])]]));
+    const current = changes[key] || Object.fromEntries(MODULES?.map(m => [m, [...(data?.matrix?.[roleId]?.permissions?.[m] || [])]]));
     const modPerms = current[module] || [];
-    if (modPerms.includes(perm)) {
-      current[module] = modPerms.filter(p => p !== perm);
+    if (modPerms?.includes(perm)) {
+      current[module] = modPerms?.filter(p => p !== perm);
     } else {
       current[module] = [...modPerms, perm];
     }
@@ -521,7 +521,7 @@ function PermissionsMatrix() {
       if (!perms) return;
       // Filter out empty arrays
       const cleanPerms = {};
-      Object.entries(perms).forEach(([mod, p]) => { if (p.length > 0) cleanPerms[mod] = p; });
+      Object.entries(perms)?.forEach(([mod, p]) => { if (p.length > 0) cleanPerms[mod] = p; });
       await api.put(`/api/setup/permissions/${roleId}`, { permissions: cleanPerms });
       const newChanges = { ...changes };
       delete newChanges[`${roleId}`];
@@ -545,7 +545,7 @@ function PermissionsMatrix() {
       </div>
 
       <div style={{ overflowX: 'auto' }}>
-        {data.roles.map(role => (
+        {data.roles?.map(role => (
           <div key={role.id} style={{ background: '#fff', borderRadius: 8, padding: 16, marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: changes[`${role.id}`] ? '2px solid #f59e0b' : '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
               <h3 style={{ margin: 0, fontSize: 15, textTransform: 'capitalize', color: '#1e293b' }}>
@@ -563,14 +563,14 @@ function PermissionsMatrix() {
                 <thead>
                   <tr style={{ background: '#f8fafc' }}>
                     <th style={{ padding: '6px 10px', textAlign: 'left', borderBottom: '2px solid #e2e8f0', fontWeight: 600, color: '#475569', width: 140 }}>Module</th>
-                    {PERMISSIONS.map(p => <th key={p} style={{ padding: '6px 8px', textAlign: 'center', borderBottom: '2px solid #e2e8f0', fontWeight: 600, color: '#475569', textTransform: 'capitalize', width: 70 }}>{p}</th>)}
+                    {PERMISSIONS?.map(p => <th key={p} style={{ padding: '6px 8px', textAlign: 'center', borderBottom: '2px solid #e2e8f0', fontWeight: 600, color: '#475569', textTransform: 'capitalize', width: 70 }}>{p}</th>)}
                   </tr>
                 </thead>
                 <tbody>
-                  {MODULES.map((mod, i) => (
+                  {MODULES?.map((mod, i) => (
                     <tr key={mod} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '8px 10px', fontWeight: 500, color: '#334155' }}>{MODULE_LABELS[mod]}</td>
-                      {PERMISSIONS.map(perm => (
+                      {PERMISSIONS?.map(perm => (
                         <td key={perm} style={{ padding: '6px 8px', textAlign: 'center' }}>
                           <input type="checkbox" checked={isChecked(role.id, mod, perm)} onChange={() => togglePerm(role.id, mod, perm)} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#2563eb' }} />
                         </td>
@@ -622,7 +622,7 @@ function CompanyInfo() {
       {msg && <div style={{ marginBottom: 12, padding: '8px 12px', background: '#f0fdf4', color: '#16a34a', borderRadius: 4, fontSize: 13 }}>{msg}</div>}
       <div style={{ background: '#fff', borderRadius: 8, padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.1)', maxWidth: 700 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          {fields.map(f => (
+          {fields?.map(f => (
             <div key={f.key} style={f.span === 2 ? { gridColumn: 'span 2' } : {}}>
               <FormField label={f.label} value={form[f.key] || ''} onChange={v => setForm({...form, [f.key]: v})} />
             </div>
@@ -652,7 +652,7 @@ function GenericSetupTable({ tableKey }) {
       const data = Array.isArray(res.data) ? res.data : [];
       setRows(data);
       if (data.length > 0) {
-        setColumns(Object.keys(data[0]).filter(k => !['created_at', 'updated_at', 'password_hash'].includes(k)));
+        setColumns(Object.keys(data[0])?.filter(k => !['created_at', 'updated_at', 'password_hash'].includes(k)));
       } else {
         setColumns([]);
       }
@@ -665,7 +665,7 @@ function GenericSetupTable({ tableKey }) {
   const openAdd = () => {
     setEditRow(null);
     const newForm = {};
-    columns.filter(c => c !== 'id').forEach(c => { newForm[c] = ''; });
+    columns?.filter(c => c !== 'id')?.forEach(c => { newForm[c] = ''; });
     setForm(newForm);
     setShowModal(true);
   };
@@ -673,7 +673,7 @@ function GenericSetupTable({ tableKey }) {
   const openEdit = (row) => {
     setEditRow(row);
     const editForm = {};
-    columns.filter(c => c !== 'id').forEach(c => { editForm[c] = row[c] ?? ''; });
+    columns?.filter(c => c !== 'id')?.forEach(c => { editForm[c] = row[c] ?? ''; });
     setForm(editForm);
     setShowModal(true);
   };
@@ -700,7 +700,7 @@ function GenericSetupTable({ tableKey }) {
     } catch (e) { alert(e.response?.data?.error || 'Error'); }
   };
 
-  const label = NAV_SECTIONS.flatMap(s => s.items).find(i => i.key === tableKey)?.label || tableKey;
+  const label = NAV_SECTIONS?.flatMap(s => s.items)?.find(i => i.key === tableKey)?.label || tableKey;
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>Loading {label}...</div>;
 
@@ -721,14 +721,14 @@ function GenericSetupTable({ tableKey }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff', borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
             <thead>
               <tr style={{ background: '#f1f5f9' }}>
-                {columns.map(c => <th key={c} style={thStyle}>{c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</th>)}
+                {columns?.map(c => <th key={c} style={thStyle}>{c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</th>)}
                 <th style={thStyle}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, i) => (
+              {rows?.map((row, i) => (
                 <tr key={row.id || i} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                  {columns.map(c => <td key={c} style={tdStyle}>{formatCell(row[c], c)}</td>)}
+                  {columns?.map(c => <td key={c} style={tdStyle}>{formatCell(row[c], c)}</td>)}
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', gap: 4 }}>
                       <button onClick={() => openEdit(row)} style={btnSmStyle('#2563eb')}>Edit</button>
@@ -745,7 +745,7 @@ function GenericSetupTable({ tableKey }) {
       {showModal && (
         <Modal title={editRow ? `Edit ${label}` : `Add ${label}`} onClose={() => setShowModal(false)}>
           <div style={{ display: 'grid', gridTemplateColumns: columns.length > 4 ? '1fr 1fr' : '1fr', gap: 12 }}>
-            {Object.keys(form).filter(k => k !== 'id').map(k => (
+            {Object.keys(form)?.filter(k => k !== 'id')?.map(k => (
               <FormField key={k} label={k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())} value={form[k] ?? ''} onChange={v => setForm({...form, [k]: v})} />
             ))}
           </div>

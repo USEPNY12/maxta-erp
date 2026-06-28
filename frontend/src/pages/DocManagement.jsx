@@ -75,7 +75,7 @@ export default function DocManagement() {
   };
 
   const selectTemplate = (templateId) => {
-    const t = templates.find(x => x.id === parseInt(templateId));
+    const t = templates?.find(x => x.id === parseInt(templateId));
     if (t) {
       setEmailForm({ ...emailForm, template_id: templateId, subject: t.subject, body_html: t.body_html });
     }
@@ -118,7 +118,7 @@ export default function DocManagement() {
               <div><label className="block font-medium">Template (optional)</label>
                 <select className="w-full border rounded px-2 py-1" value={emailForm.template_id} onChange={e => selectTemplate(e.target.value)}>
                   <option value="">-- No Template --</option>
-                  {templates.map(t => <option key={t.id} value={t.id}>{t.template_name}</option>)}
+                  {templates?.map(t => <option key={t.id} value={t.id}>{t.template_name}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -171,7 +171,7 @@ export default function DocManagement() {
               </tr>
             </thead>
             <tbody>
-              {templates.map(t => (
+              {templates?.map(t => (
                 <tr key={t.id} className="hover:bg-gray-50">
                   <td className="p-2 border font-medium">{t.template_name}</td>
                   <td className="p-2 border capitalize">{t.template_type?.replace('_', ' ')}</td>
@@ -201,7 +201,7 @@ export default function DocManagement() {
             </thead>
             <tbody>
               {emailQueue.length === 0 && <tr><td colSpan="7" className="p-8 text-center text-gray-400">No emails in queue</td></tr>}
-              {emailQueue.map(e => (
+              {emailQueue?.map(e => (
                 <tr key={e.id} className="hover:bg-gray-50">
                   <td className="p-2 border">{new Date(e.created_at).toLocaleString()}</td>
                   <td className="p-2 border">{e.to_email}</td>
@@ -232,7 +232,7 @@ export default function DocManagement() {
                 <tr><th className="text-left p-2 border">Reference Type</th><th className="text-right p-2 border">Count</th></tr>
               </thead>
               <tbody>
-                {(stats.by_type || []).map(t => (
+                {(stats.by_type || [])?.map(t => (
                   <tr key={t.reference_type}><td className="p-2 border capitalize">{t.reference_type?.replace('_', ' ')}</td><td className="p-2 border text-right">{t.count}</td></tr>
                 ))}
               </tbody>

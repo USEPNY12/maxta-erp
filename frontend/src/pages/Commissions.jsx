@@ -46,10 +46,10 @@ export default function Commissions() {
     }
   };
 
-  const totalPending = summary.reduce((sum, s) => sum + parseFloat(s.pending_amount || 0), 0);
-  const totalApproved = summary.reduce((sum, s) => sum + parseFloat(s.approved_amount || 0), 0);
-  const totalPaid = summary.reduce((sum, s) => sum + parseFloat(s.paid_amount || 0), 0);
-  const totalRevenue = summary.reduce((sum, s) => sum + parseFloat(s.total_revenue || 0), 0);
+  const totalPending = summary?.reduce((sum, s) => sum + parseFloat(s.pending_amount || 0), 0);
+  const totalApproved = summary?.reduce((sum, s) => sum + parseFloat(s.approved_amount || 0), 0);
+  const totalPaid = summary?.reduce((sum, s) => sum + parseFloat(s.paid_amount || 0), 0);
+  const totalRevenue = summary?.reduce((sum, s) => sum + parseFloat(s.total_revenue || 0), 0);
 
   return (
     <ModulePage title="Commissions" menuItems={salesMenu}>
@@ -105,7 +105,7 @@ export default function Commissions() {
                     </tr>
                   </thead>
                   <tbody>
-                    {summary.map(s => {
+                    {summary?.map(s => {
                       const effectiveRate = parseFloat(s.total_revenue) > 0
                         ? (parseFloat(s.total_amount || 0) / parseFloat(s.total_revenue) * 100).toFixed(1)
                         : '0.0';
@@ -137,9 +137,9 @@ export default function Commissions() {
                     <option value="approved">Approved</option>
                     <option value="paid">Paid</option>
                   </select>
-                  {ledger.filter(l => l.status === 'approved').length > 0 && (
+                  {ledger?.filter(l => l.status === 'approved').length > 0 && (
                     <button className="comm-pay-btn" onClick={() => handlePayCommissions(
-                      ledger.filter(l => l.status === 'approved').map(l => l.id)
+                      ledger?.filter(l => l.status === 'approved')?.map(l => l.id)
                     )}>
                       Pay All Approved
                     </button>
@@ -159,8 +159,8 @@ export default function Commissions() {
                   </thead>
                   <tbody>
                     {ledger
-                      .filter(l => !filterStatus || l.status === filterStatus)
-                      .map(l => (
+                      ?.filter(l => !filterStatus || l.status === filterStatus)
+                      ?.map(l => (
                         <tr key={l.id}>
                           <td>{l.salesperson_name}</td>
                           <td>{l.invoice_number || `INV-${l.invoice_id}`}</td>
@@ -196,7 +196,7 @@ export default function Commissions() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rules.map(r => (
+                    {rules?.map(r => (
                       <tr key={r.id}>
                         <td><strong>{r.name}</strong></td>
                         <td>{r.salesperson_name || 'All'}</td>

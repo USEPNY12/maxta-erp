@@ -13,7 +13,7 @@ const PRIORITY_COLORS = { low: '#9ca3af', normal: '#3b82f6', high: '#f59e0b', ur
 function PromoForm({ promo, onSave, onCancel }) {
   const [form, setForm] = useState(promo || {
     title: '', message: '', promo_type: 'announcement', priority: 'normal', display_type: 'banner',
-    target_roles: null, start_date: new Date().toISOString().slice(0, 16), end_date: '',
+    target_roles: null, start_date: new Date().toISOString()?.slice(0, 16), end_date: '',
     is_dismissible: true, action_url: '', action_label: '', bg_color: '#3b82f6', icon: 'info'
   });
   const [targetAll, setTargetAll] = useState(!promo?.target_roles);
@@ -26,7 +26,7 @@ function PromoForm({ promo, onSave, onCancel }) {
   };
 
   const toggleRole = (role) => {
-    setSelectedRoles(prev => prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]);
+    setSelectedRoles(prev => prev?.includes(role) ? prev?.filter(r => r !== role) : [...prev, role]);
   };
 
   return (
@@ -46,19 +46,19 @@ function PromoForm({ promo, onSave, onCancel }) {
             <div>
               <label style={{ fontSize: '12px', fontWeight: '600', color: '#374151' }}>Type</label>
               <select value={form.promo_type} onChange={e => setForm({...form, promo_type: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', marginTop: '4px' }}>
-                {PROMO_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                {PROMO_TYPES?.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
               <label style={{ fontSize: '12px', fontWeight: '600', color: '#374151' }}>Priority</label>
               <select value={form.priority} onChange={e => setForm({...form, priority: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', marginTop: '4px' }}>
-                {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+                {PRIORITIES?.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <div>
               <label style={{ fontSize: '12px', fontWeight: '600', color: '#374151' }}>Display Type</label>
               <select value={form.display_type} onChange={e => setForm({...form, display_type: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', marginTop: '4px' }}>
-                {DISPLAY_TYPES.map(d => <option key={d} value={d}>{d}</option>)}
+                {DISPLAY_TYPES?.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
             <div>
@@ -96,12 +96,12 @@ function PromoForm({ promo, onSave, onCancel }) {
                 </label>
                 {!targetAll && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {ROLES.map(role => (
+                    {ROLES?.map(role => (
                       <button key={role} type="button" onClick={() => toggleRole(role)}
                         style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '11px', cursor: 'pointer',
-                          background: selectedRoles.includes(role) ? '#3b82f6' : '#f3f4f6',
-                          color: selectedRoles.includes(role) ? '#fff' : '#374151',
-                          border: `1px solid ${selectedRoles.includes(role) ? '#3b82f6' : '#d1d5db'}` }}>
+                          background: selectedRoles?.includes(role) ? '#3b82f6' : '#f3f4f6',
+                          color: selectedRoles?.includes(role) ? '#fff' : '#374151',
+                          border: `1px solid ${selectedRoles?.includes(role) ? '#3b82f6' : '#d1d5db'}` }}>
                         {role}
                       </button>
                     ))}
@@ -195,7 +195,7 @@ export default function PromotionsManager() {
 
       {loading ? <p style={{ color: '#6b7280' }}>Loading...</p> : tab === 'list' ? (
         <div style={{ display: 'grid', gap: '12px' }}>
-          {(promotions || []).map(promo => (
+          {(promotions || [])?.map(promo => (
             <div key={promo.id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '14px', background: '#fff', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ width: '4px', height: '50px', borderRadius: '2px', background: TYPE_COLORS[promo.promo_type] || '#3b82f6' }} />
               <div style={{ flex: 1 }}>
@@ -241,7 +241,7 @@ export default function PromotionsManager() {
               </tr>
             </thead>
             <tbody>
-              {analytics.map(a => (
+              {analytics?.map(a => (
                 <tr key={a.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                   <td style={{ padding: '8px', fontWeight: '500' }}>{a.title}</td>
                   <td style={{ padding: '8px', textAlign: 'center' }}><span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '10px', background: `${TYPE_COLORS[a.promo_type]}20`, color: TYPE_COLORS[a.promo_type] }}>{a.promo_type}</span></td>

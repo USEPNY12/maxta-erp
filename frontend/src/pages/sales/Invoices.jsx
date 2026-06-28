@@ -96,7 +96,7 @@ function Invoices() {
         <table className="erp-grid">
           <thead><tr><th>Invoice#</th><th>Date</th><th>Customer</th><th>Order#</th><th>Shipment#</th><th>Total</th><th>Balance Due</th><th>Status</th></tr></thead>
           <tbody>
-            {invoices.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No invoices found</td></tr> : (invoices || []).map(inv => (
+            {invoices.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No invoices found</td></tr> : (invoices || [])?.map(inv => (
               <tr key={inv.id} className="cursor-pointer" onClick={() => openDetail(inv)}>
                 <td className="text-blue-700 font-bold">{inv.invoice_number}</td>
                 <td>{formatDate(inv.invoice_date)}</td>
@@ -142,7 +142,7 @@ function Invoices() {
                   <table className="erp-grid">
                     <thead><tr><th>#</th><th>Description</th><th>Glass Specs</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
                     <tbody>
-                      {(selected.lines || []).map((l, i) => (
+                      {(selected.lines || [])?.map((l, i) => (
                         <tr key={i}>
                           <td>{i + 1}</td>
                           <td className="font-medium">{l.description}</td>
@@ -162,7 +162,7 @@ function Invoices() {
                     {(selected.payments || []).length === 0 ? <p className="text-gray-500 text-center py-4">No payments recorded</p> : (
                       <table className="erp-grid">
                         <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th></tr></thead>
-                        <tbody>{selected.payments.map((p, i) => (
+                        <tbody>{selected.payments?.map((p, i) => (
                           <tr key={i}><td>{formatDate(p.payment_date)}</td><td className="text-right font-bold text-green-700">${parseFloat(p.amount || 0).toFixed(2)}</td><td>{p.payment_method}</td><td>{p.reference_number || '-'}</td></tr>
                         ))}</tbody>
                       </table>
@@ -175,7 +175,7 @@ function Invoices() {
                     {(selected.credit_memos || []).length === 0 ? <p className="text-gray-500 text-center py-4">No credit memos</p> : (
                       <table className="erp-grid">
                         <thead><tr><th>CM#</th><th>Date</th><th>Amount</th><th>Reason</th><th>Status</th></tr></thead>
-                        <tbody>{selected.credit_memos.map((cm, i) => (
+                        <tbody>{selected.credit_memos?.map((cm, i) => (
                           <tr key={i}><td>{cm.credit_memo_number}</td><td>{formatDate(cm.created_at)}</td><td className="text-right">${parseFloat(cm.amount || 0).toFixed(2)}</td><td>{cm.reason}</td><td><span className={`erp-status erp-status-${(cm.status || '').toLowerCase()}`}>{cm.status}</span></td></tr>
                         ))}</tbody>
                       </table>

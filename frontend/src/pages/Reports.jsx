@@ -63,14 +63,14 @@ function Reports() {
   const QTY_KEYWORDS = ['qty', 'quantity', 'count', 'on_hand', 'ordered', 'shipped', 'completed', 'scrapped', 'lead_time', 'actual_days'];
   const DATE_KEYWORDS = ['date', '_at'];
 
-  const isCurrencyCol = (col) => CURRENCY_KEYWORDS.some(k => col.toLowerCase().includes(k));
-  const isQtyCol = (col) => QTY_KEYWORDS.some(k => col.toLowerCase().includes(k));
-  const isDateCol = (col) => DATE_KEYWORDS.some(k => col.toLowerCase().endsWith(k) || col.toLowerCase().includes('date'));
+  const isCurrencyCol = (col) => CURRENCY_KEYWORDS?.some(k => col.toLowerCase().includes(k));
+  const isQtyCol = (col) => QTY_KEYWORDS?.some(k => col.toLowerCase().includes(k));
+  const isDateCol = (col) => DATE_KEYWORDS?.some(k => col.toLowerCase().endsWith(k) || col.toLowerCase().includes('date'));
 
   const fmtVal = (v, col) => {
     if (v === null || v === undefined || v === '') return '-';
     if (typeof v === 'boolean' || v === 0 || v === 1) {
-      if (col && (col.includes('printed') || col.includes('has_'))) return v ? 'Yes' : 'No';
+      if (col && (col?.includes('printed') || col?.includes('has_'))) return v ? 'Yes' : 'No';
     }
     // Date formatting
     if (col && isDateCol(col) && typeof v === 'string' && v.match(/^\d{4}-\d{2}-\d{2}/)) {
@@ -103,18 +103,18 @@ function Reports() {
         <h3 className="text-center text-gray-600 mb-4">Income Statement {fromDate} to {toDate}</h3>
         <div className="mb-4">
           <h4 className="font-bold border-b pb-1">Revenue</h4>
-          {revenue.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
+          {revenue?.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
           <div className="flex justify-between font-bold border-t mt-1 pt-1"><span>Total Revenue</span><span className="font-mono">{fmtCurrency(total_revenue)}</span></div>
         </div>
         <div className="mb-4">
           <h4 className="font-bold border-b pb-1">Cost of Goods Sold</h4>
-          {cogs.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
+          {cogs?.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
           <div className="flex justify-between font-bold border-t mt-1 pt-1"><span>Total COGS</span><span className="font-mono">{fmtCurrency(total_cogs)}</span></div>
         </div>
         <div className="flex justify-between font-bold bg-blue-50 p-2 rounded mb-4"><span>Gross Profit</span><span className="font-mono">{fmtCurrency(gross_profit)}</span></div>
         <div className="mb-4">
           <h4 className="font-bold border-b pb-1">Operating Expenses</h4>
-          {expenses.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
+          {expenses?.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
           <div className="flex justify-between font-bold border-t mt-1 pt-1"><span>Total Expenses</span><span className="font-mono">{fmtCurrency(total_expenses)}</span></div>
         </div>
         <div className={`flex justify-between font-bold text-lg p-2 rounded ${Number(net_income) >= 0 ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}><span>Net Income</span><span className="font-mono">{fmtCurrency(net_income)}</span></div>
@@ -131,17 +131,17 @@ function Reports() {
         <h3 className="text-center text-gray-600 mb-4">Balance Sheet as of {toDate}</h3>
         <div className="mb-4">
           <h4 className="font-bold border-b pb-1">Assets</h4>
-          {assets.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
+          {assets?.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
           <div className="flex justify-between font-bold border-t mt-1 pt-1 bg-blue-50 p-1 rounded"><span>Total Assets</span><span className="font-mono">{fmtCurrency(total_assets)}</span></div>
         </div>
         <div className="mb-4">
           <h4 className="font-bold border-b pb-1">Liabilities</h4>
-          {liabilities.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
+          {liabilities?.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
           <div className="flex justify-between font-bold border-t mt-1 pt-1"><span>Total Liabilities</span><span className="font-mono">{fmtCurrency(total_liabilities)}</span></div>
         </div>
         <div className="mb-4">
           <h4 className="font-bold border-b pb-1">Equity</h4>
-          {equity.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
+          {equity?.map(a => <div key={a.account_number} className="flex justify-between py-1 pl-4"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmtCurrency(a.balance)}</span></div>)}
           <div className="flex justify-between font-bold border-t mt-1 pt-1"><span>Total Equity</span><span className="font-mono">{fmtCurrency(total_equity)}</span></div>
         </div>
         <div className="flex justify-between font-bold bg-gray-100 p-2 rounded"><span>Total Liabilities + Equity</span><span className="font-mono">{fmtCurrency(Number(total_liabilities) + Number(total_equity))}</span></div>
@@ -159,7 +159,7 @@ function Reports() {
         <table className="w-full text-sm border-collapse">
           <thead><tr className="bg-gray-100 border-b"><th className="p-2 text-left">Account #</th><th className="p-2 text-left">Account Name</th><th className="p-2 text-left">Type</th><th className="p-2 text-right">Debits</th><th className="p-2 text-right">Credits</th><th className="p-2 text-right">Balance</th></tr></thead>
           <tbody>
-            {(accounts || []).map(a => (
+            {(accounts || [])?.map(a => (
               <tr key={a.account_number} className="border-b hover:bg-blue-50"><td className="p-2">{a.account_number}</td><td className="p-2">{a.account_name}</td><td className="p-2 capitalize">{a.account_type}</td><td className="p-2 text-right font-mono">{fmtCurrency(a.total_debits)}</td><td className="p-2 text-right font-mono">{fmtCurrency(a.total_credits)}</td><td className="p-2 text-right font-mono">{fmtCurrency(a.balance)}</td></tr>
             ))}
           </tbody>
@@ -174,12 +174,12 @@ function Reports() {
   const renderTable = () => {
     const rows = Array.isArray(data) ? data : [];
     if (rows.length === 0) return <p className="text-center py-8 text-gray-400">No data for this report</p>;
-    const cols = Object.keys(rows[0]).filter(k => !HIDDEN_COLS.includes(k));
+    const cols = Object.keys(rows[0])?.filter(k => !HIDDEN_COLS?.includes(k));
     return (
       <div className="overflow-auto">
         <table className="w-full text-sm border-collapse">
-          <thead><tr className="bg-gray-100 border-b sticky top-0">{cols.map(c => <th key={c} className={`p-2 text-xs font-medium whitespace-nowrap ${isCurrencyCol(c) || isQtyCol(c) ? 'text-right' : 'text-left'}`}>{c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</th>)}</tr></thead>
-          <tbody>{rows.map((r, i) => (<tr key={i} className="border-b hover:bg-blue-50">{cols.map(c => <td key={c} className={`p-2 text-xs whitespace-nowrap ${isCurrencyCol(c) || isQtyCol(c) ? 'text-right font-mono' : ''}`}>{fmtVal(r[c], c)}</td>)}</tr>))}</tbody>
+          <thead><tr className="bg-gray-100 border-b sticky top-0">{cols?.map(c => <th key={c} className={`p-2 text-xs font-medium whitespace-nowrap ${isCurrencyCol(c) || isQtyCol(c) ? 'text-right' : 'text-left'}`}>{c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</th>)}</tr></thead>
+          <tbody>{rows?.map((r, i) => (<tr key={i} className="border-b hover:bg-blue-50">{cols?.map(c => <td key={c} className={`p-2 text-xs whitespace-nowrap ${isCurrencyCol(c) || isQtyCol(c) ? 'text-right font-mono' : ''}`}>{fmtVal(r[c], c)}</td>)}</tr>))}</tbody>
         </table>
         <div className="p-2 text-xs text-gray-500 border-t">{rows.length} record(s)</div>
       </div>
@@ -201,10 +201,10 @@ function Reports() {
     <div className="h-full flex bg-[#c8c8d4]">
       <div className="w-56 bg-white border-r border-gray-300 overflow-auto">
         <div className="p-3 bg-gray-800 text-white text-sm font-bold">Reports</div>
-        {Object.entries(REPORTS).map(([cat, reports]) => (
+        {Object.entries(REPORTS)?.map(([cat, reports]) => (
           <div key={cat} className="border-b border-gray-200">
             <div className="px-3 py-2 bg-gray-50 text-xs font-bold text-gray-700 uppercase">{cat}</div>
-            {(reports || []).map(r => (
+            {(reports || [])?.map(r => (
               <div key={r.id} onClick={() => runReport(r)} className={`px-4 py-1.5 text-sm cursor-pointer hover:bg-blue-50 ${activeReport?.id === r.id ? 'bg-blue-100 text-blue-800 font-medium' : 'text-gray-700'}`}>{r.name}</div>
             ))}
           </div>
@@ -216,10 +216,10 @@ function Reports() {
             <h2 className="text-xl font-bold mb-2">Reports Center</h2>
             <p>Select a report from the left panel to generate it.</p>
             <div className="mt-6 grid grid-cols-3 gap-4 max-w-3xl mx-auto text-left">
-              {Object.entries(REPORTS).map(([cat, reports]) => (
+              {Object.entries(REPORTS)?.map(([cat, reports]) => (
                 <div key={cat} className="bg-white rounded shadow p-3">
                   <h4 className="font-bold text-sm mb-2">{cat}</h4>
-                  {(reports || []).map(r => <div key={r.id} className="text-xs text-gray-600 py-0.5 cursor-pointer hover:text-blue-600" onClick={() => runReport(r)}>{r.name}</div>)}
+                  {(reports || [])?.map(r => <div key={r.id} className="text-xs text-gray-600 py-0.5 cursor-pointer hover:text-blue-600" onClick={() => runReport(r)}>{r.name}</div>)}
                 </div>
               ))}
             </div>

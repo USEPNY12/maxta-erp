@@ -53,7 +53,7 @@ function ProductionSchedule() {
   };
 
   const filteredSchedule = filterStation
-    ? schedule.filter(wo => wo.current_station_name === filterStation)
+    ? schedule?.filter(wo => wo.current_station_name === filterStation)
     : schedule;
 
   // Board view columns
@@ -82,7 +82,7 @@ function ProductionSchedule() {
         <span className="text-xs">Station:</span>
         <select className="erp-form-select text-xs ml-1 w-36" value={filterStation} onChange={e => setFilterStation(e.target.value)}>
           <option value="">All Stations</option>
-          {workCenters.map(wc => <option key={wc.id} value={wc.name}>{wc.name}</option>)}
+          {workCenters?.map(wc => <option key={wc.id} value={wc.name}>{wc.name}</option>)}
         </select>
         <div className="flex-1" />
         <span className="text-xs text-gray-500">{filteredSchedule.length} work orders</span>
@@ -91,11 +91,11 @@ function ProductionSchedule() {
       {/* Summary Bar */}
       <div className="flex gap-4 px-3 py-2 bg-gray-50 border-b text-xs">
         <span className="font-bold">Total: {schedule.length}</span>
-        <span className="text-yellow-700">⚡ In Progress: {schedule.filter(w => w.status === 'in_progress').length}</span>
-        <span className="text-gray-600">📋 Planned: {schedule.filter(w => w.status === 'planned').length}</span>
-        <span className="text-blue-700">🔵 Scheduled: {schedule.filter(w => w.status === 'scheduled').length}</span>
-        <span className="text-red-700">⚠️ Overdue: {schedule.filter(w => isOverdue(w)).length}</span>
-        <span className="text-orange-600">⏰ Due Soon: {schedule.filter(w => isDueSoon(w)).length}</span>
+        <span className="text-yellow-700">⚡ In Progress: {schedule?.filter(w => w.status === 'in_progress').length}</span>
+        <span className="text-gray-600">📋 Planned: {schedule?.filter(w => w.status === 'planned').length}</span>
+        <span className="text-blue-700">🔵 Scheduled: {schedule?.filter(w => w.status === 'scheduled').length}</span>
+        <span className="text-red-700">⚠️ Overdue: {schedule?.filter(w => isOverdue(w)).length}</span>
+        <span className="text-orange-600">⏰ Due Soon: {schedule?.filter(w => isDueSoon(w)).length}</span>
       </div>
 
       {viewMode === 'list' ? (
@@ -119,7 +119,7 @@ function ProductionSchedule() {
               </tr>
             </thead>
             <tbody>
-              {filteredSchedule.map(wo => (
+              {filteredSchedule?.map(wo => (
                 <tr
                   key={wo.id}
                   className={`cursor-pointer hover:bg-blue-50 ${isOverdue(wo) ? 'bg-red-50 hover:bg-red-100' : isDueSoon(wo) ? 'bg-orange-50 hover:bg-orange-100' : ''}`}
@@ -157,8 +157,8 @@ function ProductionSchedule() {
       ) : (
         <div className="flex-1 overflow-auto p-2">
           <div className="grid grid-cols-4 lg:grid-cols-8 gap-2 h-full">
-            {boardStations.map(station => {
-              const stationWOs = schedule.filter(wo => wo.current_station_name === station);
+            {boardStations?.map(station => {
+              const stationWOs = schedule?.filter(wo => wo.current_station_name === station);
               return (
                 <div key={station} className="bg-gray-50 border rounded overflow-auto min-h-[200px]">
                   <div className="text-[10px] font-bold text-center border-b py-1 bg-gray-100 text-gray-700 sticky top-0">
@@ -166,7 +166,7 @@ function ProductionSchedule() {
                     <span className="ml-1 bg-blue-600 text-white rounded-full px-1.5 text-[9px]">{stationWOs.length}</span>
                   </div>
                   <div className="p-1 space-y-1">
-                    {stationWOs.map(wo => (
+                    {stationWOs?.map(wo => (
                       <div
                         key={wo.id}
                         className={`p-1.5 rounded border text-[10px] cursor-pointer hover:shadow-md transition-shadow ${wo.priority === 'urgent' ? 'border-red-400 bg-red-50' : wo.priority === 'high' ? 'border-orange-300 bg-orange-50' : 'bg-white'}`}
@@ -189,11 +189,11 @@ function ProductionSchedule() {
             })}
           </div>
           {/* Unassigned WOs */}
-          {schedule.filter(wo => !wo.current_station_name).length > 0 && (
+          {schedule?.filter(wo => !wo.current_station_name).length > 0 && (
             <div className="mt-3 border rounded p-2 bg-yellow-50">
-              <div className="text-xs font-bold text-yellow-800 mb-2">⚠️ Unassigned to Station ({schedule.filter(wo => !wo.current_station_name).length})</div>
+              <div className="text-xs font-bold text-yellow-800 mb-2">⚠️ Unassigned to Station ({schedule?.filter(wo => !wo.current_station_name).length})</div>
               <div className="flex flex-wrap gap-2">
-                {schedule.filter(wo => !wo.current_station_name).map(wo => (
+                {schedule?.filter(wo => !wo.current_station_name)?.map(wo => (
                   <div key={wo.id} className="p-2 bg-white border rounded text-[10px] cursor-pointer hover:shadow" onClick={() => openWorkOrder(wo)}>
                     <span className="font-bold text-blue-700">{wo.order_number}</span>
                     <span className="ml-2 text-gray-600">{wo.item_description || 'No item'}</span>

@@ -113,7 +113,7 @@ export default function PhysicalCount() {
               </tr>
             </thead>
             <tbody>
-              {counts.map(c => (
+              {counts?.map(c => (
                 <tr key={c.id} className="border-b hover:bg-blue-50 cursor-pointer" onClick={() => loadCountDetail(c)}>
                   <td className="p-2 font-medium text-blue-700">{c.count_number}</td>
                   <td className="p-2">{c.description || c.notes || '-'}</td>
@@ -175,25 +175,25 @@ export default function PhysicalCount() {
               </tr>
             </thead>
             <tbody>
-              {countLines.map((line, idx) => {
+              {countLines?.map((line, idx) => {
                 const variance = Number(line.counted_qty || 0) - Number(line.system_qty || 0);
                 return (
                   <tr key={idx} className={`border-b ${variance !== 0 ? 'bg-yellow-50' : ''}`}>
                     <td className="p-2">
                       {selectedCount.status === 'posted' ? (
-                        <span className="font-medium">{line.item_number || items.find(i => i.id == line.item_id)?.item_number || '-'}</span>
+                        <span className="font-medium">{line.item_number || items?.find(i => i.id == line.item_id)?.item_number || '-'}</span>
                       ) : (
                         <select value={line.item_id || ''} onChange={e => {
-                          const item = items.find(i => i.id == e.target.value);
+                          const item = items?.find(i => i.id == e.target.value);
                           handleUpdateLine(idx, 'item_id', e.target.value);
                           if (item) handleUpdateLine(idx, 'system_qty', item.qty_on_hand || 0);
                         }} className="w-full border rounded px-2 py-1 text-sm">
                           <option value="">Select Item...</option>
-                          {(items || []).map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
+                          {(items || [])?.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
                         </select>
                       )}
                     </td>
-                    <td className="p-2 text-gray-600">{line.description || items.find(i => i.id == line.item_id)?.description || ''}</td>
+                    <td className="p-2 text-gray-600">{line.description || items?.find(i => i.id == line.item_id)?.description || ''}</td>
                     <td className="p-2 text-right">{Number(line.system_qty || 0).toFixed(0)}</td>
                     <td className="p-2 text-right">
                       {selectedCount.status === 'posted' ? (
@@ -229,9 +229,9 @@ export default function PhysicalCount() {
               <h4 className="font-semibold text-sm mb-2">Variance Summary</h4>
               <div className="grid grid-cols-4 gap-4 text-sm">
                 <div><span className="text-gray-500">Total Lines:</span> <span className="font-medium">{countLines.length}</span></div>
-                <div><span className="text-gray-500">Lines with Variance:</span> <span className="font-medium text-orange-600">{countLines.filter(l => Number(l.counted_qty || 0) - Number(l.system_qty || 0) !== 0).length}</span></div>
-                <div><span className="text-gray-500">Total Over:</span> <span className="font-medium text-green-600">+{countLines.reduce((sum, l) => { const v = Number(l.counted_qty || 0) - Number(l.system_qty || 0); return sum + (v > 0 ? v : 0); }, 0).toFixed(0)}</span></div>
-                <div><span className="text-gray-500">Total Short:</span> <span className="font-medium text-red-600">{countLines.reduce((sum, l) => { const v = Number(l.counted_qty || 0) - Number(l.system_qty || 0); return sum + (v < 0 ? v : 0); }, 0).toFixed(0)}</span></div>
+                <div><span className="text-gray-500">Lines with Variance:</span> <span className="font-medium text-orange-600">{countLines?.filter(l => Number(l.counted_qty || 0) - Number(l.system_qty || 0) !== 0).length}</span></div>
+                <div><span className="text-gray-500">Total Over:</span> <span className="font-medium text-green-600">+{countLines?.reduce((sum, l) => { const v = Number(l.counted_qty || 0) - Number(l.system_qty || 0); return sum + (v > 0 ? v : 0); }, 0).toFixed(0)}</span></div>
+                <div><span className="text-gray-500">Total Short:</span> <span className="font-medium text-red-600">{countLines?.reduce((sum, l) => { const v = Number(l.counted_qty || 0) - Number(l.system_qty || 0); return sum + (v < 0 ? v : 0); }, 0).toFixed(0)}</span></div>
               </div>
             </div>
           )}
@@ -254,7 +254,7 @@ export default function PhysicalCount() {
                 <select value={newCount.location_id} onChange={e => setNewCount({...newCount, location_id: e.target.value})}
                   className="w-full border rounded px-3 py-2 text-sm">
                   <option value="">All Locations</option>
-                  {(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  {(locations || [])?.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
               </div>
             </div>

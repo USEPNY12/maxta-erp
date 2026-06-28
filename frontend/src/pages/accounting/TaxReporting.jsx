@@ -113,7 +113,7 @@ export default function TaxReporting() {
                         <tr><th>Jurisdiction</th><th>Code</th><th>Type</th><th className="text-right">Rate</th><th className="text-right">Taxable Sales</th><th className="text-right">Tax Collected</th><th className="text-right">Tax Paid</th><th className="text-right">Net Liability</th><th className="text-center">Txns</th></tr>
                       </thead>
                       <tbody>
-                        {(liability.jurisdictions || []).map(j => (
+                        {(liability.jurisdictions || [])?.map(j => (
                           <tr key={j.id}>
                             <td className="font-medium">{j.name}</td>
                             <td>{j.jurisdiction_code}</td>
@@ -152,7 +152,7 @@ export default function TaxReporting() {
                 <tbody>
                   {jurisdictions.length === 0 ? (
                     <tr><td colSpan="6" className="text-center p-4 text-gray-500">No jurisdictions configured</td></tr>
-                  ) : jurisdictions.map(j => (
+                  ) : jurisdictions?.map(j => (
                     <tr key={j.id}>
                       <td className="font-medium">{j.name}</td>
                       <td className="font-mono">{j.jurisdiction_code}</td>
@@ -183,7 +183,7 @@ export default function TaxReporting() {
                 <tbody>
                   {returns.length === 0 ? (
                     <tr><td colSpan="9" className="text-center p-4 text-gray-500">No tax returns created</td></tr>
-                  ) : returns.map(r => (
+                  ) : returns?.map(r => (
                     <tr key={r.id}>
                       <td className="font-medium">{r.jurisdiction_name}</td>
                       <td className="text-xs">{r.period_start?.split('T')[0]} to {r.period_end?.split('T')[0]}</td>
@@ -253,7 +253,7 @@ export default function TaxReporting() {
                 <div><label className="block text-xs font-medium text-gray-700 mb-1">Jurisdiction</label>
                   <select className="erp-form-select w-full" value={newReturn.jurisdiction_id} onChange={e => setNewReturn({...newReturn, jurisdiction_id: e.target.value})}>
                     <option value="">Select Jurisdiction...</option>
-                    {jurisdictions.map(j => <option key={j.id} value={j.id}>{j.name} ({j.jurisdiction_code})</option>)}
+                    {jurisdictions?.map(j => <option key={j.id} value={j.id}>{j.name} ({j.jurisdiction_code})</option>)}
                   </select></div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="block text-xs font-medium text-gray-700 mb-1">Period Start</label>

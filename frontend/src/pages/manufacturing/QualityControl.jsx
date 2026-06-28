@@ -52,7 +52,7 @@ function QualityControl() {
           <table className="erp-table w-full">
             <thead><tr><th>Date</th><th>WO#</th><th>Item</th><th>Station</th><th>Type</th><th>Result</th><th>Qty Inspected</th><th>Qty Failed</th><th>Defect</th><th>Disposition</th></tr></thead>
             <tbody>
-              {inspections.map(qi => (
+              {inspections?.map(qi => (
                 <tr key={qi.id} className={qi.result === 'fail' ? 'bg-red-50' : qi.result === 'pass' ? '' : 'bg-yellow-50'}>
                   <td className="text-xs">{formatDate(qi.inspection_date)}</td>
                   <td className="font-bold text-blue-700 text-xs">{qi.wo_number}</td>
@@ -73,7 +73,7 @@ function QualityControl() {
           <table className="erp-table w-full">
             <thead><tr><th>NCR#</th><th>Date</th><th>WO#</th><th>Item</th><th>Defect</th><th>Severity</th><th>Qty</th><th>Status</th><th>Disposition</th></tr></thead>
             <tbody>
-              {ncrs.map(ncr => (
+              {ncrs?.map(ncr => (
                 <tr key={ncr.id} className={ncr.severity === 'critical' ? 'bg-red-50' : ''}>
                   <td className="font-bold text-xs">{ncr.ncr_number}</td>
                   <td className="text-xs">{formatDate(ncr.ncr_date || ncr.created_at)}</td>

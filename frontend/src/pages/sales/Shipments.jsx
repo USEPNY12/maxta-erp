@@ -50,7 +50,7 @@ function Shipments() {
     if (!orderId) { setForm({ ...form, sales_order_id: '', lines: [] }); return; }
     try {
       const res = await api.get(`/api/sales/orders/${orderId}`);
-      const lines = (res.data.lines || []).map(l => ({
+      const lines = (res.data.lines || [])?.map(l => ({
         ...l, ship_qty: Math.max(0, (parseFloat(l.quantity_ordered) || 0) - (parseFloat(l.quantity_shipped) || 0))
       }));
       setForm({ ...form, sales_order_id: orderId, lines });
@@ -67,7 +67,7 @@ function Shipments() {
         ship_via: form.ship_via,
         freight_charge: parseFloat(form.freight_charge) || 0,
         notes: form.notes,
-        lines: form.lines.filter(l => parseFloat(l.ship_qty) > 0).map(l => ({
+        lines: form.lines?.filter(l => parseFloat(l.ship_qty) > 0)?.map(l => ({
           sales_order_line_id: l.id, quantity_shipped: parseFloat(l.ship_qty), description: l.description
         }))
       };
@@ -116,7 +116,7 @@ function Shipments() {
         <table className="erp-grid">
           <thead><tr><th>Shipment#</th><th>Date</th><th>Order#</th><th>Customer</th><th>Carrier</th><th>Tracking</th><th>Items</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
-            {shipments.length === 0 ? <tr><td colSpan="9" className="text-center p-4 text-gray-500">No shipments</td></tr> : (shipments || []).map(s => (
+            {shipments.length === 0 ? <tr><td colSpan="9" className="text-center p-4 text-gray-500">No shipments</td></tr> : (shipments || [])?.map(s => (
               <tr key={s.id} className="cursor-pointer" onClick={() => openDetail(s)}>
                 <td className="text-blue-700 font-bold">{s.shipment_number || s.shipment_no}</td>
                 <td>{formatDate(s.ship_date || s.shipment_date)}</td>
@@ -165,7 +165,7 @@ function Shipments() {
                   <table className="erp-grid">
                     <thead><tr><th>#</th><th>Description</th><th>Glass Specs</th><th>Qty Shipped</th></tr></thead>
                     <tbody>
-                      {(selected.lines || []).length === 0 ? <tr><td colSpan="4" className="text-center p-4 text-gray-500">No line items</td></tr> : selected.lines.map((l, i) => (
+                      {(selected.lines || []).length === 0 ? <tr><td colSpan="4" className="text-center p-4 text-gray-500">No line items</td></tr> : selected.lines?.map((l, i) => (
                         <tr key={i}>
                           <td>{i + 1}</td>
                           <td className="font-medium">{l.description}</td>
@@ -232,7 +232,7 @@ function Shipments() {
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="erp-form-group"><label className="erp-form-label">Sales Order*:</label>
                   <select className="erp-form-select" value={form.sales_order_id} onChange={e => handleOrderSelect(e.target.value)}>
-                    <option value="">Select Order...</option>{(orders || []).map(o => <option key={o.id} value={o.id}>{o.order_number} - {o.customer_name}</option>)}
+                    <option value="">Select Order...</option>{(orders || [])?.map(o => <option key={o.id} value={o.id}>{o.order_number} - {o.customer_name}</option>)}
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Ship Date:</label><input className="erp-form-input" type="date" value={form.ship_date} onChange={e => setForm({ ...form, ship_date: e.target.value })} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Carrier:</label><input className="erp-form-input" value={form.carrier} onChange={e => setForm({ ...form, carrier: e.target.value })} placeholder="UPS, FedEx, Flatbed" /></div>
@@ -245,7 +245,7 @@ function Shipments() {
                   <div className="text-xs font-bold mb-1">Select quantities to ship:</div>
                   <table className="erp-grid">
                     <thead><tr><th>Description</th><th>Glass Specs</th><th>Ordered</th><th>Already Shipped</th><th>Ship Now</th></tr></thead>
-                    <tbody>{form.lines.map((l, i) => (
+                    <tbody>{form.lines?.map((l, i) => (
                       <tr key={i}>
                         <td>{l.description}</td>
                         <td className="text-[10px]">{l.glass_type} {l.thickness} {l.width_inches && l.height_inches ? `${l.width_inches}"×${l.height_inches}"` : ''}</td>
@@ -260,7 +260,7 @@ function Shipments() {
               <div className="mt-2 erp-form-group"><label className="erp-form-label">Notes:</label><textarea className="erp-form-input w-full h-12" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
             </div>
             <div className="erp-modal-footer">
-              <button className="erp-btn erp-btn-primary" onClick={handleSave} disabled={!form.sales_order_id || form.lines.filter(l => parseFloat(l.ship_qty) > 0).length === 0}>🚚 Ship</button>
+              <button className="erp-btn erp-btn-primary" onClick={handleSave} disabled={!form.sales_order_id || form.lines?.filter(l => parseFloat(l.ship_qty) > 0).length === 0}>🚚 Ship</button>
               <button className="erp-btn" onClick={() => setShowNew(false)}>Cancel</button>
             </div>
           </div>

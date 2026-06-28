@@ -49,15 +49,15 @@ function Dashboard() {
         total_inventory_value: parseFloat(d.summary?.inventory_value) || 0,
         overdue_shipments: d.summary?.overdue_shipments || 0,
         overdue_jobs: d.summary?.overdue_jobs || 0,
-        bookings_by_customer: (d.bookings_by_customer || []).map(c => ({
+        bookings_by_customer: (d.bookings_by_customer || [])?.map(c => ({
           name: c.company_name || c.name,
           amount: parseFloat(c.total || c.amount) || 0
         })),
-        ar_by_customer: (d.ar_by_customer || []).map(c => ({
+        ar_by_customer: (d.ar_by_customer || [])?.map(c => ({
           name: c.company_name || c.name,
           amount: parseFloat(c.total || c.amount) || 0
         })),
-        sales_by_salesperson: (d.sales_by_salesperson || []).map(s => ({
+        sales_by_salesperson: (d.sales_by_salesperson || [])?.map(s => ({
           name: s.name || s.salesperson,
           amount: parseFloat(s.total || s.amount) || 0
         }))
@@ -100,10 +100,10 @@ function Dashboard() {
   const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
 
   const bookingsData = {
-    labels: kpis.bookings_by_customer.slice(0, 6).map(c => (c.name || 'Unknown').substring(0, 15)),
+    labels: kpis.bookings_by_customer?.slice(0, 6)?.map(c => (c.name || 'Unknown').substring(0, 15)),
     datasets: [{
       label: 'Bookings',
-      data: kpis.bookings_by_customer.slice(0, 6).map(c => c.amount),
+      data: kpis.bookings_by_customer?.slice(0, 6)?.map(c => c.amount),
       backgroundColor: chartColors,
       borderRadius: 4,
       borderWidth: 0,
@@ -111,9 +111,9 @@ function Dashboard() {
   };
 
   const arData = {
-    labels: kpis.ar_by_customer.slice(0, 6).map(c => (c.name || 'Unknown').substring(0, 15)),
+    labels: kpis.ar_by_customer?.slice(0, 6)?.map(c => (c.name || 'Unknown').substring(0, 15)),
     datasets: [{
-      data: kpis.ar_by_customer.slice(0, 6).map(c => c.amount),
+      data: kpis.ar_by_customer?.slice(0, 6)?.map(c => c.amount),
       backgroundColor: chartColors,
       borderWidth: 2,
       borderColor: '#fff',
@@ -139,13 +139,13 @@ function Dashboard() {
 
   const dismissPromo = (id) => {
     api.post(`/api/dashboard-exec/promotions/${id}/interact`, { interaction_type: 'dismiss' }).catch(() => {});
-    setPromotions(prev => prev.filter(p => p.id !== id));
+    setPromotions(prev => prev?.filter(p => p.id !== id));
   };
 
   return (
     <div className="dashboard" style={{ padding: '20px', overflow: 'auto', height: '100%' }}>
       {/* Active Promotions/Announcements */}
-      {promotions.filter(p => p.display_type === 'banner').map(promo => (
+      {promotions?.filter(p => p.display_type === 'banner')?.map(promo => (
         <div key={promo.id} style={{ background: promo.bg_color || '#3b82f6', color: '#fff', padding: '10px 16px', borderRadius: '8px', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
           <div style={{ flex: 1 }}>
             <strong style={{ fontSize: '13px' }}>{promo.title}</strong>

@@ -68,7 +68,7 @@ export default function CRM() {
 
   const updateLeadStatus = async (id, status) => {
     try {
-      const lead = leads.find(l => l.id === id) || selectedLead;
+      const lead = leads?.find(l => l.id === id) || selectedLead;
       await api.put(`/api/crm/leads/${id}`, { ...lead, status });
       toast.success('Status updated');
       loadData();
@@ -162,14 +162,14 @@ export default function CRM() {
         {/* Pipeline View */}
         {tab === 'pipeline' && (
           <div className="flex gap-3 h-full overflow-x-auto pb-4">
-            {pipeline.map(stage => (
+            {pipeline?.map(stage => (
               <div key={stage.stage} className="min-w-[220px] w-56 flex flex-col bg-gray-50 rounded-lg border">
                 <div className="p-2 border-b bg-white rounded-t-lg">
                   <div className="font-medium text-xs">{stage.stage}</div>
                   <div className="text-xs text-gray-500">{stage.count} leads • ${(stage.total_value || 0).toLocaleString()}</div>
                 </div>
                 <div className="flex-1 overflow-auto p-2 space-y-2">
-                  {stage.leads.map(lead => (
+                  {stage.leads?.map(lead => (
                     <div key={lead.id} className="bg-white rounded border p-2 text-xs cursor-pointer hover:shadow" onClick={() => viewLead(lead)}>
                       <div className="font-medium">{lead.company_name}</div>
                       <div className="text-gray-500">{lead.contact_name}</div>
@@ -200,7 +200,7 @@ export default function CRM() {
                 </thead>
                 <tbody>
                   {leads.length === 0 && <tr><td colSpan="7" className="p-8 text-center text-gray-400">No leads yet. Create your first lead to start tracking opportunities.</td></tr>}
-                  {leads.map(l => (
+                  {leads?.map(l => (
                     <tr key={l.id} className={`hover:bg-emerald-50 cursor-pointer ${selectedLead?.id === l.id ? 'bg-emerald-50' : ''}`} onClick={() => viewLead(l)}>
                       <td className="p-2 border font-medium">{l.company_name}</td>
                       <td className="p-2 border">{l.contact_name}</td>
@@ -232,13 +232,13 @@ export default function CRM() {
                   {selectedLead.notes && <p><span className="font-medium">Notes:</span> {selectedLead.notes}</p>}
                 </div>
                 <div className="flex gap-1 mt-3 flex-wrap">
-                  {['contacted','qualified','proposal','negotiation','won','lost'].filter(s => s !== selectedLead.status).map(s => (
+                  {['contacted','qualified','proposal','negotiation','won','lost'].filter(s => s !== selectedLead.status)?.map(s => (
                     <button key={s} onClick={() => updateLeadStatus(selectedLead.id, s)} className={`px-2 py-0.5 rounded text-xs ${statusColors[s]}`}>{s}</button>
                   ))}
                 </div>
                 <h4 className="font-medium text-xs mt-3 mb-1">Activities ({leadActivities.length}):</h4>
                 <button onClick={() => setShowForm('activity')} className="text-xs text-blue-600 mb-2">+ Add Activity</button>
-                {leadActivities.map(a => (
+                {leadActivities?.map(a => (
                   <div key={a.id} className="border rounded p-2 mb-1 text-xs">
                     <div className="flex items-center gap-1">
                       <span className="font-medium capitalize">{a.activity_type.replace('_', ' ')}</span>
@@ -267,7 +267,7 @@ export default function CRM() {
               </tr>
             </thead>
             <tbody>
-              {activities.map(a => (
+              {activities?.map(a => (
                 <tr key={a.id} className="hover:bg-gray-50">
                   <td className="p-2 border">{a.scheduled_at ? new Date(a.scheduled_at).toLocaleString() : new Date(a.created_at).toLocaleDateString()}</td>
                   <td className="p-2 border capitalize">{a.activity_type.replace('_', ' ')}</td>
@@ -292,7 +292,7 @@ export default function CRM() {
             </div>
             <h3 className="font-medium text-sm mb-2">Recent Activities</h3>
             <div className="bg-white border rounded">
-              {(dashboard.recent_activities || []).map(a => (
+              {(dashboard.recent_activities || [])?.map(a => (
                 <div key={a.id} className="flex items-center gap-3 p-3 border-b text-xs">
                   <span className="capitalize font-medium">{a.activity_type?.replace('_', ' ')}</span>
                   <span className="text-gray-600">{a.subject}</span>

@@ -28,7 +28,7 @@ function CustomerPayments() {
 
   const fetchOpenInvoices = async (customerId) => {
     if (!customerId) { setOpenInvoices([]); return; }
-    try { const res = await api.get('/api/sales/invoices', { params: { customer_id: customerId, status: 'posted' } }); const invs = Array.isArray(res.data) ? res.data : res.data.invoices || []; setOpenInvoices(invs.filter(i => parseFloat(i.balance || i.total || 0) > 0)); } catch { setOpenInvoices([]); }
+    try { const res = await api.get('/api/sales/invoices', { params: { customer_id: customerId, status: 'posted' } }); const invs = Array.isArray(res.data) ? res.data : res.data.invoices || []; setOpenInvoices(invs?.filter(i => parseFloat(i.balance || i.total || 0) > 0)); } catch { setOpenInvoices([]); }
   };
 
   const handleCustomerChange = (customerId) => {
@@ -37,9 +37,9 @@ function CustomerPayments() {
   };
 
   const toggleInvoice = (inv) => {
-    const existing = form.applied_invoices.find(a => a.ar_invoice_id === inv.id);
+    const existing = form.applied_invoices?.find(a => a.ar_invoice_id === inv.id);
     if (existing) {
-      setForm({ ...form, applied_invoices: form.applied_invoices.filter(a => a.ar_invoice_id !== inv.id) });
+      setForm({ ...form, applied_invoices: form.applied_invoices?.filter(a => a.ar_invoice_id !== inv.id) });
     } else {
       setForm({ ...form, applied_invoices: [...form.applied_invoices, { ar_invoice_id: inv.id, amount: parseFloat(inv.balance || inv.total || 0) }] });
     }
@@ -70,7 +70,7 @@ function CustomerPayments() {
         <table className="erp-grid">
           <thead><tr><th>Payment#</th><th>Date</th><th>Customer</th><th>Amount</th><th>Method</th><th>Reference</th><th>Actions</th></tr></thead>
           <tbody>
-            {payments.length === 0 ? <tr><td colSpan="7" className="text-center p-4 text-gray-500">No payments recorded</td></tr> : (payments || []).map(p => (
+            {payments.length === 0 ? <tr><td colSpan="7" className="text-center p-4 text-gray-500">No payments recorded</td></tr> : (payments || [])?.map(p => (
               <tr key={p.id}>
                 <td className="text-blue-700 font-bold">{p.payment_number}</td>
                 <td>{p.payment_date?.split('T')[0]}</td>
@@ -96,7 +96,7 @@ function CustomerPayments() {
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="erp-form-group"><label className="erp-form-label">Customer*:</label>
                   <select className="erp-form-select" value={form.customer_id} onChange={e => handleCustomerChange(e.target.value)}>
-                    <option value="">Select Customer...</option>{(customers || []).map(c => <option key={c.id} value={c.id}>{c.company_name || c.name} ({c.customer_number})</option>)}
+                    <option value="">Select Customer...</option>{(customers || [])?.map(c => <option key={c.id} value={c.id}>{c.company_name || c.name} ({c.customer_number})</option>)}
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Payment Date:</label><input className="erp-form-input" type="date" value={form.payment_date} onChange={e => setForm({ ...form, payment_date: e.target.value })} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Amount*:</label><input className="erp-form-input" type="number" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} /></div>
@@ -107,7 +107,7 @@ function CustomerPayments() {
                 <div className="erp-form-group"><label className="erp-form-label">Reference/Check#:</label><input className="erp-form-input" value={form.reference_number} onChange={e => setForm({ ...form, reference_number: e.target.value })} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Deposit To:</label>
                   <select className="erp-form-select" value={form.bank_account_id} onChange={e => setForm({ ...form, bank_account_id: e.target.value })}>
-                    <option value="">Select Bank...</option>{banks.map(b => <option key={b.id} value={b.id}>{b.bank_name || b.account_name} - {b.account_number}</option>)}
+                    <option value="">Select Bank...</option>{banks?.map(b => <option key={b.id} value={b.id}>{b.bank_name || b.account_name} - {b.account_number}</option>)}
                   </select></div>
               </div>
               {openInvoices.length > 0 && (
@@ -115,8 +115,8 @@ function CustomerPayments() {
                   <h4 className="text-xs font-bold mb-1">Apply to Open Invoices:</h4>
                   <table className="erp-grid">
                     <thead><tr><th>Apply</th><th>Invoice#</th><th>Date</th><th>Total</th><th>Balance</th><th>Apply Amt</th></tr></thead>
-                    <tbody>{openInvoices.map(inv => {
-                      const applied = form.applied_invoices.find(a => a.ar_invoice_id === inv.id);
+                    <tbody>{openInvoices?.map(inv => {
+                      const applied = form.applied_invoices?.find(a => a.ar_invoice_id === inv.id);
                       return (
                         <tr key={inv.id}>
                           <td><input type="checkbox" checked={!!applied} onChange={() => toggleInvoice(inv)} /></td>
@@ -124,7 +124,7 @@ function CustomerPayments() {
                           <td>{inv.invoice_date?.split('T')[0]}</td>
                           <td className="text-right">${parseFloat(inv.total || 0).toFixed(2)}</td>
                           <td className="text-right">${parseFloat(inv.balance || inv.total || 0).toFixed(2)}</td>
-                          <td>{applied && <input className="erp-form-input w-24 text-right" type="number" step="0.01" value={applied.amount} onChange={e => { const apps = form.applied_invoices.map(a => a.ar_invoice_id === inv.id ? { ...a, amount: parseFloat(e.target.value) || 0 } : a); setForm({ ...form, applied_invoices: apps }); }} />}</td>
+                          <td>{applied && <input className="erp-form-input w-24 text-right" type="number" step="0.01" value={applied.amount} onChange={e => { const apps = form.applied_invoices?.map(a => a.ar_invoice_id === inv.id ? { ...a, amount: parseFloat(e.target.value) || 0 } : a); setForm({ ...form, applied_invoices: apps }); }} />}</td>
                         </tr>
                       );
                     })}</tbody>

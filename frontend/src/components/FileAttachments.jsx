@@ -116,11 +116,11 @@ export default function FileAttachments({ documentType, documentId, lineId, read
   const handleDragOver = (e) => { e.preventDefault(); setDragOver(true); };
   const handleDragLeave = () => setDragOver(false);
 
-  const getTagInfo = (tag) => MACHINE_TAGS.find(t => t.value === tag) || MACHINE_TAGS[6];
+  const getTagInfo = (tag) => MACHINE_TAGS?.find(t => t.value === tag) || MACHINE_TAGS[6];
 
   // Group files by machine tag
   const grouped = {};
-  files.forEach(f => {
+  files?.forEach(f => {
     const tag = f.machine_tag || 'other';
     if (!grouped[tag]) grouped[tag] = [];
     grouped[tag].push(f);
@@ -133,7 +133,7 @@ export default function FileAttachments({ documentType, documentId, lineId, read
           <span className="font-bold">Files:</span>
           <span className="text-gray-500">{files.length} attached</span>
         </div>
-        {files.map(f => {
+        {files?.map(f => {
           const tag = getTagInfo(f.machine_tag);
           return (
             <div key={f.id} className="flex items-center gap-2 py-0.5">
@@ -181,7 +181,7 @@ export default function FileAttachments({ documentType, documentId, lineId, read
               value={selectedTag}
               onChange={(e) => setSelectedTag(e.target.value)}
             >
-              {MACHINE_TAGS.map(t => (
+              {MACHINE_TAGS?.map(t => (
                 <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
               ))}
             </select>
@@ -200,7 +200,7 @@ export default function FileAttachments({ documentType, documentId, lineId, read
         <div className="text-gray-400 text-center py-4">No files attached yet</div>
       ) : (
         <div className="space-y-3">
-          {Object.keys(grouped).map(tag => {
+          {Object.keys(grouped)?.map(tag => {
             const tagInfo = getTagInfo(tag);
             return (
               <div key={tag}>

@@ -77,7 +77,7 @@ export default function CuttingOptimization() {
     setNewPiece({ width: '', height: '', label: '', customer: '', order_number: '', qty: 1 });
   };
 
-  const removePiece = (id) => setPieces(pieces.filter(p => p.id !== id));
+  const removePiece = (id) => setPieces(pieces?.filter(p => p.id !== id));
 
   const loadSuggestions = async () => {
     if (!selectedSource) return toast.error('Select a sheet/remnant first');
@@ -189,7 +189,7 @@ export default function CuttingOptimization() {
     ctx.restore();
 
     // Draw placed pieces
-    placed.forEach((piece, i) => {
+    placed?.forEach((piece, i) => {
       const x = offsetX + piece.x * scale;
       const y = offsetY + piece.y * scale;
       const w = piece.placedWidth * scale;
@@ -219,7 +219,7 @@ export default function CuttingOptimization() {
     });
 
     // Draw remnants (green dashed)
-    remnants.forEach(r => {
+    remnants?.forEach(r => {
       const x = offsetX + r.x * scale;
       const y = offsetY + r.y * scale;
       const w = r.width * scale;
@@ -243,7 +243,7 @@ export default function CuttingOptimization() {
     });
 
     // Draw scrap (red)
-    (scrap || []).forEach(s => {
+    (scrap || [])?.forEach(s => {
       const x = offsetX + s.x * scale;
       const y = offsetY + s.y * scale;
       const w = s.width * scale;
@@ -348,7 +348,7 @@ export default function CuttingOptimization() {
                         <tr><th className="p-1 text-left">Type</th><th className="p-1">Size</th><th className="p-1">Glass</th><th className="p-1">Qty</th><th className="p-1"></th></tr>
                       </thead>
                       <tbody>
-                        {sheets.filter(s => s.qty_on_hand > 0).map(s => (
+                        {sheets?.filter(s => s.qty_on_hand > 0)?.map(s => (
                           <tr key={`s-${s.id}`} className="border-t hover:bg-blue-50 cursor-pointer" onClick={() => selectSource('sheet', s)}>
                             <td className="p-1"><span className="bg-blue-100 text-blue-700 px-1 rounded text-xs">Sheet</span></td>
                             <td className="p-1 font-mono">{s.width}" × {s.height}"</td>
@@ -357,7 +357,7 @@ export default function CuttingOptimization() {
                             <td className="p-1"><button className="text-blue-500">Select</button></td>
                           </tr>
                         ))}
-                        {remnants.map(r => (
+                        {remnants?.map(r => (
                           <tr key={`r-${r.id}`} className="border-t hover:bg-green-50 cursor-pointer" onClick={() => selectSource('remnant', r)}>
                             <td className="p-1"><span className="bg-green-100 text-green-700 px-1 rounded text-xs">Remnant</span></td>
                             <td className="p-1 font-mono">{parseFloat(r.width).toFixed(1)}" × {parseFloat(r.height).toFixed(1)}"</td>
@@ -409,7 +409,7 @@ export default function CuttingOptimization() {
                       <tr><th className="p-1">#</th><th className="p-1">Size</th><th className="p-1">Label</th><th className="p-1">Customer</th><th className="p-1">Qty</th><th className="p-1"></th></tr>
                     </thead>
                     <tbody>
-                      {pieces.map((p, i) => (
+                      {pieces?.map((p, i) => (
                         <tr key={p.id} className="border-t">
                           <td className="p-1 text-center"><span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: PIECE_COLORS[i % PIECE_COLORS.length] }}></span></td>
                           <td className="p-1 font-mono">{p.width}" × {p.height}"</td>
@@ -460,7 +460,7 @@ export default function CuttingOptimization() {
                 {optimizeResult.remnants.length > 0 && (
                   <div className="mb-3">
                     <h4 className="text-sm font-medium text-gray-600 mb-1">Usable Remnants After Cutting:</h4>
-                    {optimizeResult.remnants.map((r, i) => (
+                    {optimizeResult.remnants?.map((r, i) => (
                       <div key={i} className="flex justify-between text-xs bg-green-50 rounded px-2 py-1 mb-1">
                         <span className="font-mono">{r.width}" × {r.height}"</span>
                         <span className="text-green-700">{r.area_sqft} sqft</span>
@@ -485,7 +485,7 @@ export default function CuttingOptimization() {
                   <canvas ref={canvasRef} width={700} height={550} className="border rounded bg-gray-50 w-full" />
                   {/* Legend */}
                   <div className="flex flex-wrap gap-3 mt-3 text-xs">
-                    {optimizeResult.placed.map((p, i) => (
+                    {optimizeResult.placed?.map((p, i) => (
                       <div key={i} className="flex items-center gap-1">
                         <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: PIECE_COLORS[i % PIECE_COLORS.length] }}></span>
                         <span>{p.label || `Piece ${i + 1}`} ({p.placedWidth}" × {p.placedHeight}")</span>
@@ -520,7 +520,7 @@ export default function CuttingOptimization() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sheets.map(s => (
+            {sheets?.map(s => (
               <div key={s.id} className="bg-white border rounded-lg p-4 hover:shadow-md transition">
                 <div className="flex justify-between items-start mb-2">
                   <div>
@@ -600,7 +600,7 @@ export default function CuttingOptimization() {
 
           {/* Visual remnant grid */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {remnants.map(r => {
+            {remnants?.map(r => {
               const maxDim = Math.max(parseFloat(r.width), parseFloat(r.height));
               const scale = 120 / maxDim;
               return (
@@ -702,7 +702,7 @@ export default function CuttingOptimization() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(plans || []).map(p => (
+                  {(plans || [])?.map(p => (
                     <tr key={p.id} className="border-t hover:bg-gray-50">
                       <td className="p-2 font-semibold">{p.plan_number}</td>
                       <td className="p-2">{new Date(p.plan_date).toLocaleDateString()}</td>
@@ -751,7 +751,7 @@ export default function CuttingOptimization() {
                   <tr><th className="p-2 text-left">WO#</th><th className="p-2">Size</th><th className="p-2">Product</th><th className="p-2">Customer</th><th className="p-2">Qty</th><th className="p-2"></th></tr>
                 </thead>
                 <tbody>
-                  {suggestedPieces.map(wo => (
+                  {suggestedPieces?.map(wo => (
                     <tr key={wo.wo_id} className="border-t hover:bg-blue-50">
                       <td className="p-2 font-semibold">{wo.order_number}</td>
                       <td className="p-2 font-mono">{wo.width}" × {wo.height}"</td>

@@ -35,7 +35,7 @@ export default function FreightCosts() {
     } catch(e) { alert('Error adding cost'); }
   };
 
-  const totalCost = costs.reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
+  const totalCost = costs?.reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
   const costTypeColors = { fuel: '#f59e0b', labor: '#3b82f6', tolls: '#6b7280', maintenance: '#ef4444', insurance: '#8b5cf6', other: '#6b7280' };
 
   return (
@@ -54,7 +54,7 @@ export default function FreightCosts() {
           <div style={{ fontSize: '22px', fontWeight: '700' }}>${totalCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
           <div style={{ fontSize: '11px', color: '#9ca3af' }}>{costs.length} entries</div>
         </div>
-        {summary.map((s, i) => (
+        {summary?.map((s, i) => (
           <div key={i} style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', padding: '16px', borderLeft: `4px solid ${costTypeColors[s.cost_type] || '#6b7280'}` }}>
             <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'capitalize' }}>{s.cost_type}</div>
             <div style={{ fontSize: '18px', fontWeight: '700' }}>${parseFloat(s.total).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
@@ -95,7 +95,7 @@ export default function FreightCosts() {
             </tr>
           </thead>
           <tbody>
-            {costs.map(cost => (
+            {costs?.map(cost => (
               <tr key={cost.id}>
                 <td style={{ padding: '10px', borderBottom: '1px solid #f3f4f6' }}>{new Date(cost.cost_date).toLocaleDateString()}</td>
                 <td style={{ padding: '10px', borderBottom: '1px solid #f3f4f6' }}>
@@ -129,8 +129,8 @@ export default function FreightCosts() {
               <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Description</label><input value={newCost.description} onChange={e => setNewCost({...newCost, description: e.target.value})} placeholder="e.g. Diesel fill-up at Shell" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }} /></div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
                 <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Date *</label><input type="date" value={newCost.cost_date} onChange={e => setNewCost({...newCost, cost_date: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }} /></div>
-                <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Vehicle</label><select value={newCost.vehicle_id} onChange={e => setNewCost({...newCost, vehicle_id: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }}><option value="">-</option>{vehicles.map(v => <option key={v.id} value={v.id}>{v.vehicle_number}</option>)}</select></div>
-                <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Driver</label><select value={newCost.driver_id} onChange={e => setNewCost({...newCost, driver_id: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }}><option value="">-</option>{drivers.map(d => <option key={d.id} value={d.id}>{d.employee_name}</option>)}</select></div>
+                <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Vehicle</label><select value={newCost.vehicle_id} onChange={e => setNewCost({...newCost, vehicle_id: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }}><option value="">-</option>{vehicles?.map(v => <option key={v.id} value={v.id}>{v.vehicle_number}</option>)}</select></div>
+                <div><label style={{ fontSize: '13px', fontWeight: '500' }}>Driver</label><select value={newCost.driver_id} onChange={e => setNewCost({...newCost, driver_id: e.target.value})} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', marginTop: '4px' }}><option value="">-</option>{drivers?.map(d => <option key={d.id} value={d.id}>{d.employee_name}</option>)}</select></div>
               </div>
               {newCost.cost_type === 'fuel' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>

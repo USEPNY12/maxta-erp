@@ -66,21 +66,21 @@ export default function InventoryTransfers() {
               <label className="erp-label">Item *</label>
               <select className="erp-input" value={form.item_id} onChange={e => setForm({...form, item_id: e.target.value})}>
                 <option value="">Select Item...</option>
-                {(items || []).map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
+                {(items || [])?.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
               </select>
             </div>
             <div>
               <label className="erp-label">From Location *</label>
               <select className="erp-input" value={form.from_location_id} onChange={e => setForm({...form, from_location_id: e.target.value})}>
                 <option value="">Select Location...</option>
-                {(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                {(locations || [])?.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             </div>
             <div>
               <label className="erp-label">To Location *</label>
               <select className="erp-input" value={form.to_location_id} onChange={e => setForm({...form, to_location_id: e.target.value})}>
                 <option value="">Select Location...</option>
-                {(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                {(locations || [])?.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             </div>
             <div>
@@ -125,7 +125,7 @@ export default function InventoryTransfers() {
               </tr>
             </thead>
             <tbody>
-              {transfers.map(t => (
+              {transfers?.map(t => (
                 <tr key={t.id}>
                   <td>{t.transfer_number}</td>
                   <td>{t.created_at ? new Date(t.created_at).toLocaleDateString() : '-'}</td>

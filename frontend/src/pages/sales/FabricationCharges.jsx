@@ -84,7 +84,7 @@ export default function SalesFabricationCharges() {
     } catch (e) { toast.error('Update failed'); }
   };
 
-  const filtered = filterCategory === 'All' ? charges : charges.filter(c => c.category === filterCategory);
+  const filtered = filterCategory === 'All' ? charges : charges?.filter(c => c.category === filterCategory);
 
   return (
     <ModulePage {...salesMenu}>
@@ -99,7 +99,7 @@ export default function SalesFabricationCharges() {
               style={{ fontSize: '0.85rem' }}
             >
               <option value="All">All Categories</option>
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              {CATEGORIES?.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
             <button onClick={openAdd} className="erp-btn erp-btn-primary" style={{ fontSize: '0.85rem' }}>
               + Add Charge
@@ -123,11 +123,11 @@ export default function SalesFabricationCharges() {
                 </tr>
               </thead>
               <tbody>
-                {(filtered || []).map(item => (
+                {(filtered || [])?.map(item => (
                   <tr key={item.id} style={{ opacity: item.is_active ? 1 : 0.5 }}>
                     <td><span style={{ background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem' }}>{item.category}</span></td>
                     <td style={{ fontWeight: 500 }}>{item.name}</td>
-                    <td>{PRICING_METHODS.find(p => p.value === item.pricing_method)?.label || item.pricing_method}</td>
+                    <td>{PRICING_METHODS?.find(p => p.value === item.pricing_method)?.label || item.pricing_method}</td>
                     <td>${Number(item.default_rate || 0).toFixed(2)}</td>
                     <td>
                       <span style={{ color: item.is_active ? '#059669' : '#dc2626', fontWeight: 500 }}>
@@ -162,7 +162,7 @@ export default function SalesFabricationCharges() {
                 <div>
                   <label className="erp-label">Category</label>
                   <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="erp-form-select" style={{ width: '100%' }}>
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    {CATEGORIES?.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
@@ -176,7 +176,7 @@ export default function SalesFabricationCharges() {
                 <div>
                   <label className="erp-label">Pricing Method</label>
                   <select value={form.pricing_method} onChange={e => setForm({ ...form, pricing_method: e.target.value })} className="erp-form-select" style={{ width: '100%' }}>
-                    {PRICING_METHODS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                    {PRICING_METHODS?.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                   </select>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>

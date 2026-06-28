@@ -70,9 +70,9 @@ export default function GanttSchedule() {
   }
 
   // Group entries by work center
-  const workCenters = [...new Set((entries || []).map(e => e.work_center_name || 'Unassigned'))];
+  const workCenters = [...new Set((entries || [])?.map(e => e.work_center_name || 'Unassigned'))];
   const groupedEntries = {};
-  workCenters.forEach(wc => { groupedEntries[wc] = entries.filter(e => (e.work_center_name || 'Unassigned') === wc); });
+  workCenters?.forEach(wc => { groupedEntries[wc] = entries?.filter(e => (e.work_center_name || 'Unassigned') === wc); });
 
   // Calculate bar position
   const getBarStyle = (entry) => {
@@ -111,7 +111,7 @@ export default function GanttSchedule() {
       {showCapacity && (
         <div className="bg-indigo-50 border-b px-4 py-2 overflow-x-auto">
           <div className="flex gap-3">
-            {capacity.map(c => {
+            {capacity?.map(c => {
               const utilization = c.effective_capacity ? (c.scheduled_hours / c.effective_capacity * 100) : 0;
               const barColor = utilization > 100 ? 'bg-red-500' : utilization > 80 ? 'bg-yellow-500' : 'bg-green-500';
               return (
@@ -137,7 +137,7 @@ export default function GanttSchedule() {
             <h3 className="text-xs font-bold text-gray-700">Unscheduled Work Orders</h3>
           </div>
           <div className="p-2 space-y-1">
-            {(Array.isArray(workOrders) ? workOrders : []).filter(wo => !entries.some(e => e.work_order_id === wo.id)).slice(0, 20).map(wo => (
+            {(Array.isArray(workOrders) ? workOrders : [])?.filter(wo => !entries?.some(e => e.work_order_id === wo.id))?.slice(0, 20)?.map(wo => (
               <div key={wo.id} className="bg-white border rounded p-2 text-xs">
                 <div className="font-medium">{wo.wo_number}</div>
                 <div className="text-gray-500 truncate">{wo.product_description}</div>
@@ -147,7 +147,7 @@ export default function GanttSchedule() {
                 </div>
               </div>
             ))}
-            {(Array.isArray(workOrders) ? workOrders : []).filter(wo => !entries.some(e => e.work_order_id === wo.id)).length === 0 && (
+            {(Array.isArray(workOrders) ? workOrders : [])?.filter(wo => !entries?.some(e => e.work_order_id === wo.id)).length === 0 && (
               <div className="text-xs text-gray-400 text-center p-4">All work orders scheduled</div>
             )}
           </div>
@@ -159,7 +159,7 @@ export default function GanttSchedule() {
           <div className="sticky top-0 bg-white border-b z-10 flex">
             <div className="w-32 min-w-[128px] border-r p-1 text-xs font-medium bg-gray-100">Work Center</div>
             <div className="flex-1 flex">
-              {dates.map((d, i) => {
+              {dates?.map((d, i) => {
                 const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                 const isToday = d.toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
                 return (
@@ -178,13 +178,13 @@ export default function GanttSchedule() {
               No scheduled entries. Select a work order from the left panel and click "Schedule" to auto-schedule it.
             </div>
           )}
-          {workCenters.map(wc => (
+          {workCenters?.map(wc => (
             <div key={wc} className="flex border-b min-h-[48px]">
               <div className="w-32 min-w-[128px] border-r p-1 text-xs font-medium bg-gray-50 flex items-center">{wc}</div>
               <div className="flex-1 relative">
                 {/* Grid lines */}
                 <div className="absolute inset-0 flex">
-                  {dates.map((d, i) => (
+                  {dates?.map((d, i) => (
                     <div key={i} className={`flex-1 border-r ${d.getDay() === 0 || d.getDay() === 6 ? 'bg-gray-50' : ''}`}></div>
                   ))}
                 </div>
@@ -214,7 +214,7 @@ export default function GanttSchedule() {
 
       {/* Legend */}
       <div className="bg-gray-100 border-t px-4 py-1 flex items-center gap-4 text-xs">
-        {Object.entries(statusColors).map(([status, color]) => (
+        {Object.entries(statusColors)?.map(([status, color]) => (
           <div key={status} className="flex items-center gap-1">
             <div className="w-3 h-3 rounded" style={{ backgroundColor: color }}></div>
             <span className="capitalize">{status}</span>

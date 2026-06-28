@@ -36,7 +36,7 @@ export default function DriverView() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: '2px solid #e5e7eb' }}>
-        {tabs.map(tab => (
+        {tabs?.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             style={{ padding: '10px 20px', border: 'none', background: activeTab === tab.id ? 'white' : 'transparent', borderBottom: activeTab === tab.id ? '2px solid #2563eb' : '2px solid transparent', marginBottom: '-2px', cursor: 'pointer', fontWeight: activeTab === tab.id ? '600' : '400', color: activeTab === tab.id ? '#2563eb' : '#6b7280' }}>
             {tab.label} ({tab.count})
@@ -51,12 +51,12 @@ export default function DriverView() {
             <button onClick={() => setShowAddDriverModal(true)} style={{ padding: '8px 16px', background: '#2563eb', color: 'white', borderRadius: '6px', border: 'none', cursor: 'pointer' }}>+ Add Driver</button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-            {drivers.map(driver => (
+            {drivers?.map(driver => (
               <div key={driver.id} style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', padding: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', color: '#2563eb' }}>
-                      {driver.employee_name.split(' ').map(n => n[0]).join('')}
+                      {driver.employee_name.split(' ')?.map(n => n[0]).join('')}
                     </div>
                     <div>
                       <div style={{ fontWeight: '600' }}>{driver.employee_name}</div>
@@ -100,7 +100,7 @@ export default function DriverView() {
               </tr>
             </thead>
             <tbody>
-              {vehicles.map(v => (
+              {vehicles?.map(v => (
                 <tr key={v.id}>
                   <td style={{ padding: '10px', borderBottom: '1px solid #f3f4f6', fontWeight: '600' }}>{v.vehicle_number}</td>
                   <td style={{ padding: '10px', borderBottom: '1px solid #f3f4f6', textTransform: 'capitalize' }}>{v.vehicle_type.replace('_', ' ')}</td>
@@ -137,7 +137,7 @@ export default function DriverView() {
               </tr>
             </thead>
             <tbody>
-              {zones.map(zone => (
+              {zones?.map(zone => (
                 <tr key={zone.id}>
                   <td style={{ padding: '10px', borderBottom: '1px solid #f3f4f6', fontWeight: '600' }}>{zone.zone_name}</td>
                   <td style={{ padding: '10px', borderBottom: '1px solid #f3f4f6' }}>{zone.zone_code}</td>

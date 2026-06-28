@@ -76,7 +76,7 @@ export default function BudgetManager() {
     } catch(e) { toast.error('Failed to approve'); }
   };
 
-  const lineTotal = Object.keys(newLine).filter(k => k.startsWith('period_')).reduce((s, k) => s + parseFloat(newLine[k] || 0), 0);
+  const lineTotal = Object.keys(newLine)?.filter(k => k.startsWith('period_'))?.reduce((s, k) => s + parseFloat(newLine[k] || 0), 0);
 
   return (
     <ModulePage {...accountingMenu}>
@@ -100,7 +100,7 @@ export default function BudgetManager() {
               <tbody>
                 {budgets.length === 0 ? (
                   <tr><td colSpan="6" className="text-center p-4 text-gray-500">No budgets found. Create one to get started.</td></tr>
-                ) : budgets.map(b => (
+                ) : budgets?.map(b => (
                   <tr key={b.id}>
                     <td className="font-medium">{b.name}</td>
                     <td>{b.fiscal_year}</td>
@@ -140,14 +140,14 @@ export default function BudgetManager() {
                   <thead>
                     <tr>
                       <th className="sticky left-0 bg-white z-10">Account</th>
-                      {months.map(m => <th key={m} className="text-right min-w-[70px]">{m}</th>)}
+                      {months?.map(m => <th key={m} className="text-right min-w-[70px]">{m}</th>)}
                       <th className="text-right font-bold">Annual</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(budgetDetail.lines || []).length === 0 ? (
                       <tr><td colSpan="14" className="text-center p-4 text-gray-500">No budget lines. Add GL accounts to build your budget.</td></tr>
-                    ) : (budgetDetail.lines || []).map(line => (
+                    ) : (budgetDetail.lines || [])?.map(line => (
                       <tr key={line.id}>
                         <td className="sticky left-0 bg-white z-10 font-medium whitespace-nowrap">{line.account_number} - {line.account_name}</td>
                         {Array.from({length: 12}, (_, i) => (
@@ -163,10 +163,10 @@ export default function BudgetManager() {
                         <td className="sticky left-0 bg-gray-50 z-10">TOTAL</td>
                         {Array.from({length: 12}, (_, i) => (
                           <td key={i} className="text-right font-mono">
-                            ${(budgetDetail.lines || []).reduce((s, l) => s + parseFloat(l[`period_${i+1}`] || 0), 0).toLocaleString()}
+                            ${(budgetDetail.lines || [])?.reduce((s, l) => s + parseFloat(l[`period_${i+1}`] || 0), 0).toLocaleString()}
                           </td>
                         ))}
-                        <td className="text-right font-mono">${(budgetDetail.lines || []).reduce((s, l) => s + parseFloat(l.annual_total || 0), 0).toLocaleString()}</td>
+                        <td className="text-right font-mono">${(budgetDetail.lines || [])?.reduce((s, l) => s + parseFloat(l.annual_total || 0), 0).toLocaleString()}</td>
                       </tr>
                     </tfoot>
                   )}
@@ -187,7 +187,7 @@ export default function BudgetManager() {
                 <tbody>
                   {(variance.lines || []).length === 0 ? (
                     <tr><td colSpan="7" className="text-center p-4 text-gray-500">No budget lines to compare</td></tr>
-                  ) : (variance.lines || []).map(line => {
+                  ) : (variance.lines || [])?.map(line => {
                     const pct = parseFloat(line.variance_pct || 0);
                     const overBudget = pct > 100;
                     return (
@@ -250,11 +250,11 @@ export default function BudgetManager() {
                 <label className="block text-xs font-medium text-gray-700 mb-1">GL Account</label>
                 <select className="erp-form-select w-full" value={newLine.gl_account_id} onChange={e => setNewLine({...newLine, gl_account_id: e.target.value})}>
                   <option value="">Select Account...</option>
-                  {glAccounts.map(a => <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>)}
+                  {glAccounts?.map(a => <option key={a.id} value={a.id}>{a.account_number} - {a.account_name}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-6 gap-2 mb-4">
-                {months.map((m, i) => (
+                {months?.map((m, i) => (
                   <div key={m}>
                     <label className="block text-xs text-gray-500">{m}</label>
                     <input type="number" step="0.01" className="erp-form-input w-full text-right text-xs font-mono"

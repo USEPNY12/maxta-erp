@@ -72,7 +72,7 @@ function BillOfMaterials() {
             <table className="erp-grid text-xs">
               <thead><tr><th>Item No.</th><th>Description</th><th>Type</th></tr></thead>
               <tbody>
-                {(items || []).map(item => (
+                {(items || [])?.map(item => (
                   <tr
                     key={item.id}
                     className={`cursor-pointer ${selectedItem?.id === item.id ? 'bg-blue-200' : ''}`}
@@ -120,7 +120,7 @@ function BillOfMaterials() {
                   <tbody>
                     {bomLines.length === 0 ? (
                       <tr><td colSpan="10" className="text-center p-4 text-gray-500">No BOM lines. Click "+ Add Component" to add materials.</td></tr>
-                    ) : bomLines.map((line, idx) => (
+                    ) : bomLines?.map((line, idx) => (
                       <tr key={line.id}>
                         <td>{(idx + 1) * 10}</td>
                         <td className="text-blue-700 font-bold">{line.component_item_no}</td>

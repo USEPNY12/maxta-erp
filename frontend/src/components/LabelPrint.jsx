@@ -157,9 +157,9 @@ function ProductionLabel({ data, style }) {
       {d.fabrication && Object.keys(d.fabrication).length > 0 && (
         <div className="fab-section">
           <div style={{ fontWeight: 'bold', fontSize: '10px', marginBottom: '2px' }}>FABRICATION:</div>
-          {Object.entries(d.fabrication).map(([cat, items]) => (
+          {Object.entries(d.fabrication)?.map(([cat, items]) => (
             <div key={cat} className="fab-item">
-              <strong>{cat}:</strong> {(items || []).map(i => `${i.name} (${i.qty})`).join(', ')}
+              <strong>{cat}:</strong> {(items || [])?.map(i => `${i.name} (${i.qty})`).join(', ')}
             </div>
           ))}
         </div>
@@ -226,7 +226,7 @@ function ReceivingLabel({ data, style }) {
       <div className="label-row"><span className="label-field">PO#:</span><span className="label-value">{data.data.po_number}</span></div>
       <div className="label-row"><span className="label-field">Vendor:</span><span className="label-value">{data.data.vendor}</span></div>
       <div className="label-row"><span className="label-field">Date:</span><span className="label-value">{data.data.received_date ? new Date(data.data.received_date).toLocaleDateString() : '-'}</span></div>
-      {data.data.lines && data.data.lines.map((l, i) => (
+      {data.data.lines && data.data.lines?.map((l, i) => (
         <div key={i} style={{ borderTop: '1px dashed #ccc', marginTop: '4px', paddingTop: '4px', fontSize: '9px' }}>
           <div><strong>{l.item_number}</strong> - {l.description}</div>
           <div>Qty: {l.quantity} {l.lot_number ? `| Lot: ${l.lot_number}` : ''} {l.location ? `| Loc: ${l.location}` : ''}</div>

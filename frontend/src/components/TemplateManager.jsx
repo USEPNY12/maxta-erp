@@ -141,7 +141,7 @@ export default function TemplateManager() {
                 </tr>
               </thead>
               <tbody>
-                {templates.map(t => (
+                {templates?.map(t => (
                   <tr key={t.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '8px 12px' }}>{t.name}</td>
                     <td style={{ padding: '8px 12px' }}>{t.document_type}</td>
@@ -165,7 +165,7 @@ export default function TemplateManager() {
           <div style={{ marginTop: 20, padding: 16, background: '#f0f9ff', borderRadius: 8, border: '1px solid #bae6fd' }}>
             <h4 style={{ fontSize: 13, fontWeight: 600, color: '#0369a1', marginBottom: 8 }}>Built-in Templates (File-Based)</h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
-              {DOCUMENT_TYPES.map(dt => (
+              {DOCUMENT_TYPES?.map(dt => (
                 <div key={dt.value} style={{ padding: '8px 12px', background: 'white', borderRadius: 4, border: '1px solid #e0f2fe', fontSize: 11 }}>
                   <strong>{dt.label}</strong>
                   <div style={{ color: '#64748b', marginTop: 2 }}>{dt.category}</div>
@@ -238,7 +238,7 @@ export default function TemplateManager() {
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Document Type</label>
               <select className="erp-form-select" value={previewType} onChange={e => setPreviewType(e.target.value)}>
                 <option value="">Select...</option>
-                {DOCUMENT_TYPES.map(dt => (
+                {DOCUMENT_TYPES?.map(dt => (
                   <option key={dt.value} value={dt.value}>{dt.label} ({dt.category})</option>
                 ))}
               </select>

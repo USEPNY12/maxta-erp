@@ -29,7 +29,7 @@ export default function ShippingDashboard() {
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        {kpiCards.map((kpi, i) => (
+        {kpiCards?.map((kpi, i) => (
           <div key={i} style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', padding: '20px', borderLeft: `4px solid ${kpi.color}` }}>
             <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>{kpi.label}</div>
             <div style={{ fontSize: '28px', fontWeight: '700', color: '#111827' }}>{kpi.value}</div>
@@ -42,7 +42,7 @@ export default function ShippingDashboard() {
         {/* Active Drivers */}
         <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', padding: '20px' }}>
           <h2 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>Active Drivers</h2>
-          {dashboard.activeDrivers.length > 0 ? dashboard.activeDrivers.map(driver => (
+          {dashboard.activeDrivers.length > 0 ? dashboard.activeDrivers?.map(driver => (
             <div key={driver.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderRadius: '6px', background: '#f9fafb', marginBottom: '8px' }}>
               <div>
                 <div style={{ fontWeight: '600', fontSize: '14px' }}>{driver.employee_name}</div>
@@ -60,7 +60,7 @@ export default function ShippingDashboard() {
         <div style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', padding: '20px' }}>
           <h2 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>Rack Status</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '8px' }}>
-            {dashboard.racks.map((rack, i) => (
+            {dashboard.racks?.map((rack, i) => (
               <div key={i} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
                 <div style={{ fontWeight: '700', fontSize: '14px' }}>{rack.rack_code}</div>
                 <div style={{ fontSize: '11px', color: '#6b7280', textTransform: 'capitalize' }}>{rack.rack_type.replace('_', ' ')}</div>

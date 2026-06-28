@@ -66,7 +66,7 @@ function APInvoices() {
           <thead><tr><th>Invoice No.</th><th>Date</th><th>Vendor</th><th>PO #</th><th>Due Date</th><th>Total</th><th>Balance</th><th>Status</th></tr></thead>
           <tbody>
             {invoices.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No invoices found</td></tr> :
-            (invoices || []).map(inv => (
+            (invoices || [])?.map(inv => (
               <tr key={inv.id} className={`cursor-pointer hover:bg-blue-50 ${inv.status === 'overdue' ? 'bg-red-50' : ''}`} onClick={() => openDetail(inv)}>
                 <td className="font-bold">{inv.invoice_number}</td>
                 <td>{fmt(inv.invoice_date)}</td>
@@ -130,14 +130,14 @@ function APInvoices() {
                 {activeTab === 'Lines' && (
                   <table className="erp-grid"><thead><tr><th>#</th><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
                     <tbody>{(selected.lines || []).length === 0 ? <tr><td colSpan="5" className="text-center p-4 text-gray-500">No line details</td></tr> :
-                    (selected.lines || []).map((l, i) => (
+                    (selected.lines || [])?.map((l, i) => (
                       <tr key={i}><td>{i + 1}</td><td>{l.description}</td><td className="text-right">{l.quantity}</td><td className="text-right">${parseFloat(l.unit_price || l.unit_cost || 0).toFixed(2)}</td><td className="text-right font-bold">${parseFloat(l.total || (l.quantity * (l.unit_price || l.unit_cost || 0))).toFixed(2)}</td></tr>
                     ))}</tbody></table>
                 )}
                 {activeTab === 'Payments' && (
                   <table className="erp-grid"><thead><tr><th>Payment #</th><th>Date</th><th>Method</th><th>Reference</th><th>Amount</th></tr></thead>
                     <tbody>{(selected.payments || []).length === 0 ? <tr><td colSpan="5" className="text-center p-4 text-gray-500">No payments recorded</td></tr> :
-                    (selected.payments || []).map((p, i) => (
+                    (selected.payments || [])?.map((p, i) => (
                       <tr key={i}><td className="font-bold">{p.payment_number}</td><td>{fmt(p.payment_date)}</td><td>{p.payment_method}</td><td>{p.reference_number || '-'}</td><td className="text-right font-bold text-green-700">${parseFloat(p.amount).toFixed(2)}</td></tr>
                     ))}</tbody></table>
                 )}

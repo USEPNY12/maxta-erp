@@ -76,11 +76,11 @@ export default function ApprovalQueue() {
             <span className="aq-stat-label">Pending</span>
           </div>
           <div className="aq-stat aq-stat-approved">
-            <span className="aq-stat-value">{allApprovals.filter(a => a.status === 'approved').length}</span>
+            <span className="aq-stat-value">{allApprovals?.filter(a => a.status === 'approved').length}</span>
             <span className="aq-stat-label">Approved</span>
           </div>
           <div className="aq-stat aq-stat-rejected">
-            <span className="aq-stat-value">{allApprovals.filter(a => a.status === 'rejected').length}</span>
+            <span className="aq-stat-value">{allApprovals?.filter(a => a.status === 'rejected').length}</span>
             <span className="aq-stat-label">Rejected</span>
           </div>
         </div>
@@ -106,7 +106,7 @@ export default function ApprovalQueue() {
                 {queue.length === 0 ? (
                   <div className="aq-empty">No pending approvals. All clear!</div>
                 ) : (
-                  (queue || []).map(item => (
+                  (queue || [])?.map(item => (
                     <div key={item.id} className="aq-card">
                       <div className="aq-card-header">
                         <span className="aq-doc-type">{getDocTypeIcon(item.document_type)} {item.document_type.replace('_', ' ').toUpperCase()}</span>
@@ -155,7 +155,7 @@ export default function ApprovalQueue() {
                     </tr>
                   </thead>
                   <tbody>
-                    {allApprovals.map(item => (
+                    {allApprovals?.map(item => (
                       <tr key={item.id}>
                         <td>{getDocTypeIcon(item.document_type)} {item.document_type.replace('_', ' ')}</td>
                         <td>{item.document_number || `#${item.document_id}`}</td>
@@ -186,7 +186,7 @@ export default function ApprovalQueue() {
                     </tr>
                   </thead>
                   <tbody>
-                    {workflows.map(wf => (
+                    {workflows?.map(wf => (
                       <tr key={wf.id}>
                         <td><strong>{wf.name}</strong></td>
                         <td>{wf.document_type.replace('_', ' ')}</td>

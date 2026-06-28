@@ -15,7 +15,7 @@ function BuyForWO() {
       setLoading(true);
       const res = await api.get('/api/manufacturing/work-orders');
       // Filter to only show WOs that are planned or in progress (need materials)
-      const active = (res.data || []).filter(wo => ['planned', 'in_progress', 'in progress', 'released'].includes(wo.status));
+      const active = (res.data || [])?.filter(wo => ['planned', 'in_progress', 'in progress', 'released'].includes(wo.status));
       setWorkOrders(active);
     } catch (e) {
       toast.error('Failed to load work orders');
@@ -61,7 +61,7 @@ function BuyForWO() {
             </tr>
           </thead>
           <tbody>
-            {workOrders.map(wo => (
+            {workOrders?.map(wo => (
               <tr key={wo.id}>
                 <td style={{ color: '#1a73e8', fontWeight: 500 }}>{wo.order_number}</td>
                 <td>{wo.item_number || '-'}</td>

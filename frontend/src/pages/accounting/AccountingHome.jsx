@@ -37,7 +37,7 @@ function AccountingHome() {
   const FinSection = ({ title, items, totalLabel, totalValue }) => (
     <div className="mb-4">
       <h4 className="font-bold text-sm border-b pb-1 mb-2">{title}</h4>
-      {(items || []).map(a => (<div key={a.account_number} className="flex justify-between text-sm py-1"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmt(a.balance)}</span></div>))}
+      {(items || [])?.map(a => (<div key={a.account_number} className="flex justify-between text-sm py-1"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmt(a.balance)}</span></div>))}
       <div className="flex justify-between font-bold text-sm border-t pt-1 mt-1"><span>{totalLabel}</span><span className="font-mono">{fmt(totalValue)}</span></div>
     </div>
   );
@@ -90,7 +90,7 @@ function AccountingHome() {
           <table className="w-full text-sm">
             <thead><tr className="bg-gray-100 border-b"><th className="text-left p-2">Acct#</th><th className="text-left p-2">Name</th><th className="text-left p-2">Type</th><th className="text-right p-2">Debits</th><th className="text-right p-2">Credits</th><th className="text-right p-2">Balance</th></tr></thead>
             <tbody>
-              {(trialBalance.accounts||[]).map(a => (<tr key={a.id} className="border-b"><td className="p-2 font-mono">{a.account_number}</td><td className="p-2">{a.account_name}</td><td className="p-2 text-xs capitalize">{a.account_type}</td><td className="p-2 text-right font-mono">{fmt(a.total_debits)}</td><td className="p-2 text-right font-mono">{fmt(a.total_credits)}</td><td className="p-2 text-right font-mono font-bold">{fmt(a.balance)}</td></tr>))}
+              {(trialBalance.accounts||[])?.map(a => (<tr key={a.id} className="border-b"><td className="p-2 font-mono">{a.account_number}</td><td className="p-2">{a.account_name}</td><td className="p-2 text-xs capitalize">{a.account_type}</td><td className="p-2 text-right font-mono">{fmt(a.total_debits)}</td><td className="p-2 text-right font-mono">{fmt(a.total_credits)}</td><td className="p-2 text-right font-mono font-bold">{fmt(a.balance)}</td></tr>))}
               <tr className="bg-gray-200 font-bold"><td colSpan="3" className="p-2">TOTALS</td><td className="p-2 text-right font-mono">{fmt(trialBalance.total_debits)}</td><td className="p-2 text-right font-mono">{fmt(trialBalance.total_credits)}</td><td></td></tr>
             </tbody>
           </table>
@@ -123,7 +123,7 @@ function AccountingHome() {
           <h3 className="font-bold mb-3">Accounting Periods</h3>
           <table className="w-full text-sm">
             <thead><tr className="bg-gray-100 border-b"><th className="text-left p-2">Period</th><th className="text-left p-2">Year</th><th className="text-left p-2">Start</th><th className="text-left p-2">End</th><th className="text-left p-2">Status</th><th className="p-2">Action</th></tr></thead>
-            <tbody>{periods.map(p => (<tr key={p.id} className="border-b"><td className="p-2">{p.period_number}</td><td className="p-2">{p.period_year}</td><td className="p-2 text-xs">{p.start_date?new Date(p.start_date).toLocaleDateString():''}</td><td className="p-2 text-xs">{p.end_date?new Date(p.end_date).toLocaleDateString():''}</td><td className="p-2"><span className={`px-2 py-0.5 rounded text-xs ${p.status==='closed'?'bg-gray-200':'bg-green-100 text-green-700'}`}>{p.status}</span></td><td className="p-2">{p.status==='open'&&<button onClick={()=>handlePeriodClose(p.id)} className="text-xs text-red-600 hover:underline">Close</button>}</td></tr>))}</tbody>
+            <tbody>{periods?.map(p => (<tr key={p.id} className="border-b"><td className="p-2">{p.period_number}</td><td className="p-2">{p.period_year}</td><td className="p-2 text-xs">{p.start_date?new Date(p.start_date).toLocaleDateString():''}</td><td className="p-2 text-xs">{p.end_date?new Date(p.end_date).toLocaleDateString():''}</td><td className="p-2"><span className={`px-2 py-0.5 rounded text-xs ${p.status==='closed'?'bg-gray-200':'bg-green-100 text-green-700'}`}>{p.status}</span></td><td className="p-2">{p.status==='open'&&<button onClick={()=>handlePeriodClose(p.id)} className="text-xs text-red-600 hover:underline">Close</button>}</td></tr>))}</tbody>
           </table>
         </div>
       )}

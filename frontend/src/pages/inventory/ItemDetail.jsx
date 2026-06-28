@@ -211,14 +211,14 @@ function ItemDetail() {
           break;
         case 'bom_line': {
           const bomLines = [...(bomData.lines || []), { ...modalData, sequence: (bomData.lines?.length || 0) + 1 }];
-          await api.post(`/api/inventory/items/${id}/bom`, { revision: 'A', description: 'BOM', batch_size: item.batch_size || 1, lines: bomLines.map((l, i) => ({ ...l, sequence: i + 1 })) });
+          await api.post(`/api/inventory/items/${id}/bom`, { revision: 'A', description: 'BOM', batch_size: item.batch_size || 1, lines: bomLines?.map((l, i) => ({ ...l, sequence: i + 1 })) });
           toast.success('BOM updated');
           fetchTabData('Bill Of Materials');
           break;
         }
         case 'routing_op': {
           const ops = [...(routingData.operations || []), { ...modalData, sequence: (routingData.operations?.length || 0) + 1 }];
-          await api.post(`/api/inventory/items/${id}/routing`, { revision: 'A', description: 'Routing', operations: ops.map((o, i) => ({ ...o, sequence: i + 1 })) });
+          await api.post(`/api/inventory/items/${id}/routing`, { revision: 'A', description: 'Routing', operations: ops?.map((o, i) => ({ ...o, sequence: i + 1 })) });
           toast.success('Routing updated');
           fetchTabData('Routing');
           break;
@@ -294,7 +294,7 @@ function ItemDetail() {
 
       {/* Tabs */}
       <div className="erp-tabs overflow-x-auto whitespace-nowrap">
-        {TABS.map(tab => (
+        {TABS?.map(tab => (
           <div key={tab} className={`erp-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>{tab}</div>
         ))}
       </div>
@@ -314,13 +314,13 @@ function ItemDetail() {
                 <div className="erp-form-group"><label className="erp-form-label">Receipt Loc:</label>
                   <select className="erp-form-select" value={item.receipt_location_id || ''} onChange={e => updateField('receipt_location_id', e.target.value)}>
                     <option value="">Select...</option>
-                    {lookupLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    {lookupLocations?.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
                 </div>
                 <div className="erp-form-group"><label className="erp-form-label">Ship/Usage Loc:</label>
                   <select className="erp-form-select" value={item.shipping_location_id || ''} onChange={e => updateField('shipping_location_id', e.target.value)}>
                     <option value="">Select...</option>
-                    {lookupLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    {lookupLocations?.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
                 </div>
                 <div className="erp-form-group"><label className="erp-form-label">Bin:</label><input className="erp-form-input" value={item.bin || ''} onChange={e => updateField('bin', e.target.value)} /></div>
@@ -412,7 +412,7 @@ function ItemDetail() {
               <tbody>
                 {stockByLoc.length === 0 ? (
                   <tr><td colSpan="5" className="text-center p-4 text-gray-500">No stock in any location{isNew ? ' (save item first)' : ''}</td></tr>
-                ) : stockByLoc.map((s, i) => (
+                ) : stockByLoc?.map((s, i) => (
                   <tr key={i}>
                     <td>{s.location_name}</td>
                     <td className="text-right">{parseFloat(s.on_hand).toFixed(2)}</td>
@@ -424,10 +424,10 @@ function ItemDetail() {
                 {stockByLoc.length > 0 && (
                   <tr className="font-bold bg-gray-100">
                     <td>TOTAL</td>
-                    <td className="text-right">{stockByLoc.reduce((s, r) => s + parseFloat(r.on_hand), 0).toFixed(2)}</td>
-                    <td className="text-right">{stockByLoc.reduce((s, r) => s + parseFloat(r.allocated || 0), 0).toFixed(2)}</td>
-                    <td className="text-right">{stockByLoc.reduce((s, r) => s + parseFloat(r.on_hand) - parseFloat(r.allocated || 0), 0).toFixed(2)}</td>
-                    <td className="text-right">{stockByLoc.reduce((s, r) => s + parseFloat(r.on_order || 0), 0).toFixed(2)}</td>
+                    <td className="text-right">{stockByLoc?.reduce((s, r) => s + parseFloat(r.on_hand), 0).toFixed(2)}</td>
+                    <td className="text-right">{stockByLoc?.reduce((s, r) => s + parseFloat(r.allocated || 0), 0).toFixed(2)}</td>
+                    <td className="text-right">{stockByLoc?.reduce((s, r) => s + parseFloat(r.on_hand) - parseFloat(r.allocated || 0), 0).toFixed(2)}</td>
+                    <td className="text-right">{stockByLoc?.reduce((s, r) => s + parseFloat(r.on_order || 0), 0).toFixed(2)}</td>
                   </tr>
                 )}
               </tbody>
@@ -446,7 +446,7 @@ function ItemDetail() {
               <tbody>
                 {pricing.length === 0 ? (
                   <tr><td colSpan="8" className="text-center p-4 text-gray-500">No pricing rules. Click "Add Price" to configure.</td></tr>
-                ) : pricing.map(p => (
+                ) : pricing?.map(p => (
                   <tr key={p.id}>
                     <td>{p.price_list}</td>
                     <td>{p.tier_type}</td>
@@ -496,7 +496,7 @@ function ItemDetail() {
               <tbody>
                 {(!bomData.lines || bomData.lines.length === 0) ? (
                   <tr><td colSpan="7" className="text-center p-4 text-gray-500">No BOM lines. Click "Add Component" to build the bill of materials.</td></tr>
-                ) : bomData.lines.map((line, i) => (
+                ) : bomData.lines?.map((line, i) => (
                   <tr key={i}>
                     <td>{line.sequence}</td>
                     <td className="text-blue-700">{line.component_item_no || line.item_number}</td>
@@ -524,7 +524,7 @@ function ItemDetail() {
               <tbody>
                 {(!routingData.operations || routingData.operations.length === 0) ? (
                   <tr><td colSpan="6" className="text-center p-4 text-gray-500">No routing operations. Click "Add Operation" to define the production routing.</td></tr>
-                ) : routingData.operations.map((op, i) => (
+                ) : routingData.operations?.map((op, i) => (
                   <tr key={i}>
                     <td>{op.sequence}</td>
                     <td className="text-blue-700">{op.work_center_name}</td>
@@ -558,14 +558,14 @@ function ItemDetail() {
             <div className="text-xs text-gray-600 mb-3">Assign GL accounts for automatic posting when this item is involved in transactions.</div>
             <div className="grid grid-cols-2 gap-4 max-w-2xl">
               {['inventory', 'cogs', 'revenue', 'purchase_variance', 'production_variance'].map(acctType => {
-                const existing = glAccounts.find(g => g.account_type === acctType);
+                const existing = glAccounts?.find(g => g.account_type === acctType);
                 return (
                   <div key={acctType} className="erp-form-group">
                     <label className="erp-form-label capitalize">{acctType.replace(/_/g, ' ')}:</label>
                     <select className="erp-form-select" value={existing?.gl_account_id || ''} disabled={isNew}
                       onChange={e => { if (e.target.value) { api.post(`/api/inventory/items/${id}/gl-accounts`, { account_type: acctType, gl_account_id: e.target.value }).then(() => { toast.success('Saved'); fetchTabData('GL Accounts'); }); } }}>
                       <option value="">Select Account...</option>
-                      {lookupGLAccounts.map(g => <option key={g.id} value={g.id}>{g.account_number} - {g.account_name}</option>)}
+                      {lookupGLAccounts?.map(g => <option key={g.id} value={g.id}>{g.account_number} - {g.account_name}</option>)}
                     </select>
                   </div>
                 );
@@ -586,7 +586,7 @@ function ItemDetail() {
               <tbody>
                 {vendors.length === 0 ? (
                   <tr><td colSpan="8" className="text-center p-4 text-gray-500">No vendors assigned. Click "Add Vendor" to link suppliers.</td></tr>
-                ) : (vendors || []).map(v => (
+                ) : (vendors || [])?.map(v => (
                   <tr key={v.id} className={v.is_preferred ? 'bg-yellow-50' : ''}>
                     <td className="text-blue-700">{v.vendor_name}</td>
                     <td>{v.vendor_item_number}</td>
@@ -622,7 +622,7 @@ function ItemDetail() {
               <tbody>
                 {customers.length === 0 ? (
                   <tr><td colSpan="7" className="text-center p-4 text-gray-500">No customers assigned. Click "Add Customer" to link buyers.</td></tr>
-                ) : (customers || []).map(c => (
+                ) : (customers || [])?.map(c => (
                   <tr key={c.id} className={c.is_preferred ? 'bg-yellow-50' : ''}>
                     <td className="text-blue-700">{c.customer_name}</td>
                     <td>{c.customer_item_number}</td>
@@ -656,7 +656,7 @@ function ItemDetail() {
               <tbody>
                 {dimensions.length === 0 ? (
                   <tr><td colSpan="4" className="text-center p-4 text-gray-500">No dimensions defined. Add width, height, length, area, etc.</td></tr>
-                ) : dimensions.map(d => (
+                ) : dimensions?.map(d => (
                   <tr key={d.id}>
                     <td>{d.dimension_type}</td>
                     <td className="text-right">{d.dimension_value}</td>
@@ -680,7 +680,7 @@ function ItemDetail() {
               <tbody>
                 {documents.length === 0 ? (
                   <tr><td colSpan="5" className="text-center p-4 text-gray-500">No documents attached. Add drawings, spec sheets, MSDS, certificates, etc.</td></tr>
-                ) : documents.map(d => (
+                ) : documents?.map(d => (
                   <tr key={d.id}>
                     <td className="capitalize">{d.document_type?.replace(/_/g, ' ')}</td>
                     <td className="text-blue-700">{d.file_name}</td>
@@ -784,7 +784,7 @@ function ItemDetail() {
               {showModal === 'vendor' && (<>
                 <div className="erp-form-group"><label className="erp-form-label">Vendor:</label>
                   <select className="erp-form-select" value={modalData.vendor_id || ''} onChange={e => setModalData(p => ({ ...p, vendor_id: e.target.value }))}>
-                    <option value="">Select...</option>{lookupVendors.map(v => <option key={v.id} value={v.id}>{v.company_name}</option>)}
+                    <option value="">Select...</option>{lookupVendors?.map(v => <option key={v.id} value={v.id}>{v.company_name}</option>)}
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Vendor Item #:</label><input className="erp-form-input" value={modalData.vendor_item_number || ''} onChange={e => setModalData(p => ({ ...p, vendor_item_number: e.target.value }))} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Description:</label><input className="erp-form-input" value={modalData.vendor_description || ''} onChange={e => setModalData(p => ({ ...p, vendor_description: e.target.value }))} /></div>
@@ -796,7 +796,7 @@ function ItemDetail() {
               {showModal === 'customer' && (<>
                 <div className="erp-form-group"><label className="erp-form-label">Customer:</label>
                   <select className="erp-form-select" value={modalData.customer_id || ''} onChange={e => setModalData(p => ({ ...p, customer_id: e.target.value }))}>
-                    <option value="">Select...</option>{lookupCustomers.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
+                    <option value="">Select...</option>{lookupCustomers?.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Customer Item #:</label><input className="erp-form-input" value={modalData.customer_item_number || ''} onChange={e => setModalData(p => ({ ...p, customer_item_number: e.target.value }))} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Description:</label><input className="erp-form-input" value={modalData.customer_description || ''} onChange={e => setModalData(p => ({ ...p, customer_description: e.target.value }))} /></div>
@@ -839,7 +839,7 @@ function ItemDetail() {
               {showModal === 'bom_line' && (<>
                 <div className="erp-form-group"><label className="erp-form-label">Component:</label>
                   <select className="erp-form-select" value={modalData.component_item_id || ''} onChange={e => setModalData(p => ({ ...p, component_item_id: e.target.value }))}>
-                    <option value="">Select Item...</option>{lookupItems.filter(i => i.id !== parseInt(id)).map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
+                    <option value="">Select Item...</option>{lookupItems?.filter(i => i.id !== parseInt(id))?.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Qty Per:</label><input className="erp-form-input" type="number" step="0.01" value={modalData.quantity_per || ''} onChange={e => setModalData(p => ({ ...p, quantity_per: e.target.value }))} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Waste %:</label><input className="erp-form-input" type="number" value={modalData.waste_percent || 0} onChange={e => setModalData(p => ({ ...p, waste_percent: e.target.value }))} /></div>
@@ -851,7 +851,7 @@ function ItemDetail() {
               {showModal === 'routing_op' && (<>
                 <div className="erp-form-group"><label className="erp-form-label">Work Center:</label>
                   <select className="erp-form-select" value={modalData.work_center_id || ''} onChange={e => setModalData(p => ({ ...p, work_center_id: e.target.value }))}>
-                    <option value="">Select...</option>{lookupWorkCenters.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                    <option value="">Select...</option>{lookupWorkCenters?.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Description:</label><input className="erp-form-input" value={modalData.operation_description || ''} onChange={e => setModalData(p => ({ ...p, operation_description: e.target.value }))} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Setup Time (hrs):</label><input className="erp-form-input" type="number" step="0.25" value={modalData.setup_time_hours || ''} onChange={e => setModalData(p => ({ ...p, setup_time_hours: e.target.value }))} /></div>
@@ -877,8 +877,8 @@ function ItemDetail() {
               {inquiryLoading ? <div className="text-center py-8">Loading...</div> : (
                 inquiryData.length === 0 ? <div className="text-center py-8 text-gray-500">No records found</div> : (
                   <table className="w-full text-xs border-collapse">
-                    <thead><tr className="bg-gray-200">{Object.keys(inquiryData[0]).map(k => <th key={k} className="border px-2 py-1 text-left">{k.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}</th>)}</tr></thead>
-                    <tbody>{inquiryData.map((row, i) => <tr key={i} className={i%2?'bg-gray-50':''}>{Object.values(row).map((v,j) => <td key={j} className="border px-2 py-1">{v != null ? String(v) : '-'}</td>)}</tr>)}</tbody>
+                    <thead><tr className="bg-gray-200">{Object.keys(inquiryData[0])?.map(k => <th key={k} className="border px-2 py-1 text-left">{k.replace(/_/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}</th>)}</tr></thead>
+                    <tbody>{inquiryData?.map((row, i) => <tr key={i} className={i%2?'bg-gray-50':''}>{Object.values(row)?.map((v,j) => <td key={j} className="border px-2 py-1">{v != null ? String(v) : '-'}</td>)}</tr>)}</tbody>
                   </table>
                 )
               )}

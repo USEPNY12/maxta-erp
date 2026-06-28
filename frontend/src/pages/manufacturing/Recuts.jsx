@@ -47,7 +47,7 @@ function Recuts() {
             <div className="flex-1 bg-white border rounded px-3 py-2">
               <div className="text-[10px] text-gray-600 mb-1">Top Reasons:</div>
               <div className="flex gap-2 flex-wrap">
-                {stats.by_reason.slice(0, 5).map((r, i) => (
+                {stats.by_reason?.slice(0, 5)?.map((r, i) => (
                   <span key={i} className="text-[10px] bg-gray-100 px-2 py-0.5 rounded">{reasonLabels[r.reason_code] || r.reason_code}: {r.count}</span>
                 ))}
               </div>
@@ -60,7 +60,7 @@ function Recuts() {
         <table className="erp-table w-full">
           <thead><tr><th>Date</th><th>WO#</th><th>Item</th><th>Station</th><th>Qty</th><th>Reason</th><th>Status</th><th>Notes</th></tr></thead>
           <tbody>
-            {recuts.map(r => (
+            {recuts?.map(r => (
               <tr key={r.id}>
                 <td className="text-xs">{formatDate(r.reported_at)}</td>
                 <td className="font-bold text-blue-700 text-xs">{r.wo_number}</td>

@@ -65,7 +65,7 @@ async function markSynced(ids) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
-    ids.forEach(id => {
+    ids?.forEach(id => {
       const req = store.get(id);
       req.onsuccess = () => {
         const item = req.result;
@@ -115,7 +115,7 @@ export default function OfflineScanner() {
 
   const loadQueue = async () => {
     const items = await getQueue();
-    setQueue(items.filter(i => i.status === 'pending'));
+    setQueue(items?.filter(i => i.status === 'pending'));
   };
 
   const loadConflicts = async () => {
@@ -132,10 +132,10 @@ export default function OfflineScanner() {
     setSyncing(true);
     try {
       const items = await getQueue();
-      const pending = items.filter(i => i.status === 'pending');
+      const pending = items?.filter(i => i.status === 'pending');
       if (pending.length === 0) { setSyncing(false); return; }
 
-      const actions = pending.map(item => ({
+      const actions = pending?.map(item => ({
         actionType: item.actionType,
         payload: item.payload,
         queuedAt: item.queuedAt,
@@ -150,7 +150,7 @@ export default function OfflineScanner() {
       if (res.ok) {
         const result = await res.json();
         // Mark successful ones as synced
-        const syncedIds = pending.filter((_, i) => result.results[i]?.success).map(p => p.id);
+        const syncedIds = pending?.filter((_, i) => result.results[i]?.success)?.map(p => p.id);
         await markSynced(syncedIds);
         await clearSynced();
         await loadQueue();
@@ -174,7 +174,7 @@ export default function OfflineScanner() {
     await addToQueue(scanData);
     
     const historyEntry = { code, mode: scanMode, time: new Date(), status: online ? 'syncing' : 'queued' };
-    setScanHistory(prev => [historyEntry, ...prev.slice(0, 49)]);
+    setScanHistory(prev => [historyEntry, ...prev?.slice(0, 49)]);
     setLastScan(historyEntry);
     setBarcode('');
     await loadQueue();
@@ -183,7 +183,7 @@ export default function OfflineScanner() {
     if (online) {
       await syncQueue();
       historyEntry.status = 'synced';
-      setScanHistory(prev => [historyEntry, ...prev.slice(1)]);
+      setScanHistory(prev => [historyEntry, ...prev?.slice(1)]);
     }
 
     // Focus input for next scan
@@ -232,7 +232,7 @@ export default function OfflineScanner() {
 
       {/* Scan Mode Selector */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {Object.entries(modeConfig).map(([mode, config]) => (
+        {Object.entries(modeConfig)?.map(([mode, config]) => (
           <button
             key={mode}
             onClick={() => setScanMode(mode)}
@@ -315,7 +315,7 @@ export default function OfflineScanner() {
             <div className="p-8 text-center text-gray-500">No scans yet. Start scanning above.</div>
           ) : (
             <div className="divide-y divide-gray-700">
-              {scanHistory.map((item, i) => (
+              {scanHistory?.map((item, i) => (
                 <div key={i} className="flex items-center justify-between p-3">
                   <div className="flex items-center gap-3">
                     <span className="text-lg">{modeConfig[item.mode]?.icon}</span>
@@ -336,7 +336,7 @@ export default function OfflineScanner() {
             <div className="p-8 text-center text-gray-500">Queue is empty. All scans synced.</div>
           ) : (
             <div className="divide-y divide-gray-700">
-              {(queue || []).map((item, i) => (
+              {(queue || [])?.map((item, i) => (
                 <div key={i} className="flex items-center justify-between p-3">
                   <div>
                     <div className="text-white text-sm">{item.actionType}</div>
@@ -355,7 +355,7 @@ export default function OfflineScanner() {
         <div className="bg-red-900/20 border border-red-700 rounded-xl p-4">
           <h3 className="text-red-400 font-bold mb-2">Sync Conflicts ({conflicts.length})</h3>
           <div className="space-y-2">
-            {conflicts.map(c => (
+            {conflicts?.map(c => (
               <div key={c.id} className="flex items-center justify-between bg-gray-800 rounded-lg p-3">
                 <div>
                   <div className="text-white text-sm">{c.action_type}</div>

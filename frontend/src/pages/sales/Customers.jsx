@@ -54,7 +54,7 @@ function Customers() {
         <table className="erp-grid">
           <thead><tr><th>Customer#</th><th>Company Name</th><th>Contact</th><th>Phone</th><th>Email</th><th>City</th><th>State</th><th>Terms</th><th>Balance</th></tr></thead>
           <tbody>
-            {customers.length === 0 ? <tr><td colSpan="9" className="text-center p-4 text-gray-500">No customers found</td></tr> : (customers || []).map(c => (
+            {customers.length === 0 ? <tr><td colSpan="9" className="text-center p-4 text-gray-500">No customers found</td></tr> : (customers || [])?.map(c => (
               <tr key={c.id} className={`cursor-pointer ${selected?.id === c.id ? 'bg-blue-100' : ''}`} onClick={() => openDetail(c)}>
                 <td className="text-blue-700 font-bold">{c.customer_number}</td>
                 <td>{c.company_name || c.name}</td>
@@ -104,31 +104,31 @@ function Customers() {
               <div className="border border-gray-300 p-2 min-h-[150px]">
                 {activeTab === 'Orders' && (
                   <table className="erp-grid"><thead><tr><th>Order#</th><th>Date</th><th>Total</th><th>Status</th></tr></thead>
-                    <tbody>{(selected.orders || []).length === 0 ? <tr><td colSpan="4" className="text-center p-4 text-gray-500">No orders</td></tr> : (selected.orders || []).map((o, i) => (
+                    <tbody>{(selected.orders || []).length === 0 ? <tr><td colSpan="4" className="text-center p-4 text-gray-500">No orders</td></tr> : (selected.orders || [])?.map((o, i) => (
                       <tr key={i}><td className="text-blue-700">{o.order_number}</td><td>{o.order_date?.split('T')[0]}</td><td className="text-right">${parseFloat(o.total || 0).toFixed(2)}</td><td><span className={`erp-status erp-status-${(o.status || '').toLowerCase()}`}>{o.status}</span></td></tr>
                     ))}</tbody></table>
                 )}
                 {activeTab === 'Invoices' && (
                   <table className="erp-grid"><thead><tr><th>Invoice#</th><th>Date</th><th>Total</th><th>Balance</th><th>Status</th></tr></thead>
-                    <tbody>{(selected.invoices || []).length === 0 ? <tr><td colSpan="5" className="text-center p-4 text-gray-500">No invoices</td></tr> : (selected.invoices || []).map((inv, i) => (
+                    <tbody>{(selected.invoices || []).length === 0 ? <tr><td colSpan="5" className="text-center p-4 text-gray-500">No invoices</td></tr> : (selected.invoices || [])?.map((inv, i) => (
                       <tr key={i}><td className="text-blue-700">{inv.invoice_number}</td><td>{inv.invoice_date?.split('T')[0]}</td><td className="text-right">${parseFloat(inv.total || 0).toFixed(2)}</td><td className="text-right">${parseFloat(inv.balance || 0).toFixed(2)}</td><td><span className={`erp-status erp-status-${(inv.status || '').toLowerCase()}`}>{inv.status}</span></td></tr>
                     ))}</tbody></table>
                 )}
                 {activeTab === 'Payments' && (
                   <table className="erp-grid"><thead><tr><th>Payment#</th><th>Date</th><th>Amount</th><th>Method</th></tr></thead>
-                    <tbody>{(selected.payments || []).length === 0 ? <tr><td colSpan="4" className="text-center p-4 text-gray-500">No payments</td></tr> : (selected.payments || []).map((p, i) => (
+                    <tbody>{(selected.payments || []).length === 0 ? <tr><td colSpan="4" className="text-center p-4 text-gray-500">No payments</td></tr> : (selected.payments || [])?.map((p, i) => (
                       <tr key={i}><td>{p.payment_number}</td><td>{p.payment_date?.split('T')[0]}</td><td className="text-right">${parseFloat(p.amount || 0).toFixed(2)}</td><td>{p.payment_method || '-'}</td></tr>
                     ))}</tbody></table>
                 )}
                 {activeTab === 'Credits' && (
                   <table className="erp-grid"><thead><tr><th>Credit#</th><th>Date</th><th>Amount</th><th>Reason</th><th>Status</th></tr></thead>
-                    <tbody>{(selected.credits || []).length === 0 ? <tr><td colSpan="5" className="text-center p-4 text-gray-500">No credit memos</td></tr> : (selected.credits || []).map((cr, i) => (
+                    <tbody>{(selected.credits || []).length === 0 ? <tr><td colSpan="5" className="text-center p-4 text-gray-500">No credit memos</td></tr> : (selected.credits || [])?.map((cr, i) => (
                       <tr key={i}><td>{cr.credit_memo_number}</td><td>{cr.credit_date?.split('T')[0]}</td><td className="text-right">${parseFloat(cr.amount || 0).toFixed(2)}</td><td>{cr.reason || '-'}</td><td><span className={`erp-status erp-status-${(cr.status || '').toLowerCase()}`}>{cr.status}</span></td></tr>
                     ))}</tbody></table>
                 )}
                 {activeTab === 'Deposits' && (
                   <table className="erp-grid"><thead><tr><th>Deposit#</th><th>Order#</th><th>Date</th><th>Amount</th><th>Method</th></tr></thead>
-                    <tbody>{(selected.deposits || []).length === 0 ? <tr><td colSpan="5" className="text-center p-4 text-gray-500">No deposits</td></tr> : (selected.deposits || []).map((d, i) => (
+                    <tbody>{(selected.deposits || []).length === 0 ? <tr><td colSpan="5" className="text-center p-4 text-gray-500">No deposits</td></tr> : (selected.deposits || [])?.map((d, i) => (
                       <tr key={i}><td>{d.deposit_number || '-'}</td><td>{d.order_number || '-'}</td><td>{d.deposit_date?.split('T')[0]}</td><td className="text-right">${parseFloat(d.amount || 0).toFixed(2)}</td><td>{d.payment_method || '-'}</td></tr>
                     ))}</tbody></table>
                 )}

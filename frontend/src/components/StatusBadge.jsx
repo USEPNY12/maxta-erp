@@ -155,10 +155,10 @@ export default function StatusBadge({ status, type = 'quote', size = 'sm', showF
 
       {showFlow && (
         <div className="status-flow">
-          {machine.states.map((state, idx) => {
+          {machine.states?.map((state, idx) => {
             const stateColors = machine.colors[state] || {};
             const isCurrent = state === normalizedStatus;
-            const isPast = machine.states.indexOf(normalizedStatus) > idx;
+            const isPast = machine.states?.indexOf(normalizedStatus) > idx;
             return (
               <React.Fragment key={state}>
                 <div

@@ -37,9 +37,9 @@ function DataTable({
   const [sortDir, setSortDir] = useState('asc');
 
   // Filter data by search
-  const filteredData = search.trim() ? data.filter(row => {
-    const fields = searchFields || columns.map(c => c.key);
-    return fields.some(f => {
+  const filteredData = search.trim() ? data?.filter(row => {
+    const fields = searchFields || columns?.map(c => c.key);
+    return fields?.some(f => {
       const val = row[f];
       if (val == null) return false;
       return String(val).toLowerCase().includes(search.toLowerCase());
@@ -60,7 +60,7 @@ function DataTable({
 
   // Paginate
   const totalPages = Math.ceil(sortedData.length / pageSize);
-  const pagedData = sortedData.slice((page - 1) * pageSize, page * pageSize);
+  const pagedData = sortedData?.slice((page - 1) * pageSize, page * pageSize);
 
   const handleSort = (key) => {
     if (sortField === key) {
@@ -125,7 +125,7 @@ function DataTable({
           <table className="erp-grid">
             <thead>
               <tr>
-                {columns.map(col => (
+                {columns?.map(col => (
                   <th
                     key={col.key}
                     style={{ width: col.width, textAlign: col.align || 'left', cursor: 'pointer' }}
@@ -149,14 +149,14 @@ function DataTable({
                   </td>
                 </tr>
               ) : (
-                pagedData.map(row => (
+                pagedData?.map(row => (
                   <tr
                     key={row[idField]}
                     className={selectedId === row[idField] ? 'selected' : ''}
                     onClick={() => onRowClick && onRowClick(row)}
                     style={{ cursor: onRowClick ? 'pointer' : 'default' }}
                   >
-                    {columns.map(col => (
+                    {columns?.map(col => (
                       <td key={col.key} style={{ textAlign: col.align || 'left' }}>
                         {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '-')}
                       </td>
@@ -177,13 +177,13 @@ function DataTable({
               <div className="empty-state-text">{emptyMessage}</div>
             </div>
           ) : (
-            pagedData.map(row => (
+            pagedData?.map(row => (
               <div
                 key={row[idField]}
                 className={`data-table-card ${selectedId === row[idField] ? 'selected' : ''}`}
                 onClick={() => onRowClick && onRowClick(row)}
               >
-                {columns.slice(0, 5).map(col => (
+                {columns?.slice(0, 5)?.map(col => (
                   <div key={col.key} className="data-table-card-field">
                     <span className="data-table-card-label">{col.label}</span>
                     <span className="data-table-card-value">

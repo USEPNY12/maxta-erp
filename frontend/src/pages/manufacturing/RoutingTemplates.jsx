@@ -34,7 +34,7 @@ function RoutingTemplates() {
       <div className="flex-1 flex overflow-hidden">
         {/* Template List */}
         <div className="w-80 border-r overflow-y-auto bg-gray-50">
-          {templates.map(t => (
+          {templates?.map(t => (
             <div key={t.id} className={`p-3 border-b cursor-pointer hover:bg-blue-50 ${selected?.id === t.id ? 'bg-blue-100 border-l-4 border-l-blue-600' : ''}`} onClick={() => selectTemplate(t)}>
               <div className="font-bold text-sm">{t.name}</div>
               <div className="text-xs text-gray-600">{t.code}</div>
@@ -56,7 +56,7 @@ function RoutingTemplates() {
 
               <h4 className="font-bold text-sm mb-2">Routing Steps ({steps.length})</h4>
               <div className="space-y-2">
-                {steps.map((step, i) => (
+                {steps?.map((step, i) => (
                   <div key={i} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: step.color || '#6b7280' }}>
                       {step.icon || (i + 1)}
@@ -77,7 +77,7 @@ function RoutingTemplates() {
                 <div className="mt-4 p-3 bg-gray-50 border rounded">
                   <h5 className="font-bold text-xs text-gray-700 mb-1">Visual Flow:</h5>
                   <div className="flex items-center flex-wrap gap-1 text-xs">
-                    {steps.map((step, i) => (
+                    {steps?.map((step, i) => (
                       <React.Fragment key={i}>
                         <span className="bg-white border border-gray-300 rounded px-2 py-1">{step.icon} {step.work_center_name}</span>
                         {i < steps.length - 1 && <span className="text-gray-400">→</span>}

@@ -153,7 +153,7 @@ export default function Dispatch() {
             {/* Summary Cards */}
             <div className="grid grid-cols-6 gap-3 mb-4">
               {['available','loaded','in-transit','at-customer','maintenance'].map(s => {
-                const count = racks.filter(r => r.status === s).length;
+                const count = racks?.filter(r => r.status === s).length;
                 return (
                   <div key={s} className="bg-white border rounded p-2 text-center">
                     <div className="text-lg font-bold">{count}</div>
@@ -181,7 +181,7 @@ export default function Dispatch() {
                 </tr>
               </thead>
               <tbody>
-                {(racks || []).map(r => (
+                {(racks || [])?.map(r => (
                   <tr key={r.id} className="hover:bg-gray-50">
                     <td className="p-2 border font-medium">{r.rack_number}</td>
                     <td className="p-2 border capitalize">{r.rack_type}</td>
@@ -222,7 +222,7 @@ export default function Dispatch() {
                 </thead>
                 <tbody>
                   {routes.length === 0 && <tr><td colSpan="7" className="p-8 text-center text-gray-400">No delivery routes yet. Create one to start planning deliveries.</td></tr>}
-                  {routes.map(r => (
+                  {routes?.map(r => (
                     <tr key={r.id} className={`hover:bg-blue-50 cursor-pointer ${selectedRoute?.id === r.id ? 'bg-blue-50' : ''}`} onClick={() => viewRoute(r)}>
                       <td className="p-2 border font-medium">{r.route_number}</td>
                       <td className="p-2 border">{new Date(r.route_date).toLocaleDateString()}</td>
@@ -252,7 +252,7 @@ export default function Dispatch() {
                   {selectedRoute.status === 'in-progress' && <button onClick={() => updateRouteStatus(selectedRoute.id, 'completed')} className="px-2 py-1 bg-green-600 text-white rounded text-xs">Complete</button>}
                 </div>
                 <h4 className="font-medium text-xs mb-1">Stops ({routeStops.length}):</h4>
-                {routeStops.map((s, i) => (
+                {routeStops?.map((s, i) => (
                   <div key={s.id} className="border rounded p-2 mb-1 text-xs">
                     <div className="flex items-center gap-1">
                       <FaMapMarkerAlt className="text-red-500" />

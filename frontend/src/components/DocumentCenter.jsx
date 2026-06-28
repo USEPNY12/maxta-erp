@@ -138,7 +138,7 @@ const DocumentCenter = () => {
         <div className="bg-white rounded-lg border p-4">
           <h3 className="font-semibold mb-3">Documents by Type</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {stats.by_type.map(t => (
+            {stats.by_type?.map(t => (
               <div key={t.document_type} className="border rounded p-3 text-center">
                 <div className="text-lg font-bold">{t.count}</div>
                 <div className="text-xs text-gray-500 capitalize">{t.document_type.replace(/_/g, ' ')}</div>
@@ -199,7 +199,7 @@ const DocumentCenter = () => {
             </tr>
           </thead>
           <tbody>
-            {documents.map(doc => (
+            {documents?.map(doc => (
               <tr key={doc.id} className="border-b hover:bg-gray-50">
                 <td className="px-3 py-2">
                   <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700 capitalize">
@@ -247,7 +247,7 @@ const DocumentCenter = () => {
           </tr>
         </thead>
         <tbody>
-          {statements.map(s => (
+          {statements?.map(s => (
             <tr key={s.id} className="border-b hover:bg-gray-50">
               <td className="px-3 py-2 font-medium">{s.customer_name}</td>
               <td className="px-3 py-2">{formatDate(s.statement_date)}</td>
@@ -285,7 +285,7 @@ const DocumentCenter = () => {
           </tr>
         </thead>
         <tbody>
-          {emailLog.map(e => (
+          {emailLog?.map(e => (
             <tr key={e.id} className="border-b hover:bg-gray-50">
               <td className="px-3 py-2">{formatDate(e.sent_at)}</td>
               <td className="px-3 py-2 capitalize">{e.document_type?.replace(/_/g, ' ')}</td>
@@ -328,7 +328,7 @@ const DocumentCenter = () => {
           </tr>
         </thead>
         <tbody>
-          {batchJobs.map(j => (
+          {batchJobs?.map(j => (
             <tr key={j.id} className="border-b hover:bg-gray-50">
               <td className="px-3 py-2">#{j.id}</td>
               <td className="px-3 py-2 capitalize">{j.job_type}</td>
@@ -375,7 +375,7 @@ const DocumentCenter = () => {
           </tr>
         </thead>
         <tbody>
-          {portalTokens.map(t => (
+          {portalTokens?.map(t => (
             <tr key={t.id} className="border-b hover:bg-gray-50">
               <td className="px-3 py-2 font-medium">{t.customer_name}</td>
               <td className="px-3 py-2 capitalize">{t.token_type?.replace(/_/g, ' ')}</td>
@@ -489,7 +489,7 @@ const DocumentCenter = () => {
               <label className="block text-sm text-gray-600 mb-1">Customer</label>
               <select value={custId} onChange={e => setCustId(e.target.value)} className="w-full border rounded px-3 py-2 text-sm">
                 <option value="">Select customer...</option>
-                {(customers || []).map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
+                {(customers || [])?.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -546,7 +546,7 @@ const DocumentCenter = () => {
               <label className="block text-sm text-gray-600 mb-1">Customer</label>
               <select value={custId} onChange={e => setCustId(e.target.value)} className="w-full border rounded px-3 py-2 text-sm">
                 <option value="">Select customer...</option>
-                {(customers || []).map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
+                {(customers || [])?.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
               </select>
             </div>
             <div>
@@ -581,7 +581,7 @@ const DocumentCenter = () => {
     const [running, setRunning] = useState(false);
 
     const run = async () => {
-      const ids = docIds.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+      const ids = docIds.split(',')?.map(s => parseInt(s.trim()))?.filter(n => !isNaN(n));
       if (!ids.length) { showToast('Enter document IDs', 'error'); return; }
       setRunning(true);
       try {
@@ -643,7 +643,7 @@ const DocumentCenter = () => {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 overflow-x-auto border-b">
-        {tabs.map(tab => (
+        {tabs?.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}

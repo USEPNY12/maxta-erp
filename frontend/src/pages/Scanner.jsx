@@ -149,7 +149,7 @@ export default function Scanner() {
 
       {/* Mode Selector */}
       <div className="grid grid-cols-4 gap-1 mb-4">
-        {SCAN_MODES.map(m => (
+        {SCAN_MODES?.map(m => (
           <button key={m.id}
             className={`text-xs py-2 px-1 rounded font-bold ${mode === m.id ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'}`}
             onClick={() => { setMode(m.id); setResult(null); setError(''); }}>
@@ -160,7 +160,7 @@ export default function Scanner() {
 
       {/* Mode-specific inputs */}
       <div className="bg-gray-800 rounded-lg p-3 mb-4">
-        <p className="text-xs text-gray-400 mb-2">{SCAN_MODES.find(m => m.id === mode)?.desc}</p>
+        <p className="text-xs text-gray-400 mb-2">{SCAN_MODES?.find(m => m.id === mode)?.desc}</p>
 
         {mode === 'count' && (
           <div className="grid grid-cols-2 gap-2 mb-2">
@@ -189,7 +189,7 @@ export default function Scanner() {
 
         {mode === 'production' && (
           <select className="bg-gray-700 text-white rounded px-3 py-2 text-sm w-full mb-2" value={station} onChange={e => setStation(e.target.value)}>
-            {STATIONS.map(s => <option key={s} value={s}>{s}</option>)}
+            {STATIONS?.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         )}
 
@@ -235,7 +235,7 @@ export default function Scanner() {
             <button className="text-xs text-red-400" onClick={() => setHistory([])}>Clear</button>
           </div>
           <div className="space-y-1 max-h-48 overflow-auto">
-            {history.map((h, i) => (
+            {history?.map((h, i) => (
               <div key={i} className="bg-gray-800 rounded px-3 py-2 flex justify-between items-center text-xs">
                 <span className="font-mono text-blue-400">{h.barcode}</span>
                 <span className="text-gray-500">{h.mode} | {h.time}</span>
@@ -258,7 +258,7 @@ function ScanResult({ result }) {
         </div>
         {result.record && (
           <div className="space-y-1">
-            {Object.entries(result.record).map(([k, v]) => (
+            {Object.entries(result.record)?.map(([k, v]) => (
               <div key={k} className="flex justify-between text-sm">
                 <span className="text-gray-400">{k.replace(/_/g, ' ')}:</span>
                 <span className="text-white font-mono">{String(v)}</span>

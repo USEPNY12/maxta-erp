@@ -95,7 +95,7 @@ const CustomerPortal = () => {
 
         {/* Tabs */}
         <div className="flex gap-2 mb-4 overflow-x-auto">
-          {tabs.map(tab => (
+          {tabs?.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}

@@ -58,7 +58,7 @@ function InlineEditTable({
     if (!editingCell) return;
 
     const { rowId, field } = editingCell;
-    const row = data.find(r => r[idField] === rowId);
+    const row = data?.find(r => r[idField] === rowId);
     const originalValue = row ? row[field] : '';
 
     // Only save if value changed
@@ -107,7 +107,7 @@ function InlineEditTable({
       saveCell();
       // Move to next editable cell
       if (editingCell) {
-        const editableColumns = columns.filter(c => c.editable);
+        const editableColumns = columns?.filter(c => c.editable);
         const currentColIdx = editableColumns.findIndex(c => c.key === editingCell.field);
         const currentRowIdx = data.findIndex(r => r[idField] === editingCell.rowId);
 
@@ -210,7 +210,7 @@ function InlineEditTable({
             onKeyDown={handleKeyDown}
           >
             <option value="">-- Select --</option>
-            {(col.options || []).map(opt => (
+            {(col.options || [])?.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
@@ -302,7 +302,7 @@ function InlineEditTable({
         <table className="erp-grid inline-edit-grid">
           <thead>
             <tr>
-              {columns.map(col => (
+              {columns?.map(col => (
                 <th key={col.key} style={{ width: col.width, textAlign: col.align || 'left' }}>
                   {col.label}
                   {col.editable && <FaPencilAlt size={8} style={{ marginLeft: '4px', opacity: 0.4 }} />}
@@ -318,9 +318,9 @@ function InlineEditTable({
                 </td>
               </tr>
             ) : (
-              (data || []).map(row => (
+              (data || [])?.map(row => (
                 <tr key={row[idField]} className={hasPendingChange(row[idField], '') ? 'row-modified' : ''}>
-                  {columns.map(col => (
+                  {columns?.map(col => (
                     <td key={col.key} style={{ textAlign: col.align || 'left', padding: '0' }}>
                       {renderCell(row, col)}
                     </td>

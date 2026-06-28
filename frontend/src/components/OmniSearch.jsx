@@ -76,43 +76,43 @@ export default function OmniSearch() {
         const allResults = [];
         const searches = [
           api.get(`/api/sales/quotes?search=${encodeURIComponent(searchQuery)}&limit=3`).then(r => 
-            (r.data.quotes || r.data || []).slice(0, 3).map(item => ({
+            (r.data.quotes || r.data || [])?.slice(0, 3)?.map(item => ({
               type: 'quotes', label: `${item.quote_number || 'QT-' + item.id}`, 
               subtitle: item.company_name || item.project_name || '', id: item.id
             }))
           ).catch(() => []),
           api.get(`/api/sales/orders?search=${encodeURIComponent(searchQuery)}&limit=3`).then(r => 
-            (r.data.orders || r.data || []).slice(0, 3).map(item => ({
+            (r.data.orders || r.data || [])?.slice(0, 3)?.map(item => ({
               type: 'sales_orders', label: `${item.order_number || 'SO-' + item.id}`,
               subtitle: item.company_name || item.customer_po || '', id: item.id
             }))
           ).catch(() => []),
           api.get(`/api/manufacturing/work-orders?search=${encodeURIComponent(searchQuery)}&limit=3`).then(r => 
-            (r.data.workOrders || r.data || []).slice(0, 3).map(item => ({
+            (r.data.workOrders || r.data || [])?.slice(0, 3)?.map(item => ({
               type: 'work_orders', label: `${item.wo_number || 'WO-' + item.id}`,
               subtitle: item.item_description || item.status || '', id: item.id
             }))
           ).catch(() => []),
           api.get(`/api/purchasing/orders?search=${encodeURIComponent(searchQuery)}&limit=3`).then(r => 
-            (r.data.orders || r.data || []).slice(0, 3).map(item => ({
+            (r.data.orders || r.data || [])?.slice(0, 3)?.map(item => ({
               type: 'purchase_orders', label: `${item.po_number || 'PO-' + item.id}`,
               subtitle: item.company_name || '', id: item.id
             }))
           ).catch(() => []),
           api.get(`/api/sales/customers?search=${encodeURIComponent(searchQuery)}&limit=3`).then(r => 
-            (r.data.customers || r.data || []).slice(0, 3).map(item => ({
+            (r.data.customers || r.data || [])?.slice(0, 3)?.map(item => ({
               type: 'customers', label: item.company_name,
               subtitle: item.contact_name || item.city || '', id: item.id
             }))
           ).catch(() => []),
           api.get(`/api/purchasing/vendors?search=${encodeURIComponent(searchQuery)}&limit=3`).then(r => 
-            (r.data.vendors || r.data || []).slice(0, 3).map(item => ({
+            (r.data.vendors || r.data || [])?.slice(0, 3)?.map(item => ({
               type: 'vendors', label: item.company_name,
               subtitle: item.contact_name || '', id: item.id
             }))
           ).catch(() => []),
           api.get(`/api/inventory/items?search=${encodeURIComponent(searchQuery)}&limit=3`).then(r => 
-            (r.data.items || r.data || []).slice(0, 3).map(item => ({
+            (r.data.items || r.data || [])?.slice(0, 3)?.map(item => ({
               type: 'items', label: `${item.item_number} - ${item.description}`,
               subtitle: item.uom || '', id: item.id
             }))
@@ -120,7 +120,7 @@ export default function OmniSearch() {
         ];
 
         const searchResults = await Promise.allSettled(searches);
-        searchResults.forEach(result => {
+        searchResults?.forEach(result => {
           if (result.status === 'fulfilled' && result.value.length > 0) {
             allResults.push(...result.value);
           }
@@ -147,7 +147,7 @@ export default function OmniSearch() {
 
   // Navigate to result
   const handleSelect = (result) => {
-    const category = SEARCH_CATEGORIES.find(c => c.key === result.type);
+    const category = SEARCH_CATEGORIES?.find(c => c.key === result.type);
     if (category) {
       navigate(`${category.path}?id=${result.id}`);
     }
@@ -168,7 +168,7 @@ export default function OmniSearch() {
   };
 
   // Get category info for a result
-  const getCategoryInfo = (type) => SEARCH_CATEGORIES.find(c => c.key === type) || {};
+  const getCategoryInfo = (type) => SEARCH_CATEGORIES?.find(c => c.key === type) || {};
 
   if (!isOpen) {
     return (
@@ -228,7 +228,7 @@ export default function OmniSearch() {
             <div className="omni-search-hint">
               <p>Type at least 2 characters to search across:</p>
               <div className="omni-search-categories">
-                {SEARCH_CATEGORIES.map(cat => (
+                {SEARCH_CATEGORIES?.map(cat => (
                   <span key={cat.key} className="omni-search-category-tag" style={{ borderColor: cat.color }}>
                     <cat.icon size={10} style={{ color: cat.color }} />
                     {cat.label}
@@ -240,7 +240,7 @@ export default function OmniSearch() {
 
           {!loading && results.length > 0 && (
             <ul className="omni-search-list">
-              {(results || []).map((result, idx) => {
+              {(results || [])?.map((result, idx) => {
                 const catInfo = getCategoryInfo(result.type);
                 const Icon = catInfo.icon || FaFileAlt;
                 return (

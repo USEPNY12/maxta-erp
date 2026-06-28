@@ -413,7 +413,7 @@ export default function ScanPanel({ mode = 'lookup', context = {}, onScanResult,
           <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px', fontWeight: 'bold' }}>
             Recent Scans ({scanHistory.length})
           </div>
-          {scanHistory.map((entry, i) => (
+          {scanHistory?.map((entry, i) => (
             <div key={i} style={{ 
               display: 'flex', 
               justifyContent: 'space-between', 

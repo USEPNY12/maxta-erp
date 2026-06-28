@@ -63,14 +63,14 @@ export default function InventoryAdjustments() {
               <label className="erp-label">Item *</label>
               <select className="erp-input" value={form.item_id} onChange={e => setForm({...form, item_id: e.target.value})}>
                 <option value="">Select Item...</option>
-                {(items || []).map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
+                {(items || [])?.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
               </select>
             </div>
             <div>
               <label className="erp-label">Location *</label>
               <select className="erp-input" value={form.location_id} onChange={e => setForm({...form, location_id: e.target.value})}>
                 <option value="">Select Location...</option>
-                {(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                {(locations || [])?.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             </div>
             <div>
@@ -130,7 +130,7 @@ export default function InventoryAdjustments() {
               </tr>
             </thead>
             <tbody>
-              {adjustments.map(a => (
+              {adjustments?.map(a => (
                 <tr key={a.id}>
                   <td>{a.adjustment_number}</td>
                   <td>{a.adjustment_date ? new Date(a.adjustment_date).toLocaleDateString() : '-'}</td>

@@ -73,7 +73,7 @@ export default function PricingMatrix() {
   };
 
   // Group matrix by glass type
-  const grouped = matrix.reduce((acc, item) => {
+  const grouped = matrix?.reduce((acc, item) => {
     if (!acc[item.glass_type]) acc[item.glass_type] = [];
     acc[item.glass_type].push(item);
     return acc;
@@ -120,7 +120,7 @@ export default function PricingMatrix() {
           <>
             {activeTab === 'matrix' && (
               <div className="pm-groups">
-                {Object.entries(grouped).map(([glassType, items]) => (
+                {Object.entries(grouped)?.map(([glassType, items]) => (
                   <div key={glassType} className="pm-group">
                     <h3 className="pm-group-title">{glassType}</h3>
                     <table className="pm-table">
@@ -136,7 +136,7 @@ export default function PricingMatrix() {
                         </tr>
                       </thead>
                       <tbody>
-                        {(items || []).map(item => (
+                        {(items || [])?.map(item => (
                           <tr key={item.id}>
                             {editingId === item.id ? (
                               <>
@@ -192,7 +192,7 @@ export default function PricingMatrix() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(quantityBreaks || []).map(qb => (
+                    {(quantityBreaks || [])?.map(qb => (
                       <tr key={qb.id}>
                         <td><strong>{qb.name}</strong></td>
                         <td>{qb.min_qty}</td>

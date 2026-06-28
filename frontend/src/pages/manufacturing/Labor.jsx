@@ -61,7 +61,7 @@ function Labor() {
             <tr><th>Date</th><th>WO #</th><th>Work Center</th><th>Employee</th><th>Type</th><th>Hours</th><th>Rate</th><th>Cost</th></tr>
           </thead>
           <tbody>
-            {(entries || []).map(e => (
+            {(entries || [])?.map(e => (
               <tr key={e.id}>
                 <td>{e.work_date}</td>
                 <td className="text-blue-700 font-bold">{e.wo_number}</td>
@@ -87,13 +87,13 @@ function Labor() {
                   <div className="erp-form-group"><label className="erp-form-label">Work Order:</label>
                     <select className="erp-form-select" value={form.work_order_id} onChange={e => setForm({...form, work_order_id: e.target.value})}>
                       <option value="">Select WO...</option>
-                      {workOrders.map(wo => <option key={wo.id} value={wo.id}>{wo.wo_number} - {wo.item_number}</option>)}
+                      {workOrders?.map(wo => <option key={wo.id} value={wo.id}>{wo.wo_number} - {wo.item_number}</option>)}
                     </select>
                   </div>
                   <div className="erp-form-group"><label className="erp-form-label">Work Center:</label>
                     <select className="erp-form-select" value={form.work_center_id} onChange={e => setForm({...form, work_center_id: e.target.value})}>
                       <option value="">Select Station...</option>
-                      {workCenters.map(wc => <option key={wc.id} value={wc.id}>{wc.name}</option>)}
+                      {workCenters?.map(wc => <option key={wc.id} value={wc.id}>{wc.name}</option>)}
                     </select>
                   </div>
                   <div className="erp-form-group"><label className="erp-form-label">Employee:</label><input className="erp-form-input" value={form.employee_id} onChange={e => setForm({...form, employee_id: e.target.value})} placeholder="Employee name or ID" /></div>

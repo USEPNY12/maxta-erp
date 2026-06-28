@@ -137,7 +137,7 @@ export default function ProductionDashboard() {
         <h2 className="text-lg font-semibold mb-3">7-Day Throughput Trend</h2>
         <div className="flex items-end gap-1 h-32">
           {throughputTrend?.map((day, i) => {
-            const maxPieces = Math.max(...throughputTrend.map(d => d.pieces || 0), 1);
+            const maxPieces = Math.max(...throughputTrend?.map(d => d.pieces || 0), 1);
             const height = ((day.pieces || 0) / maxPieces) * 100;
             return (
               <div key={i} className="flex-1 flex flex-col items-center gap-1">
