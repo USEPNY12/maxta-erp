@@ -26,7 +26,7 @@ const DocumentCenter = () => {
 
   const loadStats = useCallback(async () => {
     try {
-      const res = await api.get('/document-center/stats');
+      const res = await api.get('/api/document-center/stats');
       setStats(res.data);
     } catch (e) { console.error(e); }
   }, []);
@@ -37,49 +37,49 @@ const DocumentCenter = () => {
       if (filter.type) params.type = filter.type;
       if (filter.date_from) params.date_from = filter.date_from;
       if (filter.date_to) params.date_to = filter.date_to;
-      const res = await api.get('/document-center/search', { params });
+      const res = await api.get('/api/document-center/search', { params });
       setDocuments(res.data.documents || []);
     } catch (e) { console.error(e); }
   }, [filter]);
 
   const loadEmailLog = useCallback(async () => {
     try {
-      const res = await api.get('/document-center/email-log');
-      setEmailLog(res.data);
+      const res = await api.get('/api/document-center/email-log');
+      setEmailLog(Array.isArray(res.data) ? res.data : []);
     } catch (e) { console.error(e); }
   }, []);
 
   const loadStatements = useCallback(async () => {
     try {
-      const res = await api.get('/document-center/statements');
-      setStatements(res.data);
+      const res = await api.get('/api/document-center/statements');
+      setStatements(Array.isArray(res.data) ? res.data : []);
     } catch (e) { console.error(e); }
   }, []);
 
   const loadBatchJobs = useCallback(async () => {
     try {
-      const res = await api.get('/document-center/batch');
-      setBatchJobs(res.data);
+      const res = await api.get('/api/document-center/batch');
+      setBatchJobs(Array.isArray(res.data) ? res.data : []);
     } catch (e) { console.error(e); }
   }, []);
 
   const loadPortalTokens = useCallback(async () => {
     try {
-      const res = await api.get('/document-center/portal/tokens');
-      setPortalTokens(res.data);
+      const res = await api.get('/api/document-center/portal/tokens');
+      setPortalTokens(Array.isArray(res.data) ? res.data : []);
     } catch (e) { console.error(e); }
   }, []);
 
   const loadBranding = useCallback(async () => {
     try {
-      const res = await api.get('/document-center/branding');
+      const res = await api.get('/api/document-center/branding');
       setBranding(res.data);
     } catch (e) { console.error(e); }
   }, []);
 
   const loadCustomers = useCallback(async () => {
     try {
-      const res = await api.get('/sales/customers');
+      const res = await api.get('/api/sales/customers');
       setCustomers(Array.isArray(res.data) ? res.data : res.data.customers || []);
     } catch (e) { console.error(e); }
   }, []);
@@ -384,7 +384,7 @@ const DocumentCenter = () => {
               <td className="px-3 py-2 text-right">{t.access_count}</td>
               <td className="px-3 py-2">{t.last_accessed ? formatDate(t.last_accessed) : 'Never'}</td>
               <td className="px-3 py-2">
-                <button onClick={async () => { await api.delete(`/document-center/portal/tokens/${t.id}`); loadPortalTokens(); showToast('Token revoked'); }} className="text-red-600 hover:underline text-xs">Revoke</button>
+                <button onClick={async () => { await api.delete(`/api/document-center/portal/tokens/${t.id}`); loadPortalTokens(); showToast('Token revoked'); }} className="text-red-600 hover:underline text-xs">Revoke</button>
               </td>
             </tr>
           ))}
@@ -402,7 +402,7 @@ const DocumentCenter = () => {
     const saveBranding = async () => {
       setLoading(true);
       try {
-        await api.put('/document-center/branding', editBranding);
+        await api.put('/api/document-center/branding', editBranding);
         setBranding(editBranding);
         showToast('Branding saved successfully');
       } catch (e) { showToast('Error saving branding', 'error'); }
@@ -468,7 +468,7 @@ const DocumentCenter = () => {
       if (!custId) return;
       setGenerating(true);
       try {
-        const res = await api.post('/document-center/statements/generate', {
+        const res = await api.post('/api/document-center/statements/generate', {
           customer_id: parseInt(custId),
           period_start: periodStart || undefined,
           period_end: periodEnd || undefined
@@ -526,7 +526,7 @@ const DocumentCenter = () => {
       if (!custId) return;
       setGenerating(true);
       try {
-        const res = await api.post('/document-center/portal/generate-link', {
+        const res = await api.post('/api/document-center/portal/generate-link', {
           customer_id: parseInt(custId),
           expires_days: parseInt(expDays)
         });
@@ -585,7 +585,7 @@ const DocumentCenter = () => {
       if (!ids.length) { showToast('Enter document IDs', 'error'); return; }
       setRunning(true);
       try {
-        const res = await api.post('/document-center/batch/generate', { job_type: jobType, document_ids: ids });
+        const res = await api.post('/api/document-center/batch/generate', { job_type: jobType, document_ids: ids });
         showToast(`Batch complete: ${res.data.processed} processed, ${res.data.failed} failed`);
         setShowBatchModal(false);
         if (activeTab === 'batch') loadBatchJobs();

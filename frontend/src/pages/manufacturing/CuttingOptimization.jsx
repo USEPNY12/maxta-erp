@@ -50,8 +50,8 @@ export default function CuttingOptimization() {
         api.get(`/api/cutting/plans`),
         api.get(`/api/cutting/stats`)
       ]);
-      setSheets(sheetsRes.data);
-      setRemnants(remnantsRes.data);
+      setSheets(Array.isArray(sheetsRes.data) ? sheetsRes.data : []);
+      setRemnants(Array.isArray(remnantsRes.data) ? remnantsRes.data : []);
       setPlans(Array.isArray(plansRes.data) ? plansRes.data : []);
       setStats(statsRes.data);
     } catch (err) { console.error(err); }
@@ -85,7 +85,7 @@ export default function CuttingOptimization() {
       const res = await api.get(`/api/cutting/suggest-pieces`, {
         params: { glass_type: selectedSource.glass_type, thickness: selectedSource.thickness }
       });
-      setSuggestedPieces(res.data);
+      setSuggestedPieces(Array.isArray(res.data) ? res.data : []);
       setShowSuggestions(true);
     } catch (err) { toast.error('Failed to load suggestions'); }
   };

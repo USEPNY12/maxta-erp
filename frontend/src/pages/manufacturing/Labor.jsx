@@ -25,7 +25,7 @@ function Labor() {
   };
 
   const fetchWorkCenters = async () => {
-    try { const res = await api.get('/api/manufacturing/work-centers'); setWorkCenters(res.data); } catch { setWorkCenters([]); }
+    try { const res = await api.get('/api/manufacturing/work-centers'); setWorkCenters(Array.isArray(res.data) ? res.data : []); } catch { setWorkCenters([]); }
   };
 
   const handleNew = () => {

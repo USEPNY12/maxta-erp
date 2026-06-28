@@ -18,17 +18,17 @@ export default function FreightCosts() {
       if (filter.date_from) params.append('date_from', filter.date_from);
       if (filter.date_to) params.append('date_to', filter.date_to);
       if (filter.cost_type) params.append('cost_type', filter.cost_type);
-      const r = await api.get(`/shipping/freight?${params}`);
+      const r = await api.get(`/api/shipping/freight?${params}`);
       setCosts(r.data.costs || []);
       setSummary(r.data.summary || []);
     } catch(e) { console.error(e); }
   };
-  const loadDrivers = async () => { try { const r = await api.get('/shipping/drivers'); setDrivers(r.data); } catch(e){} };
-  const loadVehicles = async () => { try { const r = await api.get('/shipping/vehicles'); setVehicles(r.data); } catch(e){} };
+  const loadDrivers = async () => { try { const r = await api.get('/api/shipping/drivers'); setDrivers(Array.isArray(r.data) ? r.data : []); } catch(e){} };
+  const loadVehicles = async () => { try { const r = await api.get('/api/shipping/vehicles'); setVehicles(Array.isArray(r.data) ? r.data : []); } catch(e){} };
 
   const addCost = async () => {
     try {
-      await api.post('/shipping/freight', newCost);
+      await api.post('/api/shipping/freight', newCost);
       setShowAddModal(false);
       setNewCost({ cost_type: 'fuel', amount: '', description: '', cost_date: new Date().toISOString().split('T')[0], vehicle_id: '', driver_id: '', miles_driven: '', fuel_gallons: '', fuel_price_per_gallon: '', is_billable: true });
       loadCosts();

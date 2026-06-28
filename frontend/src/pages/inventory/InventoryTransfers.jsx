@@ -24,7 +24,7 @@ export default function InventoryTransfers() {
         api.get('/api/inventory/items'),
         api.get('/api/inventory/locations')
       ]);
-      setTransfers(trRes.data);
+      setTransfers(Array.isArray(trRes.data) ? trRes.data : []);
       setItems(Array.isArray(itemRes.data) ? itemRes.data : []);
       setLocations(Array.isArray(locRes.data) ? locRes.data : []);
     } catch (e) { toast.error('Failed to load transfers'); }

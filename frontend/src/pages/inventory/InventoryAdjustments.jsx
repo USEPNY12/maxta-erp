@@ -25,7 +25,7 @@ export default function InventoryAdjustments() {
         api.get('/api/inventory/items'),
         api.get('/api/inventory/locations')
       ]);
-      setAdjustments(adjRes.data);
+      setAdjustments(Array.isArray(adjRes.data) ? adjRes.data : []);
       setItems(Array.isArray(itemRes.data) ? itemRes.data : []);
       setLocations(Array.isArray(locRes.data) ? locRes.data : []);
     } catch (e) { toast.error('Failed to load adjustments'); }

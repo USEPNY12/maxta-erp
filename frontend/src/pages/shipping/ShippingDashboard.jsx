@@ -8,10 +8,10 @@ export default function ShippingDashboard() {
   useEffect(() => { loadDashboard(); loadFreight(); }, []);
 
   const loadDashboard = async () => {
-    try { const r = await api.get('/shipping/dashboard'); setDashboard(r.data); } catch(e) { console.error(e); }
+    try { const r = await api.get('/api/shipping/dashboard'); setDashboard(r.data); } catch(e) { console.error(e); }
   };
   const loadFreight = async () => {
-    try { const r = await api.get('/shipping/freight/summary?period=month'); setFreightSummary(r.data); } catch(e) { console.error(e); }
+    try { const r = await api.get('/api/shipping/freight/summary?period=month'); setFreightSummary(r.data); } catch(e) { console.error(e); }
   };
 
   if (!dashboard) return <div style={{ padding: '24px', textAlign: 'center', color: '#9ca3af' }}>Loading...</div>;

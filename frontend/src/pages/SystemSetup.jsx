@@ -219,8 +219,8 @@ function UsersSection() {
     try {
       setLoading(true);
       const [usersRes, rolesRes] = await Promise.all([api.get('/api/setup/users'), api.get('/api/setup/roles/list')]);
-      setUsers(usersRes.data);
-      setRoles(rolesRes.data);
+      setUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
+      setRoles(Array.isArray(rolesRes.data) ? rolesRes.data : []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, []);
@@ -379,8 +379,8 @@ function RolesSection() {
     try {
       setLoading(true);
       const [rolesRes, usersRes] = await Promise.all([api.get('/api/setup/roles/list'), api.get('/api/setup/users')]);
-      setRoles(rolesRes.data);
-      setUsers(usersRes.data);
+      setRoles(Array.isArray(rolesRes.data) ? rolesRes.data : []);
+      setUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, []);
@@ -485,7 +485,7 @@ function PermissionsMatrix() {
     try {
       setLoading(true);
       const res = await api.get('/api/setup/permissions/matrix');
-      setData(Array.isArray(res.data) ? res.data : []);
+      setData(res.data && typeof res.data === 'object' ? res.data : null);
       setChanges({});
     } catch (e) { console.error(e); }
     finally { setLoading(false); }

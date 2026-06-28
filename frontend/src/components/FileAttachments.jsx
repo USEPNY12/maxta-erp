@@ -48,7 +48,7 @@ export default function FileAttachments({ documentType, documentId, lineId, read
       if (lineId) url += `/line/${lineId}`;
       else if (machineFilter) url += `/machine/${machineFilter}`;
       const res = await api.get(url);
-      setFiles(res.data);
+      setFiles(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Failed to fetch files:', err);
     }

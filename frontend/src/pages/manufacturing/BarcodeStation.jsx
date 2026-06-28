@@ -21,8 +21,8 @@ export default function BarcodeStation() {
 
   async function fetchWorkCenters() {
     try {
-      const res = await api.get('/manufacturing/work-centers');
-      setWorkCenters(res.data);
+      const res = await api.get('/api/manufacturing/work-centers');
+      setWorkCenters(Array.isArray(res.data) ? res.data : []);
     } catch (err) { console.error(err); }
   }
 
@@ -30,8 +30,8 @@ export default function BarcodeStation() {
     try {
       const params = {};
       if (workCenterId) params.work_center_id = workCenterId;
-      const res = await api.get('/manufacturing-advanced/scan/history', { params: { ...params, limit: 20 } });
-      setScanHistory(res.data);
+      const res = await api.get('/api/manufacturing-advanced/scan/history', { params: { ...params, limit: 20 } });
+      setScanHistory(Array.isArray(res.data) ? res.data : []);
     } catch (err) { console.error(err); }
   }
 
@@ -40,7 +40,7 @@ export default function BarcodeStation() {
     if (!barcode.trim()) return;
 
     try {
-      const res = await api.post('/manufacturing-advanced/scan', {
+      const res = await api.post('/api/manufacturing-advanced/scan', {
         barcode: barcode.trim(),
         scan_type: scanType,
         work_center_id: workCenterId || null,
@@ -50,7 +50,7 @@ export default function BarcodeStation() {
       
       // Auto-lookup WO status
       if (res.data.work_order_id) {
-        const statusRes = await api.get(`/manufacturing-advanced/scan/wo-status/${barcode.trim()}`);
+        const statusRes = await api.get(`/api/manufacturing-advanced/scan/wo-status/${barcode.trim()}`);
         setWoStatus(statusRes.data);
       }
 
@@ -65,7 +65,7 @@ export default function BarcodeStation() {
   async function lookupWO() {
     if (!barcode.trim()) return;
     try {
-      const res = await api.get(`/manufacturing-advanced/scan/wo-status/${barcode.trim()}`);
+      const res = await api.get(`/api/manufacturing-advanced/scan/wo-status/${barcode.trim()}`);
       setWoStatus(res.data);
     } catch (err) {
       setWoStatus(null);

@@ -13,7 +13,7 @@ export default function FinancialDashboard() {
   const fetchDashboard = async () => {
     try {
       const res = await api.get('/api/accounting-advanced/dashboard');
-      setData(Array.isArray(res.data) ? res.data : []);
+      setData(res.data && typeof res.data === 'object' && !Array.isArray(res.data) ? res.data : null);
     } catch(e) { toast.error('Failed to load financial dashboard'); }
     setLoading(false);
   };
@@ -31,22 +31,22 @@ export default function FinancialDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-white border rounded-lg p-4">
             <p className="text-xs text-gray-500 font-medium uppercase">Cash Position</p>
-            <p className="text-2xl font-bold text-blue-600 font-mono">${data.cash_position.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-blue-600 font-mono">${(data.cash_position || 0).toLocaleString()}</p>
             <p className="text-xs text-gray-400 mt-1">All bank accounts</p>
           </div>
           <div className="bg-white border rounded-lg p-4">
             <p className="text-xs text-gray-500 font-medium uppercase">MTD Revenue</p>
-            <p className="text-2xl font-bold text-green-600 font-mono">${data.mtd_revenue.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-green-600 font-mono">${(data.mtd_revenue || 0).toLocaleString()}</p>
             <p className="text-xs text-gray-400 mt-1">Month to date</p>
           </div>
           <div className="bg-white border rounded-lg p-4">
             <p className="text-xs text-gray-500 font-medium uppercase">MTD Expenses</p>
-            <p className="text-2xl font-bold text-red-600 font-mono">${data.mtd_expenses.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-red-600 font-mono">${(data.mtd_expenses || 0).toLocaleString()}</p>
             <p className="text-xs text-gray-400 mt-1">Month to date</p>
           </div>
           <div className="bg-white border rounded-lg p-4">
             <p className="text-xs text-gray-500 font-medium uppercase">MTD Net Income</p>
-            <p className={`text-2xl font-bold font-mono ${data.mtd_net_income >= 0 ? 'text-green-600' : 'text-red-600'}`}>${data.mtd_net_income.toLocaleString()}</p>
+            <p className={`text-2xl font-bold font-mono ${(data.mtd_net_income || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>${(data.mtd_net_income || 0).toLocaleString()}</p>
             <p className="text-xs text-gray-400 mt-1">Revenue - Expenses</p>
           </div>
         </div>

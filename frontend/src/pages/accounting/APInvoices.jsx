@@ -27,7 +27,7 @@ function APInvoices() {
 
   const fetchPOs = async (vendorId) => {
     if (!vendorId) { setPurchaseOrders([]); return; }
-    try { const res = await api.get('/api/purchasing/purchase-orders', { params: { vendor_id: vendorId } }); setPurchaseOrders(res.data); } catch { setPurchaseOrders([]); }
+    try { const res = await api.get('/api/purchasing/purchase-orders', { params: { vendor_id: vendorId } }); setPurchaseOrders(Array.isArray(res.data) ? res.data : []); } catch { setPurchaseOrders([]); }
   };
 
   const handleNew = () => {

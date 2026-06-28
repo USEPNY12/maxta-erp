@@ -44,7 +44,7 @@ function Quotes() {
     try { const res = await api.get('/api/inventory/items'); setItems(Array.isArray(res.data) ? res.data : res.data.items || []); } catch { setItems([]); }
   };
   const fetchFabCharges = async () => {
-    try { const res = await api.get('/api/sales/fabrication-charges'); setFabCharges(res.data); } catch { setFabCharges([]); }
+    try { const res = await api.get('/api/sales/fabrication-charges'); setFabCharges(Array.isArray(res.data) ? res.data : []); } catch { setFabCharges([]); }
   };
 
   const openDetail = async (quote) => {
@@ -103,7 +103,7 @@ function Quotes() {
     try {
       const res = await api.post(`/api/sales/quotes/${selected.id}/convert`, { customer_po: customerPO });
       // Copy files from quote to new sales order
-      try { await api.post('/files/copy', { from_type: 'quote', from_id: selected.id, to_type: 'sales_order', to_id: res.data.id }); } catch(e) { console.log('File copy skipped:', e); }
+      try { await api.post('/api/files/copy', { from_type: 'quote', from_id: selected.id, to_type: 'sales_order', to_id: res.data.id }); } catch(e) { console.log('File copy skipped:', e); }
       toast.success(`Converted! Sales Order ${res.data.order_number} created`);
       setShowConvertDialog(false); setCustomerPO(''); openDetail(selected);
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to convert'); }

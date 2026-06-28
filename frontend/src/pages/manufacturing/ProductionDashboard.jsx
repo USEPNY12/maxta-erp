@@ -8,8 +8,8 @@ export default function ProductionDashboard() {
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const res = await api.get('/manufacturing-advanced/dashboard');
-      setData(Array.isArray(res.data) ? res.data : []);
+      const res = await api.get('/api/manufacturing-advanced/dashboard');
+      setData(res.data && typeof res.data === 'object' && !Array.isArray(res.data) ? res.data : null);
     } catch (err) {
       console.error('Dashboard fetch error:', err);
     } finally {

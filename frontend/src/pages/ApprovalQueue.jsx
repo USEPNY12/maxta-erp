@@ -28,8 +28,8 @@ export default function ApprovalQueue() {
         api.get('/api/cpq/approvals/workflows')
       ]);
       setQueue(Array.isArray(queueRes.data) ? queueRes.data : []);
-      setAllApprovals(allRes.data);
-      setWorkflows(wfRes.data);
+      setAllApprovals(Array.isArray(allRes.data) ? allRes.data : []);
+      setWorkflows(Array.isArray(wfRes.data) ? wfRes.data : []);
     } catch (err) {
       console.error('Failed to load approvals:', err);
     } finally {

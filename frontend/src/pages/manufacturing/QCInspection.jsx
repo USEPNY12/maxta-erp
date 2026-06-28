@@ -20,22 +20,22 @@ export default function QCInspection() {
   async function fetchAll() {
     try {
       const [cpRes, resRes, sumRes, wcRes] = await Promise.all([
-        api.get('/manufacturing-advanced/qc/checkpoints'),
-        api.get('/manufacturing-advanced/qc/results', { params: { limit: 50 } }),
-        api.get('/manufacturing-advanced/qc/summary'),
-        api.get('/manufacturing/work-centers')
+        api.get('/api/manufacturing-advanced/qc/checkpoints'),
+        api.get('/api/manufacturing-advanced/qc/results', { params: { limit: 50 } }),
+        api.get('/api/manufacturing-advanced/qc/summary'),
+        api.get('/api/manufacturing/work-centers')
       ]);
-      setCheckpoints(cpRes.data);
+      setCheckpoints(Array.isArray(cpRes.data) ? cpRes.data : []);
       setResults(Array.isArray(resRes.data) ? resRes.data : []);
-      setSummary(sumRes.data);
-      setWorkCenters(wcRes.data);
+      setSummary(Array.isArray(sumRes.data) ? sumRes.data : []);
+      setWorkCenters(Array.isArray(wcRes.data) ? wcRes.data : []);
     } catch (err) { console.error(err); }
   }
 
   async function startInspection() {
     if (!woRoutingId) { alert('Enter a WO Routing ID'); return; }
     try {
-      const res = await api.get(`/manufacturing-advanced/qc/inspect/${woRoutingId}`);
+      const res = await api.get(`/api/manufacturing-advanced/qc/inspect/${woRoutingId}`);
       setInspectionData(res.data);
       setInspectionResults(res.data.checkpoints?.map(cp => ({
         checkpoint_id: cp.id,
@@ -51,7 +51,7 @@ export default function QCInspection() {
     const incomplete = inspectionResults?.filter(r => !r.result);
     if (incomplete.length > 0) { alert(`${incomplete.length} checkpoints not completed`); return; }
     try {
-      const res = await api.post(`/manufacturing-advanced/qc/inspect/${woRoutingId}`, { results: inspectionResults });
+      const res = await api.post(`/api/manufacturing-advanced/qc/inspect/${woRoutingId}`, { results: inspectionResults });
       alert(res.data.passed ? 'All checkpoints PASSED!' : `FAILED - ${res.data.critical_fail ? 'CRITICAL FAILURE - NCR Created' : 'Non-critical failure'}`);
       setInspectionMode(false);
       setInspectionData(null);
@@ -62,7 +62,7 @@ export default function QCInspection() {
   async function addCheckpoint(e) {
     e.preventDefault();
     try {
-      await api.post('/manufacturing-advanced/qc/checkpoints', cpForm);
+      await api.post('/api/manufacturing-advanced/qc/checkpoints', cpForm);
       setShowAddCheckpoint(false);
       setCpForm({ work_center_id: '', checkpoint_name: '', checkpoint_code: '', inspection_type: 'visual', measurement_type: 'pass_fail', is_critical: false, sequence: 10, instructions: '' });
       fetchAll();

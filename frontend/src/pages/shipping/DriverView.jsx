@@ -13,15 +13,15 @@ export default function DriverView() {
 
   useEffect(() => { loadDrivers(); loadVehicles(); loadZones(); }, []);
 
-  const loadDrivers = async () => { try { const r = await api.get('/shipping/drivers'); setDrivers(r.data); } catch(e){} };
-  const loadVehicles = async () => { try { const r = await api.get('/shipping/vehicles'); setVehicles(r.data); } catch(e){} };
-  const loadZones = async () => { try { const r = await api.get('/shipping/zones'); setZones(r.data); } catch(e){} };
+  const loadDrivers = async () => { try { const r = await api.get('/api/shipping/drivers'); setDrivers(Array.isArray(r.data) ? r.data : []); } catch(e){} };
+  const loadVehicles = async () => { try { const r = await api.get('/api/shipping/vehicles'); setVehicles(Array.isArray(r.data) ? r.data : []); } catch(e){} };
+  const loadZones = async () => { try { const r = await api.get('/api/shipping/zones'); setZones(Array.isArray(r.data) ? r.data : []); } catch(e){} };
 
   const createDriver = async () => {
-    try { await api.post('/shipping/drivers', newDriver); setShowAddDriverModal(false); loadDrivers(); } catch(e) { alert('Error'); }
+    try { await api.post('/api/shipping/drivers', newDriver); setShowAddDriverModal(false); loadDrivers(); } catch(e) { alert('Error'); }
   };
   const createVehicle = async () => {
-    try { await api.post('/shipping/vehicles', newVehicle); setShowAddVehicleModal(false); loadVehicles(); } catch(e) { alert('Error'); }
+    try { await api.post('/api/shipping/vehicles', newVehicle); setShowAddVehicleModal(false); loadVehicles(); } catch(e) { alert('Error'); }
   };
 
   const tabs = [

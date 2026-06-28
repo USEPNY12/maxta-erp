@@ -20,17 +20,17 @@ export default function MachineUtilization() {
   async function fetchAll() {
     try {
       const [sumRes, dtRes, paretoRes, logRes, wcRes] = await Promise.all([
-        api.get('/manufacturing-advanced/utilization/summary', { params: { days: 30 } }),
-        api.get('/manufacturing-advanced/downtime'),
-        api.get('/manufacturing-advanced/downtime/analysis', { params: { days: 30 } }),
-        api.get('/manufacturing-advanced/utilization', { params: { start_date: addDays(-7) } }),
-        api.get('/manufacturing/work-centers')
+        api.get('/api/manufacturing-advanced/utilization/summary', { params: { days: 30 } }),
+        api.get('/api/manufacturing-advanced/downtime'),
+        api.get('/api/manufacturing-advanced/downtime/analysis', { params: { days: 30 } }),
+        api.get('/api/manufacturing-advanced/utilization', { params: { start_date: addDays(-7) } }),
+        api.get('/api/manufacturing/work-centers')
       ]);
-      setSummary(sumRes.data);
-      setDowntime(dtRes.data);
-      setParetoData(paretoRes.data);
-      setLogs(logRes.data);
-      setWorkCenters(wcRes.data);
+      setSummary(Array.isArray(sumRes.data) ? sumRes.data : []);
+      setDowntime(Array.isArray(dtRes.data) ? dtRes.data : []);
+      setParetoData(Array.isArray(paretoRes.data) ? paretoRes.data : []);
+      setLogs(Array.isArray(logRes.data) ? logRes.data : []);
+      setWorkCenters(Array.isArray(wcRes.data) ? wcRes.data : []);
     } catch (err) { console.error(err); }
   }
 
@@ -39,7 +39,7 @@ export default function MachineUtilization() {
   async function submitLog(e) {
     e.preventDefault();
     try {
-      await api.post('/manufacturing-advanced/utilization', logForm);
+      await api.post('/api/manufacturing-advanced/utilization', logForm);
       setShowLogForm(false);
       fetchAll();
     } catch (err) { alert('Error: ' + err.message); }
@@ -48,7 +48,7 @@ export default function MachineUtilization() {
   async function submitDowntime(e) {
     e.preventDefault();
     try {
-      await api.post('/manufacturing-advanced/downtime', dtForm);
+      await api.post('/api/manufacturing-advanced/downtime', dtForm);
       setShowDowntimeForm(false);
       fetchAll();
     } catch (err) { alert('Error: ' + err.message); }
@@ -58,7 +58,7 @@ export default function MachineUtilization() {
     const notes = prompt('Resolution notes:');
     if (notes === null) return;
     try {
-      await api.put(`/manufacturing-advanced/downtime/${id}/resolve`, { resolution_notes: notes });
+      await api.put(`/api/manufacturing-advanced/downtime/${id}/resolve`, { resolution_notes: notes });
       fetchAll();
     } catch (err) { alert('Error: ' + err.message); }
   }

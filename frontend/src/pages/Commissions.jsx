@@ -26,9 +26,9 @@ export default function Commissions() {
         api.get('/api/cpq/commissions/ledger'),
         api.get('/api/cpq/commissions/rules')
       ]);
-      setSummary(summaryRes.data);
-      setLedger(ledgerRes.data);
-      setRules(rulesRes.data);
+      setSummary(Array.isArray(summaryRes.data) ? summaryRes.data : []);
+      setLedger(Array.isArray(ledgerRes.data) ? ledgerRes.data : []);
+      setRules(Array.isArray(rulesRes.data) ? rulesRes.data : []);
     } catch (err) {
       console.error('Failed to load commissions:', err);
     } finally {

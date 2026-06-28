@@ -17,7 +17,7 @@ export default function ScheduleGantt() {
   async function fetchGantt() {
     try {
       setLoading(true);
-      const res = await api.get('/manufacturing-advanced/schedule/gantt', { params: { start_date: dateRange.start, end_date: dateRange.end } });
+      const res = await api.get('/api/manufacturing-advanced/schedule/gantt', { params: { start_date: dateRange.start, end_date: dateRange.end } });
       setGanttData(res.data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
@@ -25,14 +25,14 @@ export default function ScheduleGantt() {
 
   async function fetchCapacity() {
     try {
-      const res = await api.get('/manufacturing-advanced/schedule/capacity', { params: { start_date: dateRange.start, end_date: dateRange.end } });
-      setCapacityView(res.data);
+      const res = await api.get('/api/manufacturing-advanced/schedule/capacity', { params: { start_date: dateRange.start, end_date: dateRange.end } });
+      setCapacityView(Array.isArray(res.data) ? res.data : []);
     } catch (err) { console.error(err); }
   }
 
   async function handleAutoSchedule() {
     try {
-      const res = await api.post('/manufacturing-advanced/schedule/auto-schedule', { start_date: dateRange.start });
+      const res = await api.post('/api/manufacturing-advanced/schedule/auto-schedule', { start_date: dateRange.start });
       alert(`Auto-scheduled ${res.data.scheduled} operations`);
       fetchGantt();
       fetchCapacity();
@@ -42,7 +42,7 @@ export default function ScheduleGantt() {
   async function handleDeleteBlock(id) {
     if (!confirm('Remove this scheduling block?')) return;
     try {
-      await api.delete(`/manufacturing-advanced/schedule/blocks/${id}`);
+      await api.delete(`/api/manufacturing-advanced/schedule/blocks/${id}`);
       setSelectedBlock(null);
       fetchGantt();
     } catch (err) { alert('Delete failed'); }

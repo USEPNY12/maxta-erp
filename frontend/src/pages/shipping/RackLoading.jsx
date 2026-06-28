@@ -12,24 +12,24 @@ export default function RackLoading() {
   useEffect(() => { loadRacks(); }, []);
 
   const loadRacks = async () => {
-    try { const r = await api.get('/shipping/racks'); setRacks(Array.isArray(r.data) ? r.data : []); } catch(e) { console.error(e); }
+    try { const r = await api.get('/api/shipping/racks'); setRacks(Array.isArray(r.data) ? r.data : []); } catch(e) { console.error(e); }
   };
 
   const createLoad = async () => {
     try {
-      const res = await api.post('/shipping/racks/loads', { rack_id: selectedRack.id, load_date: new Date().toISOString().split('T')[0] });
+      const res = await api.post('/api/shipping/racks/loads', { rack_id: selectedRack.id, load_date: new Date().toISOString().split('T')[0] });
       setShowCreateLoadModal(false);
       loadRackDetail(res.data.id);
     } catch(e) { alert('Error creating load'); }
   };
 
   const loadRackDetail = async (loadId) => {
-    try { const r = await api.get(`/shipping/racks/loads/${loadId}`); setRackLoad(r.data); } catch(e) { console.error(e); }
+    try { const r = await api.get(`/api/shipping/racks/loads/${loadId}`); setRackLoad(r.data); } catch(e) { console.error(e); }
   };
 
   const addItem = async () => {
     try {
-      await api.post(`/shipping/racks/loads/${rackLoad.id}/items`, newItem);
+      await api.post(`/api/shipping/racks/loads/${rackLoad.id}/items`, newItem);
       setShowAddItemModal(false);
       setNewItem({ slot_number: (rackLoad.items?.length || 0) + 1, item_description: '', width_inches: '', height_inches: '', thickness_mm: '', weight_lbs: '', glass_type: '' });
       loadRackDetail(rackLoad.id);
@@ -38,7 +38,7 @@ export default function RackLoading() {
 
   const optimizeLoad = async () => {
     try {
-      await api.post(`/shipping/racks/loads/${rackLoad.id}/optimize`);
+      await api.post(`/api/shipping/racks/loads/${rackLoad.id}/optimize`);
       loadRackDetail(rackLoad.id);
     } catch(e) { alert('Error optimizing'); }
   };

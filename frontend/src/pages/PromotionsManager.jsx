@@ -138,7 +138,7 @@ export default function PromotionsManager() {
         api.get('/api/dashboard-exec/promotions/analytics')
       ]);
       setPromotions(Array.isArray(promosRes.data) ? promosRes.data : []);
-      setAnalytics(analyticsRes.data);
+      setAnalytics(Array.isArray(analyticsRes.data) ? analyticsRes.data : []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };

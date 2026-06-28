@@ -21,21 +21,21 @@ export default function DeliveryPlanner() {
       if (filter.status) params.append('status', filter.status);
       if (filter.date_from) params.append('date_from', filter.date_from);
       if (filter.date_to) params.append('date_to', filter.date_to);
-      const res = await api.get(`/shipping/routes?${params}`);
-      setRoutes(res.data);
+      const res = await api.get(`/api/shipping/routes?${params}`);
+      setRoutes(Array.isArray(res.data) ? res.data : []);
     } catch (e) { console.error(e); }
   };
-  const loadDrivers = async () => { try { const r = await api.get('/shipping/drivers'); setDrivers(r.data); } catch(e){} };
-  const loadVehicles = async () => { try { const r = await api.get('/shipping/vehicles'); setVehicles(r.data); } catch(e){} };
-  const loadCustomers = async () => { try { const r = await api.get('/customers'); setCustomers(r.data || []); } catch(e){} };
+  const loadDrivers = async () => { try { const r = await api.get('/api/shipping/drivers'); setDrivers(Array.isArray(r.data) ? r.data : []); } catch(e){} };
+  const loadVehicles = async () => { try { const r = await api.get('/api/shipping/vehicles'); setVehicles(Array.isArray(r.data) ? r.data : []); } catch(e){} };
+  const loadCustomers = async () => { try { const r = await api.get('/api/sales/customers'); setCustomers(r.data || []); } catch(e){} };
 
   const loadRouteDetail = async (id) => {
-    try { const r = await api.get(`/shipping/routes/${id}`); setSelectedRoute(r.data); } catch(e) { console.error(e); }
+    try { const r = await api.get(`/api/shipping/routes/${id}`); setSelectedRoute(r.data); } catch(e) { console.error(e); }
   };
 
   const createRoute = async () => {
     try {
-      await api.post('/shipping/routes', newRoute);
+      await api.post('/api/shipping/routes', newRoute);
       setShowCreateModal(false);
       setNewRoute({ route_name: '', route_date: new Date().toISOString().split('T')[0], driver_id: '', vehicle_id: '', notes: '' });
       loadRoutes();
@@ -44,7 +44,7 @@ export default function DeliveryPlanner() {
 
   const addStop = async () => {
     try {
-      await api.post('/shipping/stops', { ...newStop, route_id: selectedRoute.id });
+      await api.post('/api/shipping/stops', { ...newStop, route_id: selectedRoute.id });
       setShowAddStopModal(false);
       setNewStop({ customer_id: '', delivery_address: '', city: '', state: 'TX', zip: '', pieces_count: 0, weight_lbs: 0, special_instructions: '' });
       loadRouteDetail(selectedRoute.id);
@@ -53,14 +53,14 @@ export default function DeliveryPlanner() {
 
   const optimizeRoute = async () => {
     try {
-      await api.post(`/shipping/routes/${selectedRoute.id}/optimize`);
+      await api.post(`/api/shipping/routes/${selectedRoute.id}/optimize`);
       loadRouteDetail(selectedRoute.id);
     } catch(e) { alert('Error optimizing route'); }
   };
 
   const startRoute = async () => {
     try {
-      await api.post(`/shipping/routes/${selectedRoute.id}/start`);
+      await api.post(`/api/shipping/routes/${selectedRoute.id}/start`);
       loadRouteDetail(selectedRoute.id);
       loadRoutes();
     } catch(e) { alert('Error starting route'); }

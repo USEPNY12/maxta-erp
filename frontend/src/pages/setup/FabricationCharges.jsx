@@ -25,7 +25,7 @@ export default function FabricationCharges() {
   const loadCharges = async () => {
     try {
       const res = await api.get('/api/sales/fabrication-charges/all');
-      setCharges(res.data);
+      setCharges(Array.isArray(res.data) ? res.data : []);
     } catch (e) { console.error(e); }
     setLoading(false);
   };

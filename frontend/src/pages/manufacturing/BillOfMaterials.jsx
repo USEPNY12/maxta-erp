@@ -24,7 +24,7 @@ function BillOfMaterials() {
   const fetchBOM = async (itemId) => {
     try {
       const res = await api.get(`/api/manufacturing/bom/${itemId}`);
-      setBomLines(res.data);
+      setBomLines(Array.isArray(res.data) ? res.data : []);
     } catch { setBomLines([]); }
   };
 
