@@ -528,27 +528,27 @@ router.post('/scan/production', authenticate, async (req, res) => {
     if (status === 'completed') {
       // Find the current (first pending/in_progress) routing step
       const [currentSteps] = await pool.query(
-        `SELECT wr.id, wr.step_number, wr.work_center_id, wc.name as wc_name
+        `SELECT wr.id, wr.sequence, wr.work_center_id, wc.name as wc_name
          FROM wo_routing wr
          LEFT JOIN work_centers wc ON wr.work_center_id = wc.id
          WHERE wr.work_order_id = ? AND wr.status IN ('pending','in_progress')
-         ORDER BY wr.step_number ASC LIMIT 1`, [wo.id]);
+         ORDER BY wr.sequence ASC LIMIT 1`, [wo.id]);
 
       if (currentSteps.length > 0) {
         const currentStep = currentSteps[0];
         // Mark current step as completed
         await pool.query(
-          `UPDATE wo_routing SET status = 'completed', actual_end = NOW() WHERE id = ?`,
+          `UPDATE wo_routing SET status = 'completed', actual_finish = NOW() WHERE id = ?`,
           [currentStep.id]);
 
         // Find next step
         const [nextSteps] = await pool.query(
-          `SELECT wr.id, wr.step_number, wr.work_center_id, wc.name as wc_name
+          `SELECT wr.id, wr.sequence, wr.work_center_id, wc.name as wc_name
            FROM wo_routing wr
            LEFT JOIN work_centers wc ON wr.work_center_id = wc.id
-           WHERE wr.work_order_id = ? AND wr.step_number > ? AND wr.status = 'pending'
-           ORDER BY wr.step_number ASC LIMIT 1`,
-          [wo.id, currentStep.step_number]);
+           WHERE wr.work_order_id = ? AND wr.sequence > ? AND wr.status = 'pending'
+           ORDER BY wr.sequence ASC LIMIT 1`,
+          [wo.id, currentStep.sequence]);
 
         if (nextSteps.length > 0) {
           // Advance to next step

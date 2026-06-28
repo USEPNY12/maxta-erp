@@ -17,7 +17,7 @@ router.get('/schedule/gantt', async (req, res) => {
     const endDate = end_date || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
 
     let blockQuery = `SELECT sb.*, wc.name as work_center_name, wc.code as work_center_code, wc.color,
-      wo.wo_number, wo.product_type, wo.description as wo_description
+      wo.order_number as wo_number, wo.product_type, wo.description as wo_description
       FROM scheduling_blocks sb
       LEFT JOIN work_centers wc ON sb.work_center_id = wc.id
       LEFT JOIN work_orders wo ON sb.work_order_id = wo.id
@@ -60,7 +60,7 @@ router.post('/schedule/auto-schedule', async (req, res) => {
     const scheduleStart = start_date ? new Date(start_date) : new Date();
     
     // Get unscheduled work orders with routing
-    let woQuery = `SELECT wo.id, wo.wo_number, wo.quantity, wo.requested_date, wo.priority,
+    let woQuery = `SELECT wo.id, wo.order_number as wo_number, wo.quantity, wo.requested_date, wo.priority,
       wr.id as routing_id, wr.sequence, wr.work_center_id, wr.setup_hours_estimated, wr.run_hours_estimated,
       wc.available_hours_per_day, wc.num_machines, wc.scheduling_type
       FROM work_orders wo
@@ -287,7 +287,7 @@ router.get('/downtime', async (req, res) => {
   try {
     const { work_center_id, start_date, end_date, reason_code } = req.query;
     let query = `SELECT md.*, wc.name as work_center_name, wc.code as work_center_code,
-      wo.wo_number
+      wo.order_number as wo_number
       FROM machine_downtime md
       JOIN work_centers wc ON md.work_center_id = wc.id
       LEFT JOIN work_orders wo ON md.work_order_id = wo.id
@@ -416,7 +416,7 @@ router.get('/dashboard', async (req, res) => {
 
     // Recent completions (last 2 hours)
     const [recentCompletions] = await pool.query(`
-      SELECT wr.id, wr.work_order_id, wo.wo_number, wc.name as station,
+      SELECT wr.id, wr.work_order_id, wo.order_number as wo_number, wc.name as station,
         wr.actual_finish, wr.quantity_completed
       FROM wo_routing wr
       JOIN work_orders wo ON wr.work_order_id = wo.id
@@ -519,7 +519,7 @@ router.post('/scan', async (req, res) => {
     if (barcode.startsWith('WO-')) {
       const parts = barcode.split('-');
       woNumber = `WO-${parts[1]}`;
-      const [wo] = await pool.query('SELECT id, status FROM work_orders WHERE wo_number = ?', [woNumber]);
+      const [wo] = await pool.query('SELECT id, status FROM work_orders WHERE order_number = ?', [woNumber]);
       if (wo.length > 0) {
         work_order_id = wo[0].id;
         // If operation specified
@@ -598,7 +598,7 @@ router.post('/scan', async (req, res) => {
 router.get('/scan/history', async (req, res) => {
   try {
     const { work_order_id, work_center_id, limit } = req.query;
-    let query = `SELECT bsl.*, wo.wo_number, wc.name as work_center_name
+    let query = `SELECT bsl.*, wo.order_number as wo_number, wc.name as work_center_name
       FROM barcode_scan_log bsl
       LEFT JOIN work_orders wo ON bsl.work_order_id = wo.id
       LEFT JOIN work_centers wc ON bsl.work_center_id = wc.id
@@ -624,7 +624,7 @@ router.get('/scan/wo-status/:barcode', async (req, res) => {
       `SELECT wo.*, c.company_name as customer_name
        FROM work_orders wo
        LEFT JOIN customers c ON wo.customer_id = c.id
-       WHERE wo.wo_number = ?`, [woNumber]
+       WHERE wo.order_number = ?`, [woNumber]
     );
     if (wo.length === 0) return res.status(404).json({ error: 'Work order not found' });
 
@@ -689,7 +689,7 @@ router.get('/qc/inspect/:wo_routing_id', async (req, res) => {
   try {
     // Get the work center for this routing step
     const [routing] = await pool.query(
-      'SELECT wr.*, wo.wo_number FROM wo_routing wr JOIN work_orders wo ON wr.work_order_id = wo.id WHERE wr.id = ?',
+      'SELECT wr.*, wo.order_number as wo_number FROM wo_routing wr JOIN work_orders wo ON wr.work_order_id = wo.id WHERE wr.id = ?',
       [req.params.wo_routing_id]
     );
     if (routing.length === 0) return res.status(404).json({ error: 'Routing step not found' });
@@ -771,7 +771,7 @@ router.get('/qc/results', async (req, res) => {
   try {
     const { work_order_id, work_center_id, result, start_date, end_date } = req.query;
     let query = `SELECT qcr.*, qc.checkpoint_name, qc.checkpoint_code, qc.is_critical, qc.measurement_type,
-      wo.wo_number, wc.name as work_center_name
+      wo.order_number as wo_number, wc.name as work_center_name
       FROM qc_checkpoint_results qcr
       JOIN qc_checkpoints qc ON qcr.checkpoint_id = qc.id
       JOIN work_orders wo ON qcr.work_order_id = wo.id
