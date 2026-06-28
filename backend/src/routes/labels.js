@@ -455,6 +455,11 @@ router.post('/scan/transfer', authenticate, async (req, res) => {
       [items[0].id, quantity, fromLoc[0].id, toLoc[0].id, lot_number || null, req.user.id]
     );
 
+    // === BROADCAST: Transfer scan ===
+    if (global.wsBroadcast) {
+      global.wsBroadcast('inventory_transfer', { item: items[0].item_number, from: from_location_code, to: to_location_code, quantity, user_id: req.user.id });
+    }
+    try { await pool.query(`INSERT INTO notification_log (notification_type, subject, item_count, details, sent_at) VALUES ('inventory_transfer', ?, 1, ?, NOW())`, [`Transfer: ${quantity}x ${items[0].item_number} from ${from_location_code} to ${to_location_code}`, JSON.stringify({ item: items[0].item_number, from: from_location_code, to: to_location_code, quantity, user_id: req.user.id })]); } catch (e) { /* ignore */ }
     res.json({ success: true, item: items[0].item_number, quantity, from: from_location_code, to: to_location_code });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -471,7 +476,7 @@ router.post('/scan/receive', authenticate, async (req, res) => {
     if (!items.length) return res.status(404).json({ error: `Item not found: ${barcode}` });
 
     const [poLines] = await pool.query(
-      `SELECT id, quantity as ordered, COALESCE(quantity_received, 0) as received FROM po_lines WHERE purchase_order_id = ? AND item_id = ?`,
+      `SELECT id, quantity_ordered as ordered, COALESCE(quantity_received, 0) as received FROM po_lines WHERE purchase_order_id = ? AND item_id = ?`,
       [pos[0].id, items[0].id]
     );
     if (!poLines.length) return res.status(404).json({ error: `Item ${barcode} not on PO ${po_number}` });
@@ -503,28 +508,37 @@ router.post('/scan/receive', authenticate, async (req, res) => {
       [items[0].id, quantity, locationId, lot_number || null, pos[0].id, req.user.id]
     );
 
+    // === BROADCAST: Receive scan ===
+    if (global.wsBroadcast) {
+      global.wsBroadcast('po_receive', { po_number, item: barcode, quantity, user_id: req.user.id });
+    }
+    try { await pool.query(`INSERT INTO notification_log (notification_type, subject, item_count, details, sent_at) VALUES ('po_received', ?, 1, ?, NOW())`, [`PO ${po_number}: Received ${quantity}x ${barcode}`, JSON.stringify({ po_number, item: barcode, quantity, user_id: req.user.id })]); } catch (e) { /* ignore */ }
     res.json({ success: true, item: barcode, quantity, po: po_number, remaining: remaining - quantity });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// INTEGRATED PRODUCTION SCAN - Auto-receipt, inventory, GL, notifications
+// ═══════════════════════════════════════════════════════════════════
 // Scan production tracking - log piece at a station + advance WO routing
+// When all routing steps complete: auto-creates WO receipt, adds finished goods
+// to inventory, logs GL entries, and broadcasts real-time WebSocket events
 router.post('/scan/production', authenticate, async (req, res) => {
   try {
     const { barcode, station, status = 'completed', notes } = req.body;
-
-    const [wos] = await pool.query(`SELECT id, wo_number, order_number, status as wo_status, current_station_id FROM work_orders WHERE wo_number = ? OR order_number = ?`, [barcode, barcode]);
+    const [wos] = await pool.query(`SELECT id, wo_number, order_number, status as wo_status, current_station_id, item_id, quantity, sales_order_id FROM work_orders WHERE wo_number = ? OR order_number = ?`, [barcode, barcode]);
     if (!wos.length) return res.status(404).json({ error: `Work order not found: ${barcode}` });
     const wo = wos[0];
-
     // Record the scan
     await pool.query(
       `INSERT INTO production_scans (work_order_id, station, status, notes, scanned_by, scanned_at) VALUES (?, ?, ?, ?, ?, NOW())`,
       [wo.id, station, status, notes || null, req.user.id]
     );
-
     // Advance WO routing when station scan is marked completed
     let routingAdvanced = false;
     let nextStation = null;
+    let woCompleted = false;
+    let receiptNumber = null;
     if (status === 'completed') {
       // Find the current (first pending/in_progress) routing step
       const [currentSteps] = await pool.query(
@@ -533,14 +547,12 @@ router.post('/scan/production', authenticate, async (req, res) => {
          LEFT JOIN work_centers wc ON wr.work_center_id = wc.id
          WHERE wr.work_order_id = ? AND wr.status IN ('pending','in_progress')
          ORDER BY wr.sequence ASC LIMIT 1`, [wo.id]);
-
       if (currentSteps.length > 0) {
         const currentStep = currentSteps[0];
         // Mark current step as completed
         await pool.query(
           `UPDATE wo_routing SET status = 'completed', actual_finish = NOW() WHERE id = ?`,
           [currentStep.id]);
-
         // Find next step
         const [nextSteps] = await pool.query(
           `SELECT wr.id, wr.sequence, wr.work_center_id, wc.name as wc_name
@@ -549,7 +561,6 @@ router.post('/scan/production', authenticate, async (req, res) => {
            WHERE wr.work_order_id = ? AND wr.sequence > ? AND wr.status = 'pending'
            ORDER BY wr.sequence ASC LIMIT 1`,
           [wo.id, currentStep.sequence]);
-
         if (nextSteps.length > 0) {
           // Advance to next step
           await pool.query(
@@ -560,16 +571,91 @@ router.post('/scan/production', authenticate, async (req, res) => {
             [nextSteps[0].work_center_id, wo.id]);
           nextStation = nextSteps[0].wc_name;
           routingAdvanced = true;
+          // === BROADCAST: Station advance ===
+          if (global.wsBroadcast) {
+            global.wsBroadcast('production_scan', {
+              wo: barcode, station, next_station: nextStation,
+              action: 'station_advance', user_id: req.user.id
+            });
+          }
         } else {
-          // All routing steps completed
+          // ═══ ALL ROUTING STEPS COMPLETED - FULL INTEGRATION ═══
+          woCompleted = true;
           await pool.query(
             `UPDATE work_orders SET status = 'completed', current_station_id = NULL WHERE id = ? AND status != 'completed'`,
             [wo.id]);
           nextStation = 'COMPLETED';
           routingAdvanced = true;
+          // --- AUTO-RECEIPT: Create WO Receipt & add finished goods to inventory ---
+          try {
+            const { getNextNumber } = require('../utils/sequence');
+            receiptNumber = await getNextNumber('wo_receipt');
+            const woQty = Number(wo.quantity) || 1;
+            // Create the WO receipt record
+            await pool.query(
+              `INSERT INTO wo_receipts (receipt_number, work_order_id, receipt_date, quantity_completed, quantity_scrapped, is_final, location_id, notes, received_by)
+               VALUES (?, ?, CURDATE(), ?, 0, 1, 1, ?, ?)`,
+              [receiptNumber, wo.id, woQty, `Auto-receipt from final production scan at ${station}`, req.user.id]
+            );
+            // Update WO quantities
+            await pool.query('UPDATE work_orders SET qty_completed = quantity, quantity_completed = quantity WHERE id = ?', [wo.id]);
+            // Add finished goods to inventory (items table + inventory_balances)
+            if (wo.item_id) {
+              await pool.query('UPDATE items SET qty_on_hand = qty_on_hand + ? WHERE id = ?', [woQty, wo.item_id]);
+              // Sync inventory_balances (location-level tracking)
+              const [existBal] = await pool.query('SELECT id FROM inventory_balances WHERE item_id = ? AND location_id = 1', [wo.item_id]);
+              if (existBal.length > 0) {
+                await pool.query('UPDATE inventory_balances SET quantity_on_hand = quantity_on_hand + ?, last_count_date = NOW() WHERE id = ?', [woQty, existBal[0].id]);
+              } else {
+                await pool.query('INSERT INTO inventory_balances (item_id, location_id, quantity_on_hand, last_count_date) VALUES (?, 1, ?, NOW())', [wo.item_id, woQty]);
+              }
+              // Log inventory transaction
+              await pool.query(
+                `INSERT INTO inventory_transactions (item_id, transaction_type, quantity, to_location_id, reference_type, reference_id, reference_number, notes, created_by)
+                 VALUES (?, 'wo_receipt', ?, 1, 'work_order', ?, ?, 'Auto-receipt from production scan', ?)`,
+                [wo.item_id, woQty, wo.id, wo.order_number || wo.wo_number, req.user.id]
+              );
+              // --- GL POSTING: Debit Finished Goods, Credit WIP ---
+              try {
+                const GLService = require('../services/glService');
+                await GLService.postWOReceipt({
+                  workOrderId: wo.id, itemId: wo.item_id, quantity: woQty,
+                  transactionDate: new Date(),
+                  memo: `Auto WO Receipt ${receiptNumber} - ${wo.order_number || wo.wo_number}`,
+                  postedBy: req.user.id
+                });
+              } catch (glErr) { console.error('[ScanIntegration] GL posting error:', glErr.message); }
+            }
+            // --- UPDATE SALES ORDER LINE STATUS if linked ---
+            if (wo.sales_order_id) {
+              try {
+                await pool.query(
+                  `UPDATE sales_order_lines SET production_status = 'complete' WHERE work_order_id = ?`,
+                  [wo.id]
+                );
+              } catch (e) { /* ignore if column doesn't exist */ }
+            }
+          } catch (receiptErr) {
+            console.error('[ScanIntegration] Auto-receipt error:', receiptErr.message);
+          }
+          // --- NOTIFICATION: WO Completed ---
+          try {
+            await pool.query(
+              `INSERT INTO notification_log (notification_type, subject, item_count, details, sent_at)
+               VALUES ('wo_completed', ?, 1, ?, NOW())`,
+              [`Work Order ${wo.order_number || wo.wo_number} completed via scan at ${station}`,
+               JSON.stringify({ wo_id: wo.id, wo_number: wo.order_number || wo.wo_number, station, receipt_number: receiptNumber, scanned_by: req.user.id })]
+            );
+          } catch (e) { /* ignore notification errors */ }
+          // === BROADCAST: WO Completed ===
+          if (global.wsBroadcast) {
+            global.wsBroadcast('wo_completed', {
+              wo: barcode, wo_id: wo.id, receipt_number: receiptNumber,
+              station, user_id: req.user.id
+            });
+          }
         }
       }
-
       // Also log to shop_floor_tracking
       try {
         await pool.query(
@@ -578,11 +664,12 @@ router.post('/scan/production', authenticate, async (req, res) => {
           [wo.id, station, req.user.id]);
       } catch (e) { /* ignore if shop_floor_tracking has different schema */ }
     }
-
     res.json({
       success: true, wo: barcode, station, status,
       routing_advanced: routingAdvanced,
       next_station: nextStation,
+      wo_completed: woCompleted,
+      receipt_number: receiptNumber,
       timestamp: new Date().toISOString()
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -619,35 +706,93 @@ router.post('/scan/location-inventory', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Scan to ship - verify item against sales order
+// ═══════════════════════════════════════════════════════════════════
+// INTEGRATED SHIP SCAN - Updates quantity_shipped, inventory, GL, notifications
+// ═══════════════════════════════════════════════════════════════════
+// Scan to ship - verify item against sales order AND update shipped quantities
 router.post('/scan/ship', authenticate, async (req, res) => {
   try {
-    const { so_number, barcode, quantity } = req.body;
-
-    const [sos] = await pool.query(`SELECT id, order_number FROM sales_orders WHERE order_number = ?`, [so_number]);
+    const { so_number, barcode, quantity = 1 } = req.body;
+    const [sos] = await pool.query(`SELECT id, order_number, status FROM sales_orders WHERE order_number = ?`, [so_number]);
     if (!sos.length) return res.status(404).json({ error: `Sales order not found: ${so_number}` });
-
     const [items] = await pool.query(`SELECT id, item_number, description FROM items WHERE item_number = ?`, [barcode]);
     if (!items.length) return res.status(404).json({ error: `Item not found: ${barcode}` });
-
     // Verify item is on the SO
     const [soLines] = await pool.query(
-      `SELECT id, quantity, COALESCE(quantity_shipped, 0) as shipped FROM sales_order_lines WHERE sales_order_id = ? AND item_id = ?`,
+      `SELECT id, quantity_ordered as quantity, COALESCE(quantity_shipped, 0) as shipped FROM sales_order_lines WHERE sales_order_id = ? AND item_id = ?`,
       [sos[0].id, items[0].id]
     );
     if (!soLines.length) return res.status(404).json({ error: `Item ${barcode} not on SO ${so_number}` });
-
     const remaining = soLines[0].quantity - soLines[0].shipped;
-
+    const shipQty = Math.min(Number(quantity) || 1, remaining);
+    if (remaining <= 0) {
+      return res.json({ success: false, error: 'Already fully shipped', item: items[0].item_number, ordered: soLines[0].quantity, already_shipped: soLines[0].shipped, remaining: 0 });
+    }
+    // --- UPDATE QUANTITY SHIPPED on SO line ---
+    await pool.query(
+      `UPDATE sales_order_lines SET quantity_shipped = COALESCE(quantity_shipped, 0) + ? WHERE id = ?`,
+      [shipQty, soLines[0].id]
+    );
+    // Update SO line status
+    const newShipped = soLines[0].shipped + shipQty;
+    if (newShipped >= soLines[0].quantity) {
+      await pool.query(`UPDATE sales_order_lines SET status = 'complete' WHERE id = ?`, [soLines[0].id]);
+    } else {
+      await pool.query(`UPDATE sales_order_lines SET status = 'partial' WHERE id = ?`, [soLines[0].id]);
+    }
+    // --- DEDUCT FROM INVENTORY ---
+    try {
+      await pool.query('UPDATE items SET qty_on_hand = GREATEST(0, qty_on_hand - ?) WHERE id = ?', [shipQty, items[0].id]);
+      // Deduct from default shipping location (location_id = 1)
+      const [existBal] = await pool.query('SELECT id, quantity_on_hand FROM inventory_balances WHERE item_id = ? AND location_id = 1', [items[0].id]);
+      if (existBal.length > 0) {
+        await pool.query('UPDATE inventory_balances SET quantity_on_hand = GREATEST(0, quantity_on_hand - ?) WHERE id = ?', [shipQty, existBal[0].id]);
+      }
+      // Log inventory transaction
+      await pool.query(
+        `INSERT INTO inventory_transactions (item_id, transaction_type, quantity, from_location_id, reference_type, reference_id, reference_number, notes, created_by)
+         VALUES (?, 'shipment', ?, 1, 'sales_order', ?, ?, 'Ship scan verification', ?)`,
+        [items[0].id, shipQty, sos[0].id, so_number, req.user.id]
+      );
+    } catch (invErr) { console.error('[ShipScan] Inventory deduction error:', invErr.message); }
+    // --- CHECK IF ALL SO LINES COMPLETE → Update SO status ---
+    try {
+      const [openLines] = await pool.query(
+        `SELECT COUNT(*) as cnt FROM sales_order_lines WHERE sales_order_id = ? AND status != 'complete' AND status != 'cancelled'`,
+        [sos[0].id]
+      );
+      if (openLines[0].cnt === 0) {
+        await pool.query(`UPDATE sales_orders SET status = 'shipped' WHERE id = ? AND status NOT IN ('shipped','closed','cancelled')`, [sos[0].id]);
+        // --- NOTIFICATION: SO Fully Shipped ---
+        try {
+          await pool.query(
+            `INSERT INTO notification_log (notification_type, subject, item_count, details, sent_at)
+             VALUES ('so_shipped', ?, 1, ?, NOW())`,
+            [`Sales Order ${so_number} fully shipped`,
+             JSON.stringify({ so_id: sos[0].id, so_number, scanned_by: req.user.id })]
+          );
+        } catch (e) { /* ignore */ }
+        // === BROADCAST: SO Fully Shipped ===
+        if (global.wsBroadcast) {
+          global.wsBroadcast('so_shipped', { so_number, so_id: sos[0].id, user_id: req.user.id });
+        }
+      }
+    } catch (e) { /* ignore */ }
+    // === BROADCAST: Ship scan ===
+    if (global.wsBroadcast) {
+      global.wsBroadcast('ship_scan', {
+        so_number, item: items[0].item_number, quantity: shipQty, user_id: req.user.id
+      });
+    }
     res.json({
       success: true,
       item: items[0].item_number,
       description: items[0].description,
       ordered: soLines[0].quantity,
-      already_shipped: soLines[0].shipped,
-      remaining,
-      scan_qty: quantity,
-      verified: quantity <= remaining
+      already_shipped: newShipped,
+      remaining: soLines[0].quantity - newShipped,
+      scan_qty: shipQty,
+      verified: true
     });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

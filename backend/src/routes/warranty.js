@@ -176,7 +176,7 @@ router.post('/claims', async (req, res) => {
     if (barcode_scanned) {
       // Try to find in work order tracking
       const [tracking] = await pool.query(`SELECT wo.created_at as prod_date, wo.wo_number as batch 
-        FROM work_orders wo WHERE wo.wo_number = ? OR wo.id = ?`, [barcode_scanned, barcode_scanned]);
+        FROM work_orders wo WHERE wo.wo_number = ? OR wo.order_number = ? OR wo.id = ?`, [barcode_scanned, barcode_scanned, barcode_scanned]);
       if (tracking.length) {
         original_production_date = tracking[0].prod_date;
         original_batch = tracking[0].batch;
@@ -267,7 +267,7 @@ router.get('/trace/:barcode', async (req, res) => {
   try {
     const barcode = req.params.barcode;
     // Search across WOs, shipments, and inventory for this barcode/WO number
-    const [wos] = await pool.query('SELECT * FROM work_orders WHERE wo_number = ? OR id = ?', [barcode, barcode]);
+    const [wos] = await pool.query('SELECT * FROM work_orders WHERE wo_number = ? OR order_number = ? OR id = ?', [barcode, barcode, barcode]);
     const [claims] = await pool.query('SELECT * FROM warranty_claims WHERE barcode_scanned = ? OR work_order_id = ?', [barcode, barcode]);
     const [shipments] = await pool.query('SELECT * FROM shipments WHERE tracking_number = ? LIMIT 5', [barcode]);
     res.json({ workOrders: wos, claims, shipments, barcode });

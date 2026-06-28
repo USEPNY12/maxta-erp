@@ -250,8 +250,8 @@ router.post('/kiosk/action', async (req, res) => {
       const woNumber = actionData?.barcode;
       if (woNumber) {
         const [wos] = await pool.query(
-          'SELECT id, wo_number, status, product_type, quantity FROM work_orders WHERE wo_number = ?',
-          [woNumber]
+          'SELECT id, wo_number, order_number, status, product_type, quantity FROM work_orders WHERE wo_number = ? OR order_number = ?',
+          [woNumber, woNumber]
         );
         response.workOrder = wos[0] || null;
       }
@@ -260,7 +260,7 @@ router.post('/kiosk/action', async (req, res) => {
       const { workOrderId, quantity, station } = actionData || {};
       if (workOrderId && quantity) {
         await pool.query(
-          'UPDATE work_orders SET completed_qty = completed_qty + ? WHERE id = ?',
+          'UPDATE work_orders SET quantity_completed = quantity_completed + ? WHERE id = ?',
           [quantity, workOrderId]
         );
         response.message = `Logged ${quantity} units for WO`;

@@ -561,6 +561,22 @@ router.post('/scan', async (req, res) => {
         case 'wo_complete':
         case 'station_out':
           await pool.query('UPDATE wo_routing SET status = \'complete\', actual_finish = NOW(), quantity_completed = ? WHERE id = ?', [quantity || 1, wo_routing_id]);
+          // --- AUTO-LOG LABOR: Calculate hours between station_in and station_out ---
+          try {
+            const [routingInfo] = await pool.query('SELECT actual_start, actual_finish, work_center_id FROM wo_routing WHERE id = ?', [wo_routing_id]);
+            if (routingInfo.length > 0 && routingInfo[0].actual_start) {
+              const startTime = new Date(routingInfo[0].actual_start);
+              const endTime = routingInfo[0].actual_finish ? new Date(routingInfo[0].actual_finish) : new Date();
+              const hoursWorked = Math.round(((endTime - startTime) / 3600000) * 100) / 100; // Round to 2 decimals
+              if (hoursWorked > 0 && hoursWorked < 24) { // Sanity check: less than 24 hours
+                await pool.query(
+                  `INSERT INTO wo_labor (work_order_id, work_center_id, employee_id, wo_routing_id, work_date, hours_worked, hours, labor_type, notes, entered_by, created_at)
+                   VALUES (?, ?, ?, ?, CURDATE(), ?, ?, 'run', 'Auto-logged from barcode scan station_in/station_out', ?, NOW())`,
+                  [work_order_id, routingInfo[0].work_center_id || work_center_id, req.user.id, wo_routing_id, hoursWorked, hoursWorked, req.user.id]
+                );
+              }
+            }
+          } catch (laborErr) { console.error('[ScanIntegration] Labor auto-log error:', laborErr.message); }
           // Check if all operations complete
           const [remaining] = await pool.query(
             'SELECT COUNT(*) as cnt FROM wo_routing WHERE work_order_id = ? AND status NOT IN (\'complete\',\'completed\')',
@@ -569,8 +585,18 @@ router.post('/scan', async (req, res) => {
           if (remaining[0].cnt === 0) {
             await pool.query('UPDATE work_orders SET status = \'completed\', completion_date = NOW() WHERE id = ?', [work_order_id]);
             actionResult = { action: 'wo_completed', wo_number: woNumber };
+            // === BROADCAST: WO Completed from Barcode Station ===
+            if (global.wsBroadcast) {
+              global.wsBroadcast('wo_completed', { wo: woNumber, wo_id: work_order_id, station: 'barcode_station', user_id: req.user.id });
+            }
+            // --- NOTIFICATION ---
+            try { await pool.query(`INSERT INTO notification_log (notification_type, subject, item_count, details, sent_at) VALUES ('wo_completed', ?, 1, ?, NOW())`, [`WO ${woNumber} completed via barcode station scan`, JSON.stringify({ wo_id: work_order_id, wo_number: woNumber, user_id: req.user.id })]); } catch (e) {}
           } else {
             actionResult = { action: 'operation_completed', wo_number: woNumber, remaining_ops: remaining[0].cnt };
+            // === BROADCAST: Operation completed ===
+            if (global.wsBroadcast) {
+              global.wsBroadcast('operation_completed', { wo: woNumber, wo_id: work_order_id, remaining: remaining[0].cnt, user_id: req.user.id });
+            }
           }
           break;
         case 'wo_pause':
