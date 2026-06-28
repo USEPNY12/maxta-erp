@@ -13,7 +13,7 @@ export default function FinancialDashboard() {
   const fetchDashboard = async () => {
     try {
       const res = await api.get('/api/accounting-advanced/dashboard');
-      setData(res.data);
+      setData(Array.isArray(res.data) ? res.data : []);
     } catch(e) { toast.error('Failed to load financial dashboard'); }
     setLoading(false);
   };

@@ -110,7 +110,7 @@ function WorkOrders() {
   // ===== CARD VIEW =====
   const renderCardView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
-      {orders.map(wo => {
+      {(orders || []).map(wo => {
         const pri = priorityConfig[wo.priority] || priorityConfig.normal;
         const st = statusConfig[wo.status] || statusConfig.planned;
         const progress = getProgress(wo);
@@ -218,7 +218,7 @@ function WorkOrders() {
           </tr>
         </thead>
         <tbody>
-          {orders.map(wo => {
+          {(orders || []).map(wo => {
             const pri = priorityConfig[wo.priority] || priorityConfig.normal;
             const st = statusConfig[wo.status] || statusConfig.planned;
             const progress = getProgress(wo);
@@ -586,7 +586,7 @@ function WorkOrders() {
                 <div><label className="text-xs font-bold text-gray-700 block mb-1">Item *</label>
                   <select className="erp-form-select w-full" value={newWO.item_id} onChange={e => setNewWO({...newWO, item_id: e.target.value})}>
                     <option value="">Select item...</option>
-                    {items.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
+                    {(items || []).map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
                   </select>
                 </div>
               </div>

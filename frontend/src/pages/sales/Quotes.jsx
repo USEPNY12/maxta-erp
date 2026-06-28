@@ -195,7 +195,7 @@ function Quotes() {
         <table className="erp-grid">
           <thead><tr><th>Quote#</th><th>Date</th><th>Customer</th><th>Project</th><th>Lines</th><th>Total</th><th>Expires</th><th>Status</th></tr></thead>
           <tbody>
-            {quotes.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No quotes found</td></tr> : quotes.map(q => (
+            {quotes.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No quotes found</td></tr> : (quotes || []).map(q => (
               <tr key={q.id} className="cursor-pointer" onClick={() => openDetail(q)}>
                 <td className="text-blue-700 font-bold">{q.quote_number}</td>
                 <td>{formatDate(q.quote_date)}</td>
@@ -302,7 +302,7 @@ function Quotes() {
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="erp-form-group"><label className="erp-form-label">Customer*:</label>
                   <select className="erp-form-select" value={newQuote.customer_id} onChange={e => setNewQuote({ ...newQuote, customer_id: e.target.value })}>
-                    <option value="">Select Customer...</option>{customers.map(c => <option key={c.id} value={c.id}>{c.company_name || c.name}</option>)}
+                    <option value="">Select Customer...</option>{(customers || []).map(c => <option key={c.id} value={c.id}>{c.company_name || c.name}</option>)}
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Project Name:</label><input className="erp-form-input" value={newQuote.project_name} onChange={e => setNewQuote({ ...newQuote, project_name: e.target.value })} placeholder="e.g. Office Tower Level 3" /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Expiry Date:</label><input className="erp-form-input" type="date" value={newQuote.expiry_date} onChange={e => setNewQuote({ ...newQuote, expiry_date: e.target.value })} /></div>
@@ -323,7 +323,7 @@ function Quotes() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8, marginBottom: 8 }}>
                     <div><label className="text-[10px] text-gray-500">Item</label>
                       <select className="erp-form-select w-full text-xs" value={line.item_id || ''} onChange={e => { updateLine(idx, 'item_id', e.target.value); lookupPrice(idx, e.target.value); }}>
-                        <option value="">Custom...</option>{items.map(it => <option key={it.id} value={it.id}>{it.item_number}</option>)}
+                        <option value="">Custom...</option>{(items || []).map(it => <option key={it.id} value={it.id}>{it.item_number}</option>)}
                       </select></div>
                     <div style={{ gridColumn: 'span 2' }}><label className="text-[10px] text-gray-500">Description*</label>
                       <input className="erp-form-input w-full text-xs" value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} placeholder="Panel description" /></div>

@@ -30,7 +30,7 @@ function Dashboard() {
 
   // Load active promotions
   useEffect(() => {
-    api.get('/api/dashboard-exec/promotions/active').then(res => setPromotions(res.data)).catch(() => {});
+    api.get('/api/dashboard-exec/promotions/active').then(res => setPromotions(Array.isArray(res.data) ? res.data : [])).catch(() => {});
   }, []);
 
   const loadData = () => {

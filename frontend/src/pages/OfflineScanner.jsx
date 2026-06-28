@@ -336,7 +336,7 @@ export default function OfflineScanner() {
             <div className="p-8 text-center text-gray-500">Queue is empty. All scans synced.</div>
           ) : (
             <div className="divide-y divide-gray-700">
-              {queue.map((item, i) => (
+              {(queue || []).map((item, i) => (
                 <div key={i} className="flex items-center justify-between p-3">
                   <div>
                     <div className="text-white text-sm">{item.actionType}</div>

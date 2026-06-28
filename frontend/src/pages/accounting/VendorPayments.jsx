@@ -50,7 +50,7 @@ function VendorPayments() {
         <table className="erp-grid">
           <thead><tr><th>Payment#</th><th>Date</th><th>Vendor</th><th>Amount</th><th>Method</th><th>Check#</th><th>Status</th></tr></thead>
           <tbody>
-            {payments.length === 0 ? <tr><td colSpan="7" className="text-center p-4 text-gray-500">No vendor payments</td></tr> : payments.map(p => (
+            {payments.length === 0 ? <tr><td colSpan="7" className="text-center p-4 text-gray-500">No vendor payments</td></tr> : (payments || []).map(p => (
               <tr key={p.id}>
                 <td className="text-blue-700 font-bold">{p.payment_number}</td>
                 <td>{p.payment_date?.split('T')[0]}</td>
@@ -72,7 +72,7 @@ function VendorPayments() {
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="erp-form-group"><label className="erp-form-label">Vendor*:</label>
                   <select className="erp-form-select" value={form.vendor_id} onChange={e => handleVendorChange(e.target.value)}>
-                    <option value="">Select Vendor...</option>{vendors.map(v => <option key={v.id} value={v.id}>{v.company_name || v.name} ({v.vendor_number})</option>)}
+                    <option value="">Select Vendor...</option>{(vendors || []).map(v => <option key={v.id} value={v.id}>{v.company_name || v.name} ({v.vendor_number})</option>)}
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Date:</label><input className="erp-form-input" type="date" value={form.payment_date} onChange={e => setForm({ ...form, payment_date: e.target.value })} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Amount*:</label><input className="erp-form-input" type="number" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} /></div>

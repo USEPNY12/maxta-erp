@@ -189,7 +189,7 @@ export default function PhysicalCount() {
                           if (item) handleUpdateLine(idx, 'system_qty', item.qty_on_hand || 0);
                         }} className="w-full border rounded px-2 py-1 text-sm">
                           <option value="">Select Item...</option>
-                          {items.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
+                          {(items || []).map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
                         </select>
                       )}
                     </td>
@@ -254,7 +254,7 @@ export default function PhysicalCount() {
                 <select value={newCount.location_id} onChange={e => setNewCount({...newCount, location_id: e.target.value})}
                   className="w-full border rounded px-3 py-2 text-sm">
                   <option value="">All Locations</option>
-                  {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  {(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
               </div>
             </div>

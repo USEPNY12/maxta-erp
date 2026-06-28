@@ -66,7 +66,7 @@ function APInvoices() {
           <thead><tr><th>Invoice No.</th><th>Date</th><th>Vendor</th><th>PO #</th><th>Due Date</th><th>Total</th><th>Balance</th><th>Status</th></tr></thead>
           <tbody>
             {invoices.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No invoices found</td></tr> :
-            invoices.map(inv => (
+            (invoices || []).map(inv => (
               <tr key={inv.id} className={`cursor-pointer hover:bg-blue-50 ${inv.status === 'overdue' ? 'bg-red-50' : ''}`} onClick={() => openDetail(inv)}>
                 <td className="font-bold">{inv.invoice_number}</td>
                 <td>{fmt(inv.invoice_date)}</td>

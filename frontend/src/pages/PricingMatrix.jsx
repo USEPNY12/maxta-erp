@@ -27,8 +27,8 @@ export default function PricingMatrix() {
         api.get('/api/cpq/pricing-matrix'),
         api.get('/api/cpq/quantity-breaks')
       ]);
-      setMatrix(matrixRes.data);
-      setQuantityBreaks(qbRes.data);
+      setMatrix(Array.isArray(matrixRes.data) ? matrixRes.data : []);
+      setQuantityBreaks(Array.isArray(qbRes.data) ? qbRes.data : []);
     } catch (err) {
       console.error('Failed to load pricing data:', err);
     } finally {
@@ -136,7 +136,7 @@ export default function PricingMatrix() {
                         </tr>
                       </thead>
                       <tbody>
-                        {items.map(item => (
+                        {(items || []).map(item => (
                           <tr key={item.id}>
                             {editingId === item.id ? (
                               <>
@@ -192,7 +192,7 @@ export default function PricingMatrix() {
                     </tr>
                   </thead>
                   <tbody>
-                    {quantityBreaks.map(qb => (
+                    {(quantityBreaks || []).map(qb => (
                       <tr key={qb.id}>
                         <td><strong>{qb.name}</strong></td>
                         <td>{qb.min_qty}</td>

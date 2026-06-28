@@ -50,8 +50,8 @@ export default function BankReconciliation() {
     setTransactions(updated);
   };
 
-  const selectAll = () => setTransactions(transactions.map(t => ({ ...t, _selected: true })));
-  const deselectAll = () => setTransactions(transactions.map(t => ({ ...t, _selected: false })));
+  const selectAll = () => setTransactions((transactions || []).map(t => ({ ...t, _selected: true })));
+  const deselectAll = () => setTransactions((transactions || []).map(t => ({ ...t, _selected: false })));
 
   const selectedTotal = transactions.filter(t => t._selected).reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
   const bankInfo = banks.find(b => String(b.id) === String(selectedBank));
@@ -140,7 +140,7 @@ export default function BankReconciliation() {
               <tbody>
                 {transactions.length === 0 ? (
                   <tr><td colSpan="7" className="text-center p-4 text-gray-500">No transactions found</td></tr>
-                ) : transactions.map((t, i) => (
+                ) : (transactions || []).map((t, i) => (
                   <tr key={t.id || i} className={t._selected ? 'bg-blue-50' : t.cleared ? 'bg-green-50' : ''}>
                     <td className="text-center">{!t.cleared ? <input type="checkbox" checked={t._selected || false} onChange={() => toggleCleared(i)} /> : <span className="text-green-600">✓</span>}</td>
                     <td>{t.transaction_date?.split('T')[0] || '-'}</td>

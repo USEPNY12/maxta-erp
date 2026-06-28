@@ -171,7 +171,7 @@ export default function SmartGlazier() {
                 </thead>
                 <tbody>
                   {orders.length === 0 && <tr><td colSpan="7" className="p-8 text-center text-gray-400">No Smart Glazier orders synced yet. Configure your API key and click "Sync Now" to pull orders.</td></tr>}
-                  {orders.map(o => (
+                  {(orders || []).map(o => (
                     <tr key={o.id} className="hover:bg-blue-50 cursor-pointer" onClick={() => viewOrderDetail(o)}>
                       <td className="p-2 border font-medium">{o.sg_order_number || o.sg_order_id}</td>
                       <td className="p-2 border">{o.sg_customer_name}</td>

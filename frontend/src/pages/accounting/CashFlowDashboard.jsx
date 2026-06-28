@@ -32,7 +32,7 @@ export default function CashFlowDashboard() {
   };
 
   const fetchCategories = async () => {
-    try { const res = await api.get('/api/accounting-advanced/cash-flow/categories'); setCategories(res.data); } catch { setCategories([]); }
+    try { const res = await api.get('/api/accounting-advanced/cash-flow/categories'); setCategories(Array.isArray(res.data) ? res.data : []); } catch { setCategories([]); }
   };
 
   const getBarWidth = (amount, max) => {
@@ -194,7 +194,7 @@ export default function CashFlowDashboard() {
                 <tbody>
                   {categories.length === 0 ? (
                     <tr><td colSpan="4" className="text-center p-4 text-gray-500">No categories defined</td></tr>
-                  ) : categories.map(c => (
+                  ) : (categories || []).map(c => (
                     <tr key={c.id}>
                       <td className="font-medium">{c.name}</td>
                       <td><span className={`px-2 py-0.5 rounded text-xs ${

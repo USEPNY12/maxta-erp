@@ -12,7 +12,7 @@ export default function RackLoading() {
   useEffect(() => { loadRacks(); }, []);
 
   const loadRacks = async () => {
-    try { const r = await api.get('/shipping/racks'); setRacks(r.data); } catch(e) { console.error(e); }
+    try { const r = await api.get('/shipping/racks'); setRacks(Array.isArray(r.data) ? r.data : []); } catch(e) { console.error(e); }
   };
 
   const createLoad = async () => {
@@ -52,7 +52,7 @@ export default function RackLoading() {
 
       {/* Rack Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        {racks.map(rack => (
+        {(racks || []).map(rack => (
           <div key={rack.id} onClick={() => { setSelectedRack(rack); setShowCreateLoadModal(true); }}
             style={{ background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb', padding: '16px', cursor: 'pointer', transition: 'box-shadow 0.2s' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>

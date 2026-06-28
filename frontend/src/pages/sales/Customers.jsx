@@ -54,7 +54,7 @@ function Customers() {
         <table className="erp-grid">
           <thead><tr><th>Customer#</th><th>Company Name</th><th>Contact</th><th>Phone</th><th>Email</th><th>City</th><th>State</th><th>Terms</th><th>Balance</th></tr></thead>
           <tbody>
-            {customers.length === 0 ? <tr><td colSpan="9" className="text-center p-4 text-gray-500">No customers found</td></tr> : customers.map(c => (
+            {customers.length === 0 ? <tr><td colSpan="9" className="text-center p-4 text-gray-500">No customers found</td></tr> : (customers || []).map(c => (
               <tr key={c.id} className={`cursor-pointer ${selected?.id === c.id ? 'bg-blue-100' : ''}`} onClick={() => openDetail(c)}>
                 <td className="text-blue-700 font-bold">{c.customer_number}</td>
                 <td>{c.company_name || c.name}</td>

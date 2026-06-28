@@ -181,7 +181,7 @@ export default function Dispatch() {
                 </tr>
               </thead>
               <tbody>
-                {racks.map(r => (
+                {(racks || []).map(r => (
                   <tr key={r.id} className="hover:bg-gray-50">
                     <td className="p-2 border font-medium">{r.rack_number}</td>
                     <td className="p-2 border capitalize">{r.rack_type}</td>

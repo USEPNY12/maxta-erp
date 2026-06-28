@@ -70,7 +70,7 @@ export default function GanttSchedule() {
   }
 
   // Group entries by work center
-  const workCenters = [...new Set(entries.map(e => e.work_center_name || 'Unassigned'))];
+  const workCenters = [...new Set((entries || []).map(e => e.work_center_name || 'Unassigned'))];
   const groupedEntries = {};
   workCenters.forEach(wc => { groupedEntries[wc] = entries.filter(e => (e.work_center_name || 'Unassigned') === wc); });
 

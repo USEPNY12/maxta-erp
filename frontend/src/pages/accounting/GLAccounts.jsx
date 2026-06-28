@@ -51,7 +51,7 @@ function GLAccounts() {
         <table className="erp-grid">
           <thead><tr><th>Account#</th><th>Account Name</th><th>Type</th><th>Sub-Type</th><th>Balance</th><th>Active</th></tr></thead>
           <tbody>
-            {accounts.length === 0 ? <tr><td colSpan="6" className="text-center p-4 text-gray-500">No accounts found</td></tr> : accounts.map(a => (
+            {accounts.length === 0 ? <tr><td colSpan="6" className="text-center p-4 text-gray-500">No accounts found</td></tr> : (accounts || []).map(a => (
               <tr key={a.id}>
                 <td className="font-mono font-bold">{a.account_number}</td>
                 <td>{a.account_name}</td>

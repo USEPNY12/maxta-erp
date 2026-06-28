@@ -103,7 +103,7 @@ export default function FabricationCharges() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map(item => (
+            {(filtered || []).map(item => (
               <tr key={item.id} style={{ opacity: item.is_active ? 1 : 0.5 }}>
                 <td><span style={{ background: getCategoryColor(item.category), color: '#fff', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600 }}>{item.category}</span></td>
                 <td style={{ fontWeight: 500 }}>{item.name}</td>

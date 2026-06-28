@@ -17,7 +17,7 @@ function Labor() {
   useEffect(() => { fetchLabor(); }, []);
 
   const fetchLabor = async () => {
-    try { const res = await api.get('/api/manufacturing/labor'); setEntries(res.data); } catch { setEntries([]); }
+    try { const res = await api.get('/api/manufacturing/labor'); setEntries(Array.isArray(res.data) ? res.data : []); } catch { setEntries([]); }
   };
 
   const fetchWorkOrders = async () => {
@@ -61,7 +61,7 @@ function Labor() {
             <tr><th>Date</th><th>WO #</th><th>Work Center</th><th>Employee</th><th>Type</th><th>Hours</th><th>Rate</th><th>Cost</th></tr>
           </thead>
           <tbody>
-            {entries.map(e => (
+            {(entries || []).map(e => (
               <tr key={e.id}>
                 <td>{e.work_date}</td>
                 <td className="text-blue-700 font-bold">{e.wo_number}</td>

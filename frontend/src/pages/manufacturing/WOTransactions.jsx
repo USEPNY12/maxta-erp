@@ -14,7 +14,7 @@ function WOTransactions() {
   const fetchReceipts = async () => {
     try {
       const res = await api.get('/api/manufacturing/receipts', { params: filter });
-      setReceipts(res.data);
+      setReceipts(Array.isArray(res.data) ? res.data : []);
     } catch { setReceipts([]); }
   };
 
@@ -83,7 +83,7 @@ function WOTransactions() {
               <tr><th>Date</th><th>Receipt No.</th><th>Type</th><th>Order No.</th><th>WO Type</th><th>Qty Received</th><th>Item No</th></tr>
             </thead>
             <tbody>
-              {receipts.map(r => (
+              {(receipts || []).map(r => (
                 <tr key={r.id} className={`cursor-pointer ${selectedReceipt?.id === r.id ? 'bg-blue-200' : ''}`} onClick={() => setSelectedReceipt(r)}>
                   <td>{r.receipt_date}</td>
                   <td className="font-bold">{r.receipt_no}</td>

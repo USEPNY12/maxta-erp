@@ -159,7 +159,7 @@ function ProductionLabel({ data, style }) {
           <div style={{ fontWeight: 'bold', fontSize: '10px', marginBottom: '2px' }}>FABRICATION:</div>
           {Object.entries(d.fabrication).map(([cat, items]) => (
             <div key={cat} className="fab-item">
-              <strong>{cat}:</strong> {items.map(i => `${i.name} (${i.qty})`).join(', ')}
+              <strong>{cat}:</strong> {(items || []).map(i => `${i.name} (${i.qty})`).join(', ')}
             </div>
           ))}
         </div>

@@ -116,7 +116,7 @@ function Shipments() {
         <table className="erp-grid">
           <thead><tr><th>Shipment#</th><th>Date</th><th>Order#</th><th>Customer</th><th>Carrier</th><th>Tracking</th><th>Items</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
-            {shipments.length === 0 ? <tr><td colSpan="9" className="text-center p-4 text-gray-500">No shipments</td></tr> : shipments.map(s => (
+            {shipments.length === 0 ? <tr><td colSpan="9" className="text-center p-4 text-gray-500">No shipments</td></tr> : (shipments || []).map(s => (
               <tr key={s.id} className="cursor-pointer" onClick={() => openDetail(s)}>
                 <td className="text-blue-700 font-bold">{s.shipment_number || s.shipment_no}</td>
                 <td>{formatDate(s.ship_date || s.shipment_date)}</td>
@@ -232,7 +232,7 @@ function Shipments() {
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="erp-form-group"><label className="erp-form-label">Sales Order*:</label>
                   <select className="erp-form-select" value={form.sales_order_id} onChange={e => handleOrderSelect(e.target.value)}>
-                    <option value="">Select Order...</option>{orders.map(o => <option key={o.id} value={o.id}>{o.order_number} - {o.customer_name}</option>)}
+                    <option value="">Select Order...</option>{(orders || []).map(o => <option key={o.id} value={o.id}>{o.order_number} - {o.customer_name}</option>)}
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Ship Date:</label><input className="erp-form-input" type="date" value={form.ship_date} onChange={e => setForm({ ...form, ship_date: e.target.value })} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Carrier:</label><input className="erp-form-input" value={form.carrier} onChange={e => setForm({ ...form, carrier: e.target.value })} placeholder="UPS, FedEx, Flatbed" /></div>

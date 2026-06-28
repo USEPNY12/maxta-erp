@@ -108,7 +108,7 @@ function ShopFloor() {
           <h3 className="font-bold text-sm">Stations</h3>
           <p className="text-[10px] text-gray-400">Select department</p>
         </div>
-        {stations.map(s => (
+        {(stations || []).map(s => (
           <button
             key={s.id}
             className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-gray-800 border-b border-gray-800 ${activeStation === s.id ? 'bg-blue-900 border-l-4 border-l-blue-400' : ''}`}
@@ -152,7 +152,7 @@ function ShopFloor() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
-              {queue.map(item => (
+              {(queue || []).map(item => (
                 <div key={item.routing_id} className="bg-white border border-gray-300 rounded shadow-sm hover:shadow-md transition-shadow">
                   {/* Card Header */}
                   <div className="bg-gray-100 border-b border-gray-300 px-3 py-2 flex justify-between items-center">

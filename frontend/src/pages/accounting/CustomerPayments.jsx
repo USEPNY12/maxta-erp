@@ -70,7 +70,7 @@ function CustomerPayments() {
         <table className="erp-grid">
           <thead><tr><th>Payment#</th><th>Date</th><th>Customer</th><th>Amount</th><th>Method</th><th>Reference</th><th>Actions</th></tr></thead>
           <tbody>
-            {payments.length === 0 ? <tr><td colSpan="7" className="text-center p-4 text-gray-500">No payments recorded</td></tr> : payments.map(p => (
+            {payments.length === 0 ? <tr><td colSpan="7" className="text-center p-4 text-gray-500">No payments recorded</td></tr> : (payments || []).map(p => (
               <tr key={p.id}>
                 <td className="text-blue-700 font-bold">{p.payment_number}</td>
                 <td>{p.payment_date?.split('T')[0]}</td>
@@ -96,7 +96,7 @@ function CustomerPayments() {
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="erp-form-group"><label className="erp-form-label">Customer*:</label>
                   <select className="erp-form-select" value={form.customer_id} onChange={e => handleCustomerChange(e.target.value)}>
-                    <option value="">Select Customer...</option>{customers.map(c => <option key={c.id} value={c.id}>{c.company_name || c.name} ({c.customer_number})</option>)}
+                    <option value="">Select Customer...</option>{(customers || []).map(c => <option key={c.id} value={c.id}>{c.company_name || c.name} ({c.customer_number})</option>)}
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Payment Date:</label><input className="erp-form-input" type="date" value={form.payment_date} onChange={e => setForm({ ...form, payment_date: e.target.value })} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Amount*:</label><input className="erp-form-input" type="number" step="0.01" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} /></div>

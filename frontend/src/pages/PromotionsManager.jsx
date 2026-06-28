@@ -137,7 +137,7 @@ export default function PromotionsManager() {
         api.get('/api/dashboard-exec/promotions'),
         api.get('/api/dashboard-exec/promotions/analytics')
       ]);
-      setPromotions(promosRes.data);
+      setPromotions(Array.isArray(promosRes.data) ? promosRes.data : []);
       setAnalytics(analyticsRes.data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -195,7 +195,7 @@ export default function PromotionsManager() {
 
       {loading ? <p style={{ color: '#6b7280' }}>Loading...</p> : tab === 'list' ? (
         <div style={{ display: 'grid', gap: '12px' }}>
-          {promotions.map(promo => (
+          {(promotions || []).map(promo => (
             <div key={promo.id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '14px', background: '#fff', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ width: '4px', height: '50px', borderRadius: '2px', background: TYPE_COLORS[promo.promo_type] || '#3b82f6' }} />
               <div style={{ flex: 1 }}>

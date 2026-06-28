@@ -49,7 +49,7 @@ function Vendors() {
         <table className="erp-grid">
           <thead><tr><th>Vendor#</th><th>Company Name</th><th>Contact</th><th>Phone</th><th>Email</th><th>City</th><th>State</th><th>Terms</th></tr></thead>
           <tbody>
-            {vendors.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No vendors found</td></tr> : vendors.map(v => (
+            {vendors.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No vendors found</td></tr> : (vendors || []).map(v => (
               <tr key={v.id} className={`cursor-pointer ${selected?.id === v.id ? 'bg-blue-100' : ''}`} onClick={() => openDetail(v)}>
                 <td className="text-blue-700 font-bold">{v.vendor_number}</td>
                 <td>{v.company_name || v.name}</td>

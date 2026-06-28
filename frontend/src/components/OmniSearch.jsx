@@ -240,7 +240,7 @@ export default function OmniSearch() {
 
           {!loading && results.length > 0 && (
             <ul className="omni-search-list">
-              {results.map((result, idx) => {
+              {(results || []).map((result, idx) => {
                 const catInfo = getCategoryInfo(result.type);
                 const Icon = catInfo.icon || FaFileAlt;
                 return (

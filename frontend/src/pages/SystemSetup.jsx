@@ -485,7 +485,7 @@ function PermissionsMatrix() {
     try {
       setLoading(true);
       const res = await api.get('/api/setup/permissions/matrix');
-      setData(res.data);
+      setData(Array.isArray(res.data) ? res.data : []);
       setChanges({});
     } catch (e) { console.error(e); }
     finally { setLoading(false); }

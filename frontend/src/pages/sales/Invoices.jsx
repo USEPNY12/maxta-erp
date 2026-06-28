@@ -96,7 +96,7 @@ function Invoices() {
         <table className="erp-grid">
           <thead><tr><th>Invoice#</th><th>Date</th><th>Customer</th><th>Order#</th><th>Shipment#</th><th>Total</th><th>Balance Due</th><th>Status</th></tr></thead>
           <tbody>
-            {invoices.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No invoices found</td></tr> : invoices.map(inv => (
+            {invoices.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No invoices found</td></tr> : (invoices || []).map(inv => (
               <tr key={inv.id} className="cursor-pointer" onClick={() => openDetail(inv)}>
                 <td className="text-blue-700 font-bold">{inv.invoice_number}</td>
                 <td>{formatDate(inv.invoice_date)}</td>

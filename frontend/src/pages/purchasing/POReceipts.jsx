@@ -44,7 +44,7 @@ function POReceipts() {
           <thead><tr><th>Receipt No.</th><th>Date</th><th>PO Number</th><th>Vendor</th><th>Packing Slip</th><th>Location</th><th>Items</th><th>Status</th></tr></thead>
           <tbody>
             {receipts.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No receipts found</td></tr> :
-            receipts.map(r => (
+            (receipts || []).map(r => (
               <tr key={r.id} className="cursor-pointer hover:bg-blue-50" onClick={() => openDetail(r)}>
                 <td className="font-bold text-green-700">{r.receipt_number}</td>
                 <td>{fmt(r.receipt_date)}</td>

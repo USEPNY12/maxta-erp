@@ -51,7 +51,7 @@ function Reports() {
       const params = {};
       if (report.hasDateRange) { params.from_date = fromDate; params.to_date = toDate; }
       const res = await api.get(report.endpoint, { params });
-      setData(res.data);
+      setData(Array.isArray(res.data) ? res.data : []);
     } catch { setData(null); }
     setLoading(false);
   };
@@ -159,7 +159,7 @@ function Reports() {
         <table className="w-full text-sm border-collapse">
           <thead><tr className="bg-gray-100 border-b"><th className="p-2 text-left">Account #</th><th className="p-2 text-left">Account Name</th><th className="p-2 text-left">Type</th><th className="p-2 text-right">Debits</th><th className="p-2 text-right">Credits</th><th className="p-2 text-right">Balance</th></tr></thead>
           <tbody>
-            {accounts.map(a => (
+            {(accounts || []).map(a => (
               <tr key={a.account_number} className="border-b hover:bg-blue-50"><td className="p-2">{a.account_number}</td><td className="p-2">{a.account_name}</td><td className="p-2 capitalize">{a.account_type}</td><td className="p-2 text-right font-mono">{fmtCurrency(a.total_debits)}</td><td className="p-2 text-right font-mono">{fmtCurrency(a.total_credits)}</td><td className="p-2 text-right font-mono">{fmtCurrency(a.balance)}</td></tr>
             ))}
           </tbody>
@@ -204,7 +204,7 @@ function Reports() {
         {Object.entries(REPORTS).map(([cat, reports]) => (
           <div key={cat} className="border-b border-gray-200">
             <div className="px-3 py-2 bg-gray-50 text-xs font-bold text-gray-700 uppercase">{cat}</div>
-            {reports.map(r => (
+            {(reports || []).map(r => (
               <div key={r.id} onClick={() => runReport(r)} className={`px-4 py-1.5 text-sm cursor-pointer hover:bg-blue-50 ${activeReport?.id === r.id ? 'bg-blue-100 text-blue-800 font-medium' : 'text-gray-700'}`}>{r.name}</div>
             ))}
           </div>
@@ -219,7 +219,7 @@ function Reports() {
               {Object.entries(REPORTS).map(([cat, reports]) => (
                 <div key={cat} className="bg-white rounded shadow p-3">
                   <h4 className="font-bold text-sm mb-2">{cat}</h4>
-                  {reports.map(r => <div key={r.id} className="text-xs text-gray-600 py-0.5 cursor-pointer hover:text-blue-600" onClick={() => runReport(r)}>{r.name}</div>)}
+                  {(reports || []).map(r => <div key={r.id} className="text-xs text-gray-600 py-0.5 cursor-pointer hover:text-blue-600" onClick={() => runReport(r)}>{r.name}</div>)}
                 </div>
               ))}
             </div>

@@ -318,7 +318,7 @@ function InlineEditTable({
                 </td>
               </tr>
             ) : (
-              data.map(row => (
+              (data || []).map(row => (
                 <tr key={row[idField]} className={hasPendingChange(row[idField], '') ? 'row-modified' : ''}>
                   {columns.map(col => (
                     <td key={col.key} style={{ textAlign: col.align || 'left', padding: '0' }}>

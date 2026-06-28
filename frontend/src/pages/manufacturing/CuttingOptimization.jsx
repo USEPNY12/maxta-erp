@@ -52,7 +52,7 @@ export default function CuttingOptimization() {
       ]);
       setSheets(sheetsRes.data);
       setRemnants(remnantsRes.data);
-      setPlans(plansRes.data);
+      setPlans(Array.isArray(plansRes.data) ? plansRes.data : []);
       setStats(statsRes.data);
     } catch (err) { console.error(err); }
   };
@@ -702,7 +702,7 @@ export default function CuttingOptimization() {
                   </tr>
                 </thead>
                 <tbody>
-                  {plans.map(p => (
+                  {(plans || []).map(p => (
                     <tr key={p.id} className="border-t hover:bg-gray-50">
                       <td className="p-2 font-semibold">{p.plan_number}</td>
                       <td className="p-2">{new Date(p.plan_date).toLocaleDateString()}</td>

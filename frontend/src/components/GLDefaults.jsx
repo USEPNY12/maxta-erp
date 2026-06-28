@@ -101,7 +101,7 @@ export default function GLDefaults() {
                     <select value={settings[key] || ''} onChange={e => handleChange(key, e.target.value)}
                       className="flex-1 border rounded px-2 py-1.5 text-sm bg-white">
                       <option value="">-- Not Set --</option>
-                      {accounts.map(a => (
+                      {(accounts || []).map(a => (
                         <option key={a.account_number} value={a.account_number}>
                           {a.account_number} - {a.account_name}
                         </option>

@@ -109,7 +109,7 @@ function RollsTab() {
   const [form, setForm] = useState({ roll_number: '', material_type: 'PVB', thickness_mm: '', width_mm: '', original_length_m: '', lot_number: '', manufacturer: '', color: 'Clear', received_date: '', expiry_date: '', cost_per_sqm: '' });
 
   useEffect(() => { loadRolls(); }, [filter]);
-  const loadRolls = () => api.get('/api/lamination/rolls', { params: filter ? { material_type: filter } : {} }).then(r => setRolls(r.data)).catch(() => {});
+  const loadRolls = () => api.get('/api/lamination/rolls', { params: filter ? { material_type: filter } : {} }).then(r => setRolls(Array.isArray(r.data) ? r.data : [])).catch(() => {});
 
   const addRoll = async () => {
     try {
@@ -152,7 +152,7 @@ function RollsTab() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {rolls.map(roll => (
+            {(rolls || []).map(roll => (
               <tr key={roll.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm font-medium">{roll.roll_number}</td>
                 <td className="px-4 py-3 text-sm">{roll.material_type}</td>
@@ -366,7 +366,7 @@ function BOMBuilderTab() {
                 <label className="text-xs font-medium text-gray-600">Item *</label>
                 <select className="w-full border rounded px-3 py-2 text-sm" value={lineForm.component_item_id} onChange={e => setLineForm({...lineForm, component_item_id: e.target.value})}>
                   <option value="">Select item...</option>
-                  {items.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
+                  {(items || []).map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
                 </select>
               </div>
               <div><label className="text-xs font-medium text-gray-600">Quantity</label><input type="number" step="0.01" className="w-full border rounded px-3 py-2 text-sm" value={lineForm.quantity_per} onChange={e => setLineForm({...lineForm, quantity_per: e.target.value})} /></div>
@@ -399,9 +399,9 @@ function InterlayerOptimizerTab() {
   const [subTab, setSubTab] = useState('queue');
 
   useEffect(() => {
-    api.get('/api/lamination/interlayer-optimizer/queue').then(r => setQueue(r.data)).catch(() => {});
-    api.get('/api/lamination/rolls', { params: { status: 'in_use' } }).then(r => setRolls(r.data)).catch(() => {});
-    api.get('/api/lamination/interlayer-optimizer/plans').then(r => setPlans(r.data)).catch(() => {});
+    api.get('/api/lamination/interlayer-optimizer/queue').then(r => setQueue(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get('/api/lamination/rolls', { params: { status: 'in_use' } }).then(r => setRolls(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get('/api/lamination/interlayer-optimizer/plans').then(r => setPlans(Array.isArray(r.data) ? r.data : [])).catch(() => {});
   }, []);
 
   const toggleWO = (id) => {
@@ -414,8 +414,8 @@ function InterlayerOptimizerTab() {
       const res = await api.post('/api/lamination/interlayer-optimizer/generate-plan', { roll_id: parseInt(selectedRoll), work_order_ids: selectedWOs });
       alert(`Cut plan ${res.data.plan_number} created! ${res.data.total_pieces} pieces, ${res.data.total_length_m.toFixed(2)}m used.`);
       setSelectedWOs([]);
-      api.get('/api/lamination/interlayer-optimizer/plans').then(r => setPlans(r.data));
-      api.get('/api/lamination/interlayer-optimizer/queue').then(r => setQueue(r.data));
+      api.get('/api/lamination/interlayer-optimizer/plans').then(r => setPlans(Array.isArray(r.data) ? r.data : []));
+      api.get('/api/lamination/interlayer-optimizer/queue').then(r => setQueue(Array.isArray(r.data) ? r.data : []));
     } catch (e) { alert(e.response?.data?.error || 'Error generating plan'); }
   };
 
@@ -424,8 +424,8 @@ function InterlayerOptimizerTab() {
     try {
       await api.post(`/api/lamination/interlayer-optimizer/plans/${planId}/execute`);
       alert('Cut plan executed!');
-      api.get('/api/lamination/interlayer-optimizer/plans').then(r => setPlans(r.data));
-      api.get('/api/lamination/rolls').then(r => setRolls(r.data));
+      api.get('/api/lamination/interlayer-optimizer/plans').then(r => setPlans(Array.isArray(r.data) ? r.data : []));
+      api.get('/api/lamination/rolls').then(r => setRolls(Array.isArray(r.data) ? r.data : []));
     } catch (e) { alert(e.response?.data?.error || 'Error'); }
   };
 
@@ -445,7 +445,7 @@ function InterlayerOptimizerTab() {
                 <label className="text-xs font-medium text-gray-600">Select Roll</label>
                 <select className="border rounded px-3 py-2 text-sm" value={selectedRoll} onChange={e => setSelectedRoll(e.target.value)}>
                   <option value="">Choose roll...</option>
-                  {rolls.map(r => <option key={r.id} value={r.id}>{r.roll_number} ({r.material_type} {r.thickness_mm}mm, {r.width_mm}mm wide, {r.current_length_m}m left)</option>)}
+                  {(rolls || []).map(r => <option key={r.id} value={r.id}>{r.roll_number} ({r.material_type} {r.thickness_mm}mm, {r.width_mm}mm wide, {r.current_length_m}m left)</option>)}
                 </select>
               </div>
               <button onClick={generatePlan} className="bg-green-600 text-white px-4 py-2 rounded text-sm" disabled={!selectedRoll || selectedWOs.length === 0}>
@@ -458,7 +458,7 @@ function InterlayerOptimizerTab() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"><input type="checkbox" onChange={e => setSelectedWOs(e.target.checked ? queue.map(q => q.id) : [])} /></th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase"><input type="checkbox" onChange={e => setSelectedWOs(e.target.checked ? (queue || []).map(q => q.id) : [])} /></th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">WO #</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Parent WO</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Width × Height</th>
@@ -468,7 +468,7 @@ function InterlayerOptimizerTab() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {queue.map(wo => (
+                {(queue || []).map(wo => (
                   <tr key={wo.id} className={`hover:bg-gray-50 ${selectedWOs.includes(wo.id) ? 'bg-blue-50' : ''}`}>
                     <td className="px-4 py-3"><input type="checkbox" checked={selectedWOs.includes(wo.id)} onChange={() => toggleWO(wo.id)} /></td>
                     <td className="px-4 py-3 text-sm font-medium">{wo.order_number}</td>
@@ -501,7 +501,7 @@ function InterlayerOptimizerTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {plans.map(plan => (
+              {(plans || []).map(plan => (
                 <tr key={plan.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm font-medium">{plan.plan_number}</td>
                   <td className="px-4 py-3 text-sm">{plan.roll_number}</td>
@@ -532,9 +532,9 @@ function CleanRoomTab() {
   const [rolls, setRolls] = useState([]);
 
   useEffect(() => {
-    api.get('/api/lamination/cleanroom/sessions').then(r => setSessions(r.data)).catch(() => {});
-    api.get('/api/lamination/layups').then(r => setLayups(r.data)).catch(() => {});
-    api.get('/api/lamination/rolls', { params: { status: 'in_use' } }).then(r => setRolls(r.data)).catch(() => {});
+    api.get('/api/lamination/cleanroom/sessions').then(r => setSessions(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get('/api/lamination/layups').then(r => setLayups(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get('/api/lamination/rolls', { params: { status: 'in_use' } }).then(r => setRolls(Array.isArray(r.data) ? r.data : [])).catch(() => {});
   }, []);
 
   const startSession = async () => {
@@ -542,13 +542,13 @@ function CleanRoomTab() {
       const res = await api.post('/api/lamination/cleanroom/sessions', sessionForm);
       alert(`Session ${res.data.session_number} started`);
       setShowNewSession(false);
-      api.get('/api/lamination/cleanroom/sessions').then(r => setSessions(r.data));
+      api.get('/api/lamination/cleanroom/sessions').then(r => setSessions(Array.isArray(r.data) ? r.data : []));
     } catch (e) { alert(e.response?.data?.error || 'Error'); }
   };
 
   const endSession = async (id) => {
     await api.put(`/api/lamination/cleanroom/sessions/${id}/end`);
-    api.get('/api/lamination/cleanroom/sessions').then(r => setSessions(r.data));
+    api.get('/api/lamination/cleanroom/sessions').then(r => setSessions(Array.isArray(r.data) ? r.data : []));
   };
 
   const recordLayup = async () => {
@@ -557,13 +557,13 @@ function CleanRoomTab() {
       await api.post('/api/lamination/layups', { ...layupForm, cleanroom_session_id: activeSession?.id });
       alert('Layup recorded!');
       setShowNewLayup(false);
-      api.get('/api/lamination/layups').then(r => setLayups(r.data));
+      api.get('/api/lamination/layups').then(r => setLayups(Array.isArray(r.data) ? r.data : []));
     } catch (e) { alert(e.response?.data?.error || 'Error'); }
   };
 
   const updateLayupStatus = async (id, status) => {
     await api.put(`/api/lamination/layups/${id}/status`, { status });
-    api.get('/api/lamination/layups').then(r => setLayups(r.data));
+    api.get('/api/lamination/layups').then(r => setLayups(Array.isArray(r.data) ? r.data : []));
   };
 
   const activeSession = sessions.find(s => s.status === 'active');
@@ -606,7 +606,7 @@ function CleanRoomTab() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {layups.map(l => (
+            {(layups || []).map(l => (
               <tr key={l.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm font-medium">{l.order_number}</td>
                 <td className="px-4 py-3 text-sm">{l.roll_number} ({l.material_type})</td>
@@ -653,7 +653,7 @@ function CleanRoomTab() {
               <div><label className="text-xs font-medium text-gray-600">Interlayer Roll *</label>
                 <select className="w-full border rounded px-3 py-2 text-sm" value={layupForm.roll_id} onChange={e => setLayupForm({...layupForm, roll_id: e.target.value})}>
                   <option value="">Select roll (scan barcode)...</option>
-                  {rolls.map(r => <option key={r.id} value={r.id}>{r.roll_number} - {r.material_type} {r.thickness_mm}mm (Lot: {r.lot_number})</option>)}
+                  {(rolls || []).map(r => <option key={r.id} value={r.id}>{r.roll_number} - {r.material_type} {r.thickness_mm}mm (Lot: {r.lot_number})</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -698,9 +698,9 @@ function AutoclaveTab() {
   }, []);
 
   const loadData = () => {
-    api.get('/api/lamination/autoclave/batches').then(r => setBatches(r.data)).catch(() => {});
-    api.get('/api/lamination/autoclave/recipes').then(r => setRecipes(r.data)).catch(() => {});
-    api.get('/api/lamination/layups', { params: { status: 'ready_for_autoclave' } }).then(r => setReadyLayups(r.data)).catch(() => {});
+    api.get('/api/lamination/autoclave/batches').then(r => setBatches(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get('/api/lamination/autoclave/recipes').then(r => setRecipes(Array.isArray(r.data) ? r.data : [])).catch(() => {});
+    api.get('/api/lamination/layups', { params: { status: 'ready_for_autoclave' } }).then(r => setReadyLayups(Array.isArray(r.data) ? r.data : [])).catch(() => {});
   };
 
   const createBatch = async () => {
@@ -761,7 +761,7 @@ function AutoclaveTab() {
         <div className="bg-white border rounded-lg overflow-hidden">
           <div className="px-4 py-3 border-b bg-gray-50"><h4 className="font-medium text-sm">Batches</h4></div>
           <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
-            {batches.map(batch => (
+            {(batches || []).map(batch => (
               <div key={batch.id} onClick={() => loadBatchDetail(batch.id)} className={`px-4 py-3 cursor-pointer hover:bg-gray-50 ${selectedBatch === batch.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`}>
                 <div className="flex items-center justify-between">
                   <div>
@@ -809,7 +809,7 @@ function AutoclaveTab() {
             </div>
           ) : (
             <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
-              {readyLayups.map(l => (
+              {(readyLayups || []).map(l => (
                 <div key={l.id} className="px-4 py-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium">{l.order_number}</p>
@@ -860,13 +860,13 @@ function RecipesTab() {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ recipe_name: '', recipe_code: '', interlayer_type: 'PVB', min_thickness_mm: '', max_thickness_mm: '', ramp_rate_c_per_min: 1.5, target_temperature_c: 135, soak_time_min: 60, max_pressure_bar: 12, cooling_rate_c_per_min: 2, total_cycle_hours: 3.5, vacuum_required: false, notes: '' });
 
-  useEffect(() => { api.get('/api/lamination/autoclave/recipes').then(r => setRecipes(r.data)).catch(() => {}); }, []);
+  useEffect(() => { api.get('/api/lamination/autoclave/recipes').then(r => setRecipes(Array.isArray(r.data) ? r.data : [])).catch(() => {}); }, []);
 
   const addRecipe = async () => {
     try {
       await api.post('/api/lamination/autoclave/recipes', { ...form, vacuum_required: form.vacuum_required ? 1 : 0 });
       setShowAdd(false);
-      api.get('/api/lamination/autoclave/recipes').then(r => setRecipes(r.data));
+      api.get('/api/lamination/autoclave/recipes').then(r => setRecipes(Array.isArray(r.data) ? r.data : []));
     } catch (e) { alert(e.response?.data?.error || 'Error'); }
   };
 
@@ -878,7 +878,7 @@ function RecipesTab() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {recipes.map(recipe => (
+        {(recipes || []).map(recipe => (
           <div key={recipe.id} className="bg-white border rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-semibold">{recipe.recipe_name}</h4>

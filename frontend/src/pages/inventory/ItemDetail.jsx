@@ -586,7 +586,7 @@ function ItemDetail() {
               <tbody>
                 {vendors.length === 0 ? (
                   <tr><td colSpan="8" className="text-center p-4 text-gray-500">No vendors assigned. Click "Add Vendor" to link suppliers.</td></tr>
-                ) : vendors.map(v => (
+                ) : (vendors || []).map(v => (
                   <tr key={v.id} className={v.is_preferred ? 'bg-yellow-50' : ''}>
                     <td className="text-blue-700">{v.vendor_name}</td>
                     <td>{v.vendor_item_number}</td>
@@ -622,7 +622,7 @@ function ItemDetail() {
               <tbody>
                 {customers.length === 0 ? (
                   <tr><td colSpan="7" className="text-center p-4 text-gray-500">No customers assigned. Click "Add Customer" to link buyers.</td></tr>
-                ) : customers.map(c => (
+                ) : (customers || []).map(c => (
                   <tr key={c.id} className={c.is_preferred ? 'bg-yellow-50' : ''}>
                     <td className="text-blue-700">{c.customer_name}</td>
                     <td>{c.customer_item_number}</td>

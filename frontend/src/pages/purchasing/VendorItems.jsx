@@ -62,7 +62,7 @@ function VendorItems() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((item, idx) => (
+            {(filtered || []).map((item, idx) => (
               <tr key={idx}>
                 <td style={{ color: '#1a73e8', fontWeight: 500 }}>{item.item_number}</td>
                 <td>{item.description}</td>

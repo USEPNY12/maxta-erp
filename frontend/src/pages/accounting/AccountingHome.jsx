@@ -37,7 +37,7 @@ function AccountingHome() {
   const FinSection = ({ title, items, totalLabel, totalValue }) => (
     <div className="mb-4">
       <h4 className="font-bold text-sm border-b pb-1 mb-2">{title}</h4>
-      {items.map(a => (<div key={a.account_number} className="flex justify-between text-sm py-1"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmt(a.balance)}</span></div>))}
+      {(items || []).map(a => (<div key={a.account_number} className="flex justify-between text-sm py-1"><span>{a.account_number} - {a.account_name}</span><span className="font-mono">{fmt(a.balance)}</span></div>))}
       <div className="flex justify-between font-bold text-sm border-t pt-1 mt-1"><span>{totalLabel}</span><span className="font-mono">{fmt(totalValue)}</span></div>
     </div>
   );

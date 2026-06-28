@@ -164,7 +164,7 @@ export default function KioskMode() {
                 className="w-full p-4 bg-gray-700 text-white rounded-xl text-lg border border-gray-600 focus:border-blue-500 focus:outline-none"
               >
                 <option value="">Select Station...</option>
-                {stations.map(s => (
+                {(stations || []).map(s => (
                   <option key={s.station_code} value={s.station_code}>{s.station_name} ({s.station_code})</option>
                 ))}
               </select>

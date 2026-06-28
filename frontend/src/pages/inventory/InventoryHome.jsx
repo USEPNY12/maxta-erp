@@ -169,8 +169,8 @@ function AdjustmentsPanel() {
       </div>
       {showNew && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded grid grid-cols-4 gap-3">
-          <select className="border rounded px-2 py-1 text-sm" value={form.item_id} onChange={e => setForm({...form, item_id: e.target.value})}><option value="">Select Item</option>{items.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}</select>
-          <select className="border rounded px-2 py-1 text-sm" value={form.location_id} onChange={e => setForm({...form, location_id: e.target.value})}><option value="">Select Location</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
+          <select className="border rounded px-2 py-1 text-sm" value={form.item_id} onChange={e => setForm({...form, item_id: e.target.value})}><option value="">Select Item</option>{(items || []).map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}</select>
+          <select className="border rounded px-2 py-1 text-sm" value={form.location_id} onChange={e => setForm({...form, location_id: e.target.value})}><option value="">Select Location</option>{(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
           <select className="border rounded px-2 py-1 text-sm" value={form.adjustment_type} onChange={e => setForm({...form, adjustment_type: e.target.value})}><option value="increase">Increase</option><option value="decrease">Decrease</option></select>
           <input type="number" placeholder="Quantity" className="border rounded px-2 py-1 text-sm" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} />
           <input placeholder="Reason Code" className="border rounded px-2 py-1 text-sm" value={form.reason_code} onChange={e => setForm({...form, reason_code: e.target.value})} />
@@ -214,9 +214,9 @@ function TransfersPanel() {
       </div>
       {showNew && (
         <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded grid grid-cols-4 gap-3">
-          <select className="border rounded px-2 py-1 text-sm" value={form.item_id} onChange={e => setForm({...form, item_id: e.target.value})}><option value="">Select Item</option>{items.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}</select>
-          <select className="border rounded px-2 py-1 text-sm" value={form.from_location_id} onChange={e => setForm({...form, from_location_id: e.target.value})}><option value="">From Location</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
-          <select className="border rounded px-2 py-1 text-sm" value={form.to_location_id} onChange={e => setForm({...form, to_location_id: e.target.value})}><option value="">To Location</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
+          <select className="border rounded px-2 py-1 text-sm" value={form.item_id} onChange={e => setForm({...form, item_id: e.target.value})}><option value="">Select Item</option>{(items || []).map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}</select>
+          <select className="border rounded px-2 py-1 text-sm" value={form.from_location_id} onChange={e => setForm({...form, from_location_id: e.target.value})}><option value="">From Location</option>{(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
+          <select className="border rounded px-2 py-1 text-sm" value={form.to_location_id} onChange={e => setForm({...form, to_location_id: e.target.value})}><option value="">To Location</option>{(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
           <input type="number" placeholder="Quantity" className="border rounded px-2 py-1 text-sm" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} />
           <input placeholder="Lot Number" className="border rounded px-2 py-1 text-sm" value={form.lot_number} onChange={e => setForm({...form, lot_number: e.target.value})} />
           <input placeholder="Reason" className="border rounded px-2 py-1 text-sm" value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} />

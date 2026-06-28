@@ -46,7 +46,7 @@ function PurchasingAPInvoices() {
               </tr>
             </thead>
             <tbody>
-              {invoices.map(inv => (
+              {(invoices || []).map(inv => (
                 <tr key={inv.id}>
                   <td className="font-medium">{inv.invoice_number}</td>
                   <td>{inv.vendor_name}</td>

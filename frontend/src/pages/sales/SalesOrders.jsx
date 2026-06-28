@@ -160,7 +160,7 @@ function SalesOrders() {
         <table className="erp-grid">
           <thead><tr><th>Order#</th><th>Date</th><th>Customer</th><th>Project</th><th>PO#</th><th>Total</th><th>WOs</th><th>Status</th></tr></thead>
           <tbody>
-            {orders.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No orders found</td></tr> : orders.map(o => (
+            {orders.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No orders found</td></tr> : (orders || []).map(o => (
               <tr key={o.id} className="cursor-pointer" onClick={() => openDetail(o)}>
                 <td className="text-blue-700 font-bold">{o.order_number}</td>
                 <td>{formatDate(o.order_date)}</td>
@@ -438,7 +438,7 @@ function SalesOrders() {
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="erp-form-group"><label className="erp-form-label">Customer*:</label>
                   <select className="erp-form-select" value={newOrder.customer_id} onChange={e => setNewOrder({ ...newOrder, customer_id: e.target.value })}>
-                    <option value="">Select...</option>{customers.map(c => <option key={c.id} value={c.id}>{c.company_name || c.name}</option>)}
+                    <option value="">Select...</option>{(customers || []).map(c => <option key={c.id} value={c.id}>{c.company_name || c.name}</option>)}
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Project:</label><input className="erp-form-input" value={newOrder.project_name} onChange={e => setNewOrder({ ...newOrder, project_name: e.target.value })} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Customer PO#:</label><input className="erp-form-input" value={newOrder.customer_po} onChange={e => setNewOrder({ ...newOrder, customer_po: e.target.value })} /></div>

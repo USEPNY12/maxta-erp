@@ -26,7 +26,7 @@ export default function QCInspection() {
         api.get('/manufacturing/work-centers')
       ]);
       setCheckpoints(cpRes.data);
-      setResults(resRes.data);
+      setResults(Array.isArray(resRes.data) ? resRes.data : []);
       setSummary(sumRes.data);
       setWorkCenters(wcRes.data);
     } catch (err) { console.error(err); }
@@ -242,7 +242,7 @@ export default function QCInspection() {
               </tr>
             </thead>
             <tbody>
-              {results.map(r => (
+              {(results || []).map(r => (
                 <tr key={r.id} className={`border-t ${r.result === 'fail' ? 'bg-red-50' : ''}`}>
                   <td className="px-3 py-2 font-mono text-xs text-blue-600">{r.wo_number}</td>
                   <td className="px-3 py-2">

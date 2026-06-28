@@ -72,7 +72,7 @@ function BillOfMaterials() {
             <table className="erp-grid text-xs">
               <thead><tr><th>Item No.</th><th>Description</th><th>Type</th></tr></thead>
               <tbody>
-                {items.map(item => (
+                {(items || []).map(item => (
                   <tr
                     key={item.id}
                     className={`cursor-pointer ${selectedItem?.id === item.id ? 'bg-blue-200' : ''}`}

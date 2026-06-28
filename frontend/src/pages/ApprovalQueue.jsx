@@ -27,7 +27,7 @@ export default function ApprovalQueue() {
         api.get('/api/cpq/approvals/all'),
         api.get('/api/cpq/approvals/workflows')
       ]);
-      setQueue(queueRes.data);
+      setQueue(Array.isArray(queueRes.data) ? queueRes.data : []);
       setAllApprovals(allRes.data);
       setWorkflows(wfRes.data);
     } catch (err) {
@@ -106,7 +106,7 @@ export default function ApprovalQueue() {
                 {queue.length === 0 ? (
                   <div className="aq-empty">No pending approvals. All clear!</div>
                 ) : (
-                  queue.map(item => (
+                  (queue || []).map(item => (
                     <div key={item.id} className="aq-card">
                       <div className="aq-card-header">
                         <span className="aq-doc-type">{getDocTypeIcon(item.document_type)} {item.document_type.replace('_', ' ').toUpperCase()}</span>

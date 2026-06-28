@@ -71,7 +71,7 @@ function Locations() {
               <thead><tr><th>Date</th><th>Type</th><th>Item</th><th>Lot #</th><th>Qty</th><th>Location</th><th>Reference</th></tr></thead>
               <tbody>
                 {transactions.length === 0 ? <tr><td colSpan="7" className="text-center p-4 text-gray-500">No transactions recorded</td></tr> :
-                transactions.map((t, i) => (
+                (transactions || []).map((t, i) => (
                   <tr key={i}>
                     <td>{fmt(t.transaction_date)}</td>
                     <td><span className={`text-xs px-2 py-0.5 rounded ${t.transaction_type === 'receipt' ? 'bg-green-100 text-green-700' : t.transaction_type === 'issue' ? 'bg-red-100 text-red-700' : t.transaction_type === 'transfer' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>{t.transaction_type}</span></td>

@@ -304,7 +304,7 @@ function PurchaseOrders() {
         <div class="info-box"><strong>Ship To:</strong><br>${selected.ship_to_location || 'Main Warehouse'}<br><br><strong>Type:</strong> ${selected.po_type || 'standard'}<br><strong>Status:</strong> ${(selected.status || '').toUpperCase()}</div>
       </div>
       <table><thead><tr><th>#</th><th>Item</th><th>Description</th><th>Glass Spec</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>
-      ${lines.map((l, i) => `<tr><td>${i + 1}</td><td>${l.item_number || '-'}</td><td>${l.description || l.item_description || ''}</td><td>${l.glass_type ? l.glass_type + ' ' + (l.thickness || '') + ' ' + (l.width ? l.width + 'x' + l.height + '"' : '') : '-'}</td><td style="text-align:right">${parseFloat(l.quantity_ordered || l.quantity || 0)}</td><td style="text-align:right">$${parseFloat(l.unit_cost || l.unit_price || 0).toFixed(2)}</td><td style="text-align:right">$${(parseFloat(l.quantity_ordered || l.quantity || 0) * parseFloat(l.unit_cost || l.unit_price || 0)).toFixed(2)}</td></tr>`).join('')}
+      ${(lines || []).map((l, i) => `<tr><td>${i + 1}</td><td>${l.item_number || '-'}</td><td>${l.description || l.item_description || ''}</td><td>${l.glass_type ? l.glass_type + ' ' + (l.thickness || '') + ' ' + (l.width ? l.width + 'x' + l.height + '"' : '') : '-'}</td><td style="text-align:right">${parseFloat(l.quantity_ordered || l.quantity || 0)}</td><td style="text-align:right">$${parseFloat(l.unit_cost || l.unit_price || 0).toFixed(2)}</td><td style="text-align:right">$${(parseFloat(l.quantity_ordered || l.quantity || 0) * parseFloat(l.unit_cost || l.unit_price || 0)).toFixed(2)}</td></tr>`).join('')}
       <tr class="total-row"><td colspan="6" style="text-align:right">TOTAL:</td><td style="text-align:right">$${total.toFixed(2)}</td></tr>
       </tbody></table>
       ${selected.notes ? `<div style="margin-top:15px;padding:10px;border:1px solid #ccc"><strong>Notes:</strong> ${selected.notes}</div>` : ''}
@@ -371,7 +371,7 @@ function PurchaseOrders() {
           <thead><tr><th>PO Number</th><th>Date</th><th>Vendor</th><th>Type</th><th>Lines</th><th>Total</th><th>Received</th><th>Status</th></tr></thead>
           <tbody>
             {orders.length === 0 ? <tr><td colSpan="8" className="text-center p-4 text-gray-500">No purchase orders found</td></tr> :
-            orders.map(po => (
+            (orders || []).map(po => (
               <tr key={po.id} className="cursor-pointer hover:bg-blue-50" onClick={() => openDetail(po)}>
                 <td className="font-bold text-blue-700">{po.po_number}</td>
                 <td>{fmt(po.order_date || po.po_date)}</td>
@@ -437,7 +437,7 @@ function PurchaseOrders() {
                   <div className="grid grid-cols-3 gap-3">
                     <div className="erp-form-group"><label className="erp-form-label text-xs">Vendor</label>
                       <select className="erp-form-select text-xs" value={editPO.vendor_id} onChange={e => handleVendorChange(e.target.value, true)}>
-                        <option value="">Select...</option>{vendors.map(v => <option key={v.id} value={v.id}>{v.company_name || v.name}</option>)}
+                        <option value="">Select...</option>{(vendors || []).map(v => <option key={v.id} value={v.id}>{v.company_name || v.name}</option>)}
                       </select>
                     </div>
                     <div className="erp-form-group"><label className="erp-form-label text-xs">Required Date</label>
@@ -587,7 +587,7 @@ function PurchaseOrders() {
               <div className="mb-3">
                 <label className="erp-form-label text-xs">Receive to Location:</label>
                 <select className="erp-form-select w-48" value={receiveLocation} onChange={e => setReceiveLocation(e.target.value)}>
-                  <option value="">Select Location...</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  <option value="">Select Location...</option>{(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
               </div>
               <table className="erp-grid text-xs">
@@ -600,7 +600,7 @@ function PurchaseOrders() {
                     <td className="text-right text-green-700">{l.qty_received}</td>
                     <td><input className="erp-form-input w-16 text-right" type="number" value={l.qty_to_receive} onChange={e => { const rl = [...receiveLines]; rl[i].qty_to_receive = parseFloat(e.target.value) || 0; setReceiveLines(rl); }} /></td>
                     <td><select className="erp-form-select w-28" value={l.location_id} onChange={e => { const rl = [...receiveLines]; rl[i].location_id = e.target.value; setReceiveLines(rl); }}>
-                      <option value="">Default</option>{locations.map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
+                      <option value="">Default</option>{(locations || []).map(loc => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
                     </select></td>
                     <td><input className="erp-form-input w-24" value={l.lot_number} onChange={e => { const rl = [...receiveLines]; rl[i].lot_number = e.target.value; setReceiveLines(rl); }} placeholder="Auto" /></td>
                     <td><input className="erp-form-input w-24" value={l.vendor_lot} onChange={e => { const rl = [...receiveLines]; rl[i].vendor_lot = e.target.value; setReceiveLines(rl); }} /></td>
@@ -625,7 +625,7 @@ function PurchaseOrders() {
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="erp-form-group"><label className="erp-form-label">Vendor *</label>
                   <select className="erp-form-select" value={newPO.vendor_id} onChange={e => handleVendorChange(e.target.value, false)}>
-                    <option value="">Select Vendor...</option>{vendors.map(v => <option key={v.id} value={v.id}>{v.company_name || v.name}</option>)}
+                    <option value="">Select Vendor...</option>{(vendors || []).map(v => <option key={v.id} value={v.id}>{v.company_name || v.name}</option>)}
                   </select>
                   {vendorItems.length > 0 && <div className="text-[10px] text-green-600 mt-1">{vendorItems.length} items assigned to this vendor</div>}
                 </div>

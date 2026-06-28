@@ -26,8 +26,8 @@ export default function InventoryAdjustments() {
         api.get('/api/inventory/locations')
       ]);
       setAdjustments(adjRes.data);
-      setItems(itemRes.data);
-      setLocations(locRes.data);
+      setItems(Array.isArray(itemRes.data) ? itemRes.data : []);
+      setLocations(Array.isArray(locRes.data) ? locRes.data : []);
     } catch (e) { toast.error('Failed to load adjustments'); }
     setLoading(false);
   }
@@ -63,14 +63,14 @@ export default function InventoryAdjustments() {
               <label className="erp-label">Item *</label>
               <select className="erp-input" value={form.item_id} onChange={e => setForm({...form, item_id: e.target.value})}>
                 <option value="">Select Item...</option>
-                {items.map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
+                {(items || []).map(i => <option key={i.id} value={i.id}>{i.item_number} - {i.description}</option>)}
               </select>
             </div>
             <div>
               <label className="erp-label">Location *</label>
               <select className="erp-input" value={form.location_id} onChange={e => setForm({...form, location_id: e.target.value})}>
                 <option value="">Select Location...</option>
-                {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                {(locations || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             </div>
             <div>

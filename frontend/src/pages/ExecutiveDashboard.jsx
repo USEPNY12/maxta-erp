@@ -244,8 +244,8 @@ export default function ExecutiveDashboard() {
         api.get('/api/dashboard-exec/config'),
         api.get('/api/dashboard-exec/promotions/active')
       ]);
-      setWidgets(widgetsRes.data);
-      setPromotions(promosRes.data);
+      setWidgets(Array.isArray(widgetsRes.data) ? widgetsRes.data : []);
+      setPromotions(Array.isArray(promosRes.data) ? promosRes.data : []);
       
       const config = configRes.data;
       const layoutData = typeof config.layout === 'string' ? JSON.parse(config.layout) : (config.layout || []);
@@ -390,7 +390,7 @@ export default function ExecutiveDashboard() {
             <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '16px' }}>Add or remove widgets based on your permissions. Only widgets you have access to are shown.</p>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              {widgets.map(w => {
+              {(widgets || []).map(w => {
                 const isActive = layout.some(l => l.widget === w.widget_key);
                 const Icon = ICON_MAP[w.widget_key] || FaChartLine;
                 return (
