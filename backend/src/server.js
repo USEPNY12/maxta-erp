@@ -112,6 +112,12 @@ try { app.use('/api/dashboard-exec', require('./routes/dashboardExec')); } catch
 // Phase 9 routes - Mobile App Readiness (Push Notifications, Kiosk Mode, Offline Sync)
 try { app.use('/api/mobile', require('./routes/mobileReady')); } catch(e) { console.log('Mobile Ready routes not loaded:', e.message); }
 
+// Phase 11 routes - Service & Operations Modules
+try { app.use('/api/maintenance', require('./routes/maintenance')); } catch(e) { console.log('Maintenance routes not loaded:', e.message); }
+try { app.use('/api/field-service', require('./routes/fieldService')); } catch(e) { console.log('Field Service routes not loaded:', e.message); }
+try { app.use('/api/warranty', require('./routes/warranty')); } catch(e) { console.log('Warranty routes not loaded:', e.message); }
+try { app.use('/api/time-attendance', require('./routes/timeAttendance')); } catch(e) { console.log('Time & Attendance routes not loaded:', e.message); }
+
 // Static uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 

@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../App';
-import { FaHome, FaCog, FaBoxes, FaDollarSign, FaWrench, FaIndustry, FaShoppingCart, FaCalculator, FaChartBar, FaExchangeAlt, FaBarcode, FaLink, FaTruck, FaHandshake, FaCalendarAlt, FaBell, FaFileAlt, FaLayerGroup, FaBars, FaTimes, FaSignOutAlt, FaUser, FaMoon, FaSun } from 'react-icons/fa';
+import { FaHome, FaCog, FaBoxes, FaDollarSign, FaWrench, FaIndustry, FaShoppingCart, FaCalculator, FaChartBar, FaExchangeAlt, FaBarcode, FaLink, FaTruck, FaHandshake, FaCalendarAlt, FaBell, FaFileAlt, FaLayerGroup, FaBars, FaTimes, FaSignOutAlt, FaUser, FaMoon, FaSun, FaTools, FaHardHat, FaShieldAlt, FaClock } from 'react-icons/fa';
 import NotificationBell from './NotificationBell';
 import Breadcrumb from './Breadcrumb';
 import OmniSearch from './OmniSearch';
@@ -45,6 +45,11 @@ const navItems = [
   { path: '/offline-scanner', label: 'Offline Scanner', icon: FaBarcode, module: null, group: 'production' },
   { path: '/notification-settings', label: 'Notifications', icon: FaBell, module: null, group: 'admin' },
   { path: '/kiosk', label: 'Kiosk Mode', icon: FaCog, module: null, group: 'admin' },
+  // Phase 11 - Service & Operations
+  { path: '/maintenance', label: 'Maintenance', icon: FaTools, module: null, group: 'service' },
+  { path: '/field-service', label: 'Field Service', icon: FaHardHat, module: null, group: 'service' },
+  { path: '/warranty', label: 'Warranty', icon: FaShieldAlt, module: null, group: 'service' },
+  { path: '/time-attendance', label: 'Time Clock', icon: FaClock, module: null, group: 'service' },
 ];
 
 // Bottom nav items for mobile (most used on shop floor)

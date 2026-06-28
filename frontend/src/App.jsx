@@ -105,6 +105,12 @@ const RackLoading = lazy(() => import('./pages/shipping/RackLoading'));
 const DriverView = lazy(() => import('./pages/shipping/DriverView'));
 const FreightCosts = lazy(() => import('./pages/shipping/FreightCosts'));
 
+// Phase 11 - Service & Operations Modules
+const Maintenance = lazy(() => import('./pages/Maintenance'));
+const FieldService = lazy(() => import('./pages/FieldService'));
+const Warranty = lazy(() => import('./pages/Warranty'));
+const TimeAttendance = lazy(() => import('./pages/TimeAttendance'));
+
 export const AuthContext = createContext(null);
 
 // Loading fallback for lazy-loaded modules
@@ -292,6 +298,11 @@ function App() {
           <Route path="shipping/rack-loading" element={<RackLoading />} />
           <Route path="shipping/fleet" element={<DriverView />} />
           <Route path="shipping/freight" element={<FreightCosts />} />
+          {/* Phase 11 - Service & Operations */}
+          <Route path="maintenance" element={<Maintenance />} />
+          <Route path="field-service" element={<FieldService />} />
+          <Route path="warranty" element={<Warranty />} />
+          <Route path="time-attendance" element={<TimeAttendance />} />
         </Route>
         {/* Kiosk Mode - standalone full-screen route (no Layout wrapper) */}
         <Route path="/kiosk" element={user ? <KioskMode /> : <Navigate to="/login" />} />
