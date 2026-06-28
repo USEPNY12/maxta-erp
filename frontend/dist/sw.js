@@ -1,9 +1,11 @@
-// MaxTA ERP Service Worker - Phase 9
-const CACHE_NAME = 'maxta-erp-v9';
-const STATIC_CACHE = 'maxta-static-v9';
-const API_CACHE = 'maxta-api-v9';
+// MaxTA ERP Service Worker v10 - Fixed caching strategy for heavy codebase
+// CRITICAL: Uses network-first for JS/CSS to prevent blue screen bug
+// where old cached index.js references chunk filenames that no longer exist after rebuild
+const CACHE_VERSION = 'v10';
+const STATIC_CACHE = `maxta-static-${CACHE_VERSION}`;
+const API_CACHE = `maxta-api-${CACHE_VERSION}`;
 
-// App shell files to cache immediately
+// Only cache the absolute minimum app shell
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -12,7 +14,7 @@ const APP_SHELL = [
   '/icons/icon-512.png'
 ];
 
-// Install: Cache app shell
+// Install: Cache app shell and immediately activate
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
@@ -21,12 +23,12 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate: Clean old caches
+// Activate: Delete ALL old caches to prevent stale chunk references
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== STATIC_CACHE && key !== API_CACHE && key !== CACHE_NAME)
+        keys.filter((key) => key !== STATIC_CACHE && key !== API_CACHE)
           .map((key) => caches.delete(key))
       );
     }).then(() => self.clients.claim())
@@ -41,66 +43,36 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (request.method !== 'GET') return;
 
-  // API requests: Network-first with short cache for dashboard/read endpoints
+  // Skip cross-origin requests
+  if (url.origin !== self.location.origin) return;
+
+  // API requests: Let browser handle normally - no SW interception
   if (url.pathname.startsWith('/api/')) {
-    // Only cache GET API requests for dashboard/read data
-    const cacheable = ['/api/health', '/api/dashboard-exec/widgets', '/api/dashboard-exec/promotions'];
-    if (cacheable.some(p => url.pathname.startsWith(p))) {
-      event.respondWith(networkFirstWithCache(request, API_CACHE, 60000)); // 1 min cache
-    }
-    return; // Let other API calls go through network normally
+    return;
   }
 
-  // Static assets (JS, CSS, images): Cache-first
-  if (url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|ico|woff2?)$/)) {
-    event.respondWith(cacheFirst(request, STATIC_CACHE));
+  // JS and CSS assets: Network-first with cache fallback
+  // This prevents the blue screen bug where stale cached bundles reference non-existent chunks
+  if (url.pathname.match(/\.(js|css)$/)) {
+    event.respondWith(networkFirstAsset(request));
+    return;
+  }
+
+  // Images and fonts: Cache-first (safe because they don't reference other files)
+  if (url.pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot)$/)) {
+    event.respondWith(cacheFirstAsset(request));
     return;
   }
 
   // HTML pages: Network-first, fallback to cached index.html (SPA)
-  if (request.headers.get('accept')?.includes('text/html')) {
-    event.respondWith(networkFirstWithFallback(request));
+  if (request.headers.get('accept')?.includes('text/html') || url.pathname === '/') {
+    event.respondWith(networkFirstHTML(request));
     return;
   }
 });
 
-// Cache-first strategy (for static assets)
-async function cacheFirst(request, cacheName) {
-  const cached = await caches.match(request);
-  if (cached) return cached;
-  try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch (e) {
-    return new Response('Offline', { status: 503 });
-  }
-}
-
-// Network-first with cache fallback (for API data)
-async function networkFirstWithCache(request, cacheName, maxAge) {
-  try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch (e) {
-    const cached = await caches.match(request);
-    if (cached) return cached;
-    return new Response(JSON.stringify({ error: 'offline', cached: false }), {
-      status: 503,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-}
-
-// Network-first with SPA fallback (for HTML)
-async function networkFirstWithFallback(request) {
+// Network-first for JS/CSS assets - prevents stale chunk bug
+async function networkFirstAsset(request) {
   try {
     const response = await fetch(request);
     if (response.ok) {
@@ -111,7 +83,38 @@ async function networkFirstWithFallback(request) {
   } catch (e) {
     const cached = await caches.match(request);
     if (cached) return cached;
-    // Fallback to cached index.html for SPA routing
+    return new Response('', { status: 503, statusText: 'Offline' });
+  }
+}
+
+// Cache-first for images/fonts (safe - they don't reference other files)
+async function cacheFirstAsset(request) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(STATIC_CACHE);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (e) {
+    return new Response('', { status: 503, statusText: 'Offline' });
+  }
+}
+
+// Network-first for HTML with SPA fallback
+async function networkFirstHTML(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(STATIC_CACHE);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (e) {
+    const cached = await caches.match(request);
+    if (cached) return cached;
     const indexCached = await caches.match('/index.html');
     if (indexCached) return indexCached;
     return new Response('<h1>Offline</h1><p>MaxTA ERP is not available offline. Please check your connection.</p>', {
@@ -152,7 +155,6 @@ self.addEventListener('notificationclick', (event) => {
   const url = event.notification.data?.url || '/';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Focus existing window or open new one
       for (const client of clientList) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
           client.navigate(url);
@@ -172,10 +174,18 @@ self.addEventListener('sync', (event) => {
 });
 
 async function syncOfflineScans() {
-  // This will be triggered when connection returns
-  // The actual sync logic is in the frontend IndexedDB handler
   const allClients = await clients.matchAll();
   for (const client of allClients) {
     client.postMessage({ type: 'SYNC_OFFLINE_SCANS' });
   }
 }
+
+// Message handler for cache management
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  if (event.data === 'CLEAR_CACHES') {
+    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))));
+  }
+});
