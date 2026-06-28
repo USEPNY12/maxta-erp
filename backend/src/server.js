@@ -105,6 +105,9 @@ try { app.use('/api/accounting-advanced', require('./routes/accountingAdvanced')
 // Phase 8 routes - Dashboard & Promotions (Executive KPI, Role-based Dashboards, Promotions Engine)
 try { app.use('/api/dashboard-exec', require('./routes/dashboardExec')); } catch(e) { console.log('Dashboard Exec routes not loaded:', e.message); }
 
+// Phase 9 routes - Mobile App Readiness (Push Notifications, Kiosk Mode, Offline Sync)
+try { app.use('/api/mobile', require('./routes/mobileReady')); } catch(e) { console.log('Mobile Ready routes not loaded:', e.message); }
+
 // Static uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 

@@ -1329,4 +1329,100 @@ module.exports = async () => {
 
     console.log('Phase 8 tables + seeds: verified');
   } catch(e) { console.log('Phase8 error:', e.message); }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PHASE 9: Mobile App Readiness - Push Notifications, Kiosk, Offline Sync
+  // ═══════════════════════════════════════════════════════════════════════
+  try {
+    const phase9Tables = [
+      `CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        endpoint TEXT NOT NULL,
+        p256dh VARCHAR(500),
+        auth_key VARCHAR(255),
+        device_name VARCHAR(100),
+        device_type ENUM('desktop','mobile','tablet') DEFAULT 'desktop',
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS notification_preferences (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        category VARCHAR(50) NOT NULL,
+        push_enabled BOOLEAN DEFAULT TRUE,
+        in_app_enabled BOOLEAN DEFAULT TRUE,
+        email_enabled BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_user_cat (user_id, category),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS kiosk_stations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        station_name VARCHAR(100) NOT NULL,
+        station_code VARCHAR(20) NOT NULL UNIQUE,
+        work_center_id INT,
+        department_id INT,
+        pin_code VARCHAR(10),
+        allowed_actions JSON,
+        is_active BOOLEAN DEFAULT TRUE,
+        last_heartbeat TIMESTAMP NULL,
+        registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        config JSON
+      )`,
+      `CREATE TABLE IF NOT EXISTS kiosk_sessions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        station_id INT NOT NULL,
+        user_id INT,
+        action_type VARCHAR(50),
+        action_data JSON,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (station_id) REFERENCES kiosk_stations(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS offline_sync_queue (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        device_id VARCHAR(100),
+        action_type VARCHAR(50) NOT NULL,
+        payload JSON NOT NULL,
+        status ENUM('pending','synced','failed','conflict') DEFAULT 'pending',
+        error_message TEXT,
+        queued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        synced_at TIMESTAMP NULL,
+        retry_count INT DEFAULT 0,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )`
+    ];
+    for (const sql of phase9Tables) {
+      await pool.query(sql);
+    }
+    // Seed kiosk stations
+    const [ks] = await pool.query('SELECT COUNT(*) as cnt FROM kiosk_stations');
+    if (ks[0].cnt === 0) {
+      await pool.query(`INSERT IGNORE INTO kiosk_stations (station_name, station_code, work_center_id, pin_code, allowed_actions, is_active, config) VALUES
+        ('Cutting Table 1', 'CUT-01', 1, '1234', '["scan_wo","log_production","report_issue"]', 1, '{"theme":"dark","timeout":120}'),
+        ('Tempering Oven', 'TEMP-01', 2, '1234', '["scan_wo","log_production","clock_in","clock_out"]', 1, '{"theme":"dark","timeout":120}'),
+        ('Lamination Station', 'LAMI-01', 3, '1234', '["scan_wo","log_production","report_issue","quality_check"]', 1, '{"theme":"dark","timeout":120}'),
+        ('Shipping Dock', 'SHIP-01', NULL, '1234', '["scan_shipment","verify_packing","log_dispatch"]', 1, '{"theme":"dark","timeout":180}'),
+        ('Receiving Bay', 'RECV-01', NULL, '1234', '["scan_po","receive_item","inspect_quality"]', 1, '{"theme":"dark","timeout":180}')
+      `);
+    }
+    // Seed notification preference categories for admin
+    const [np] = await pool.query('SELECT COUNT(*) as cnt FROM notification_preferences');
+    if (np[0].cnt === 0) {
+      await pool.query(`INSERT IGNORE INTO notification_preferences (user_id, category, push_enabled, in_app_enabled, email_enabled) VALUES
+        (1, 'orders', 1, 1, 1),
+        (1, 'production', 1, 1, 0),
+        (1, 'inventory', 1, 1, 0),
+        (1, 'accounting', 0, 1, 1),
+        (1, 'shipping', 1, 1, 0),
+        (1, 'system', 1, 1, 0),
+        (1, 'approvals', 1, 1, 1)
+      `);
+    }
+    console.log('Phase 9 tables + seeds: verified');
+  } catch(e) { console.log('Phase9 error:', e.message); }
 };

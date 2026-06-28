@@ -3,11 +3,13 @@
   "short_name": "MaxTA ERP",
   "description": "Glass Fabrication ERP System - Manufacturing, Sales, Inventory, Accounting",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0f172a",
   "theme_color": "#2563eb",
   "categories": ["business", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icons/icon-72.png",
@@ -61,6 +63,18 @@
       "icons": [{"src": "/icons/icon-96.png", "sizes": "96x96"}]
     },
     {
+      "name": "Offline Scanner",
+      "short_name": "Offline",
+      "url": "/offline-scanner",
+      "icons": [{"src": "/icons/icon-96.png", "sizes": "96x96"}]
+    },
+    {
+      "name": "Kiosk Mode",
+      "short_name": "Kiosk",
+      "url": "/kiosk",
+      "icons": [{"src": "/icons/icon-96.png", "sizes": "96x96"}]
+    },
+    {
       "name": "Work Orders",
       "short_name": "WOs",
       "url": "/manufacturing/work-orders",
@@ -72,5 +86,9 @@
       "url": "/sales/orders",
       "icons": [{"src": "/icons/icon-96.png", "sizes": "96x96"}]
     }
-  ]
+  ],
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  }
 }

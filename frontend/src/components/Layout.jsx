@@ -41,6 +41,10 @@ const navItems = [
   { path: '/executive-dashboard', label: 'Exec Dashboard', icon: FaChartBar, module: null, group: 'admin' },
   { path: '/promotions', label: 'Promotions', icon: FaBell, module: 'system_setup', group: 'admin' },
   { path: '/setup', label: 'Setup', icon: FaCog, module: 'system_setup', group: 'admin' },
+  // Phase 9 - Mobile & Kiosk
+  { path: '/offline-scanner', label: 'Offline Scanner', icon: FaBarcode, module: null, group: 'production' },
+  { path: '/notification-settings', label: 'Notifications', icon: FaBell, module: null, group: 'admin' },
+  { path: '/kiosk', label: 'Kiosk Mode', icon: FaCog, module: null, group: 'admin' },
 ];
 
 // Bottom nav items for mobile (most used on shop floor)

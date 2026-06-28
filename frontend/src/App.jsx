@@ -92,6 +92,11 @@ const CustomerPortal = lazy(() => import('./components/CustomerPortal'));
 const ExecutiveDashboard = lazy(() => import('./pages/ExecutiveDashboard'));
 const PromotionsManager = lazy(() => import('./pages/PromotionsManager'));
 
+// Phase 9 - Mobile App Readiness (PWA, Kiosk, Push, Offline Scanner)
+const KioskMode = lazy(() => import('./pages/KioskMode'));
+const NotificationSettings = lazy(() => import('./pages/NotificationSettings'));
+const OfflineScanner = lazy(() => import('./pages/OfflineScanner'));
+
 // Shipping & Logistics (Phase 5)
 const ShippingDashboard = lazy(() => import('./pages/shipping/ShippingDashboard'));
 const DeliveryPlanner = lazy(() => import('./pages/shipping/DeliveryPlanner'));
@@ -276,6 +281,9 @@ function App() {
           {/* Phase 8 - Dashboard & Promotions */}
           <Route path="executive-dashboard" element={<ExecutiveDashboard />} />
           <Route path="promotions" element={<ProtectedModule module="system_setup" permissions={permissions}><PromotionsManager /></ProtectedModule>} />
+          {/* Phase 9 - Mobile App Readiness */}
+          <Route path="notification-settings" element={<NotificationSettings />} />
+          <Route path="offline-scanner" element={<OfflineScanner />} />
           {/* Shipping & Logistics (Phase 5) */}
           <Route path="shipping" element={<ShippingDashboard />} />
           <Route path="shipping/routes" element={<DeliveryPlanner />} />
@@ -283,6 +291,8 @@ function App() {
           <Route path="shipping/fleet" element={<DriverView />} />
           <Route path="shipping/freight" element={<FreightCosts />} />
         </Route>
+        {/* Kiosk Mode - standalone full-screen route (no Layout wrapper) */}
+        <Route path="/kiosk" element={user ? <KioskMode /> : <Navigate to="/login" />} />
         {/* Customer Portal - public route (no auth required) */}
         <Route path="/portal/:token" element={<CustomerPortal />} />
         <Route path="/portal/document/:token" element={<CustomerPortal />} />
