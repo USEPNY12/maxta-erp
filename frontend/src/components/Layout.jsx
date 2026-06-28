@@ -107,6 +107,7 @@ function Layout() {
     finance: visibleNavItems?.filter(i => i.group === 'finance'),
     tools: visibleNavItems?.filter(i => i.group === 'tools'),
     admin: visibleNavItems?.filter(i => i.group === 'admin'),
+    service: visibleNavItems?.filter(i => i.group === 'service'),
   };
 
   return (
@@ -224,6 +225,22 @@ function Layout() {
               <div className="mobile-menu-section">
                 <div className="mobile-menu-section-title">Finance</div>
                 {groupedItems.finance?.map(item => (
+                  <div
+                    key={item.path}
+                    className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
+                    onClick={() => navigate(item.path)}
+                  >
+                    <item.icon size={18} />
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {groupedItems.service.length > 0 && (
+              <div className="mobile-menu-section">
+                <div className="mobile-menu-section-title">Service & Operations</div>
+                {groupedItems.service?.map(item => (
                   <div
                     key={item.path}
                     className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
