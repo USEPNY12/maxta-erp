@@ -518,7 +518,7 @@ router.post('/scan/receive', authenticate, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// INTEGRATED PRODUCTION SCAN - Auto-receipt, inventory, GL, notifications
+// INTEGRATED PRODUCTION SCAN - routing advance, awaiting_receipt status, notifications
 // ═══════════════════════════════════════════════════════════════════
 // Scan production tracking - log piece at a station + advance WO routing
 // When all routing steps complete: auto-creates WO receipt, adds finished goods
@@ -538,7 +538,6 @@ router.post('/scan/production', authenticate, async (req, res) => {
     let routingAdvanced = false;
     let nextStation = null;
     let woCompleted = false;
-    let receiptNumber = null;
     if (status === 'completed') {
       // Find the current (first pending/in_progress) routing step
       const [currentSteps] = await pool.query(
@@ -586,71 +585,29 @@ router.post('/scan/production', authenticate, async (req, res) => {
             [wo.id]);
           nextStation = 'COMPLETED';
           routingAdvanced = true;
-          // --- AUTO-RECEIPT: Create WO Receipt & add finished goods to inventory ---
+          // --- WO COMPLETE: Set to awaiting_receipt (human must verify qty and enter serial number) ---
           try {
-            const { getNextNumber } = require('../utils/sequence');
-            receiptNumber = await getNextNumber('wo_receipt');
-            const woQty = Number(wo.quantity) || 1;
-            // Create the WO receipt record
-            await pool.query(
-              `INSERT INTO wo_receipts (receipt_number, work_order_id, receipt_date, quantity_completed, quantity_scrapped, is_final, location_id, notes, received_by)
-               VALUES (?, ?, CURDATE(), ?, 0, 1, 1, ?, ?)`,
-              [receiptNumber, wo.id, woQty, `Auto-receipt from final production scan at ${station}`, req.user.id]
-            );
-            // Update WO quantities
-            await pool.query('UPDATE work_orders SET qty_completed = quantity, quantity_completed = quantity WHERE id = ?', [wo.id]);
-            // Add finished goods to inventory (items table + inventory_balances)
-            if (wo.item_id) {
-              await pool.query('UPDATE items SET qty_on_hand = qty_on_hand + ? WHERE id = ?', [woQty, wo.item_id]);
-              // Sync inventory_balances (location-level tracking)
-              const [existBal] = await pool.query('SELECT id FROM inventory_balances WHERE item_id = ? AND location_id = 1', [wo.item_id]);
-              if (existBal.length > 0) {
-                await pool.query('UPDATE inventory_balances SET quantity_on_hand = quantity_on_hand + ?, last_count_date = NOW() WHERE id = ?', [woQty, existBal[0].id]);
-              } else {
-                await pool.query('INSERT INTO inventory_balances (item_id, location_id, quantity_on_hand, last_count_date) VALUES (?, 1, ?, NOW())', [wo.item_id, woQty]);
-              }
-              // Log inventory transaction
-              await pool.query(
-                `INSERT INTO inventory_transactions (item_id, transaction_type, quantity, to_location_id, reference_type, reference_id, reference_number, notes, created_by)
-                 VALUES (?, 'wo_receipt', ?, 1, 'work_order', ?, ?, 'Auto-receipt from production scan', ?)`,
-                [wo.item_id, woQty, wo.id, wo.order_number || wo.wo_number, req.user.id]
-              );
-              // --- GL POSTING: Debit Finished Goods, Credit WIP ---
-              try {
-                const GLService = require('../services/glService');
-                await GLService.postWOReceipt({
-                  workOrderId: wo.id, itemId: wo.item_id, quantity: woQty,
-                  transactionDate: new Date(),
-                  memo: `Auto WO Receipt ${receiptNumber} - ${wo.order_number || wo.wo_number}`,
-                  postedBy: req.user.id
-                });
-              } catch (glErr) { console.error('[ScanIntegration] GL posting error:', glErr.message); }
-            }
-            // --- UPDATE SALES ORDER LINE STATUS if linked ---
+            await pool.query("UPDATE work_orders SET status = 'awaiting_receipt', actual_finish_date = NOW() WHERE id = ?", [wo.id]);
+            // Update SO line production_status if linked
             if (wo.sales_order_id) {
-              try {
-                await pool.query(
-                  `UPDATE sales_order_lines SET production_status = 'complete' WHERE work_order_id = ?`,
-                  [wo.id]
-                );
-              } catch (e) { /* ignore if column doesn't exist */ }
+              try { await pool.query("UPDATE sales_order_lines SET production_status = 'complete' WHERE work_order_id = ?", [wo.id]); } catch(e) {}
             }
-          } catch (receiptErr) {
-            console.error('[ScanIntegration] Auto-receipt error:', receiptErr.message);
+          } catch (statusErr) {
+            console.error('[ScanIntegration] Status update error:', statusErr.message);
           }
           // --- NOTIFICATION: WO Completed ---
           try {
             await pool.query(
               `INSERT INTO notification_log (notification_type, subject, item_count, details, sent_at)
-               VALUES ('wo_completed', ?, 1, ?, NOW())`,
-              [`Work Order ${wo.order_number || wo.wo_number} completed via scan at ${station}`,
-               JSON.stringify({ wo_id: wo.id, wo_number: wo.order_number || wo.wo_number, station, receipt_number: receiptNumber, scanned_by: req.user.id })]
+               VALUES ('wo_awaiting_receipt', ?, 1, ?, NOW())`,
+              [`WO ${wo.order_number || wo.wo_number} production complete at ${station} - awaiting receipt verification`,
+               JSON.stringify({ wo_id: wo.id, wo_number: wo.order_number || wo.wo_number, station, scanned_by: req.user.id })]
             );
           } catch (e) { /* ignore notification errors */ }
           // === BROADCAST: WO Completed ===
           if (global.wsBroadcast) {
             global.wsBroadcast('wo_completed', {
-              wo: barcode, wo_id: wo.id, receipt_number: receiptNumber,
+              wo: barcode, wo_id: wo.id, awaiting_receipt: true,
               station, user_id: req.user.id
             });
           }
@@ -669,7 +626,7 @@ router.post('/scan/production', authenticate, async (req, res) => {
       routing_advanced: routingAdvanced,
       next_station: nextStation,
       wo_completed: woCompleted,
-      receipt_number: receiptNumber,
+      awaiting_receipt: woCompleted,
       timestamp: new Date().toISOString()
     });
   } catch (err) { res.status(500).json({ error: err.message }); }

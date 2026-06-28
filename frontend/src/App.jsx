@@ -47,6 +47,7 @@ const ScheduleGantt = lazy(() => import('./pages/manufacturing/ScheduleGantt'));
 const MachineUtilization = lazy(() => import('./pages/manufacturing/MachineUtilization'));
 const BarcodeStation = lazy(() => import('./pages/manufacturing/BarcodeStation'));
 const QCInspection = lazy(() => import('./pages/manufacturing/QCInspection'));
+const PendingReceipts = lazy(() => import('./pages/manufacturing/PendingReceipts'));
 
 // Purchasing
 const PurchasingHome = lazy(() => import('./pages/purchasing/PurchasingHome'));
@@ -250,6 +251,7 @@ function App() {
           <Route path="manufacturing/machine-utilization" element={<ProtectedModule module="manufacturing" permissions={permissions}><MachineUtilization /></ProtectedModule>} />
           <Route path="manufacturing/barcode-station" element={<ProtectedModule module="manufacturing" permissions={permissions}><BarcodeStation /></ProtectedModule>} />
           <Route path="manufacturing/qc-inspection" element={<ProtectedModule module="manufacturing" permissions={permissions}><QCInspection /></ProtectedModule>} />
+          <Route path="manufacturing/pending-receipts" element={<ProtectedModule module="manufacturing" permissions={permissions}><PendingReceipts /></ProtectedModule>} />
           {/* Purchasing */}
           <Route path="purchasing" element={<ProtectedModule module="purchasing" permissions={permissions}><PurchasingHome /></ProtectedModule>} />
           <Route path="purchasing/purchase-orders" element={<ProtectedModule module="purchasing" permissions={permissions}><PurchaseOrders /></ProtectedModule>} />

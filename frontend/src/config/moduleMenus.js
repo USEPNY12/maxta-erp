@@ -64,6 +64,7 @@ export const manufacturingMenu = {
   title: 'Manufacturing',
   quickActions: [
     { label: 'New Work Order', path: '/manufacturing/work-orders?new=true' },
+    { label: 'Pending Receipts', path: '/manufacturing/pending-receipts' },
     { label: 'Shop Floor', path: '/manufacturing/shop-floor' },
     { label: 'Log Labor', path: '/manufacturing/labor?new=true' },
   ],
@@ -80,6 +81,7 @@ export const manufacturingMenu = {
     { label: 'Labor', path: '/manufacturing/labor', icon: '👷' },
     { label: 'Quality', path: '/manufacturing/quality', icon: '✅' },
     { label: 'Recuts', path: '/manufacturing/recuts', icon: '⚠️' },
+    { label: 'Receipts', path: '/manufacturing/pending-receipts', icon: '📥' },
     { label: 'Cutting', path: '/manufacturing/cutting-optimization', icon: '✂️' },
     { label: 'Lamination', path: '/lamination', icon: '🔲' },
   ],

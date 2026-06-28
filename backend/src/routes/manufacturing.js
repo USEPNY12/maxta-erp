@@ -136,6 +136,25 @@ router.get('/work-orders', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+
+// ============ WOs AWAITING RECEIPT ============
+router.get('/work-orders/awaiting-receipt', authenticate, async (req, res) => {
+  try {
+    const [wos] = await pool.query(`
+      SELECT wo.*, i.item_number, i.description as item_description, 
+             so.order_number as so_number, c.company_name as customer_name
+      FROM work_orders wo
+      LEFT JOIN items i ON wo.item_id = i.id
+      LEFT JOIN sales_orders so ON wo.sales_order_id = so.id
+      LEFT JOIN customers c ON so.customer_id = c.id
+      WHERE wo.status = 'awaiting_receipt'
+      ORDER BY wo.actual_finish_date DESC
+    `);
+    res.json(wos);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+
 router.get('/work-orders/:id', authenticate, async (req, res) => {
   try {
     const [orders] = await pool.query(`
@@ -218,73 +237,25 @@ router.post('/work-orders/:id/complete', authenticate, async (req, res) => {
     const [wos] = await pool.query('SELECT * FROM work_orders WHERE id = ?', [req.params.id]);
     if (!wos.length) return res.status(404).json({ error: 'Work order not found' });
     const wo = wos[0];
-    await pool.query("UPDATE work_orders SET status = 'completed', actual_finish_date = NOW() WHERE id = ?", [req.params.id]);
+    // Set status to awaiting_receipt - human must verify and submit receipt with serial number
+    await pool.query("UPDATE work_orders SET status = 'awaiting_receipt', actual_finish_date = NOW() WHERE id = ?", [req.params.id]);
     // === FIX GAP 1: Update SO line production_status ===
     if (wo.sales_order_line_id) {
       await pool.query("UPDATE sales_order_lines SET production_status = 'complete' WHERE id = ?", [wo.sales_order_line_id]);
     } else if (wo.sales_order_id) {
       await pool.query("UPDATE sales_order_lines SET production_status = 'complete' WHERE work_order_id = ?", [req.params.id]);
     }
-    // === FIX GAP 2: Auto-trigger WO Receipt if item_id exists ===
-    if (wo.item_id && wo.quantity > 0) {
-      try {
-        const receiptNumber = await getNextNumber('wo_receipt');
-        const qtyToReceipt = Math.max(0, Number(wo.quantity) - Number(wo.qty_completed || 0));
-        if (qtyToReceipt > 0) {
-          const conn = await pool.getConnection();
-          await conn.beginTransaction();
-          try {
-            // Backflush materials
-            const [materials] = await conn.query('SELECT * FROM wo_materials WHERE work_order_id = ?', [req.params.id]);
-            const completionRatio = qtyToReceipt / Number(wo.quantity || 1);
-            let matCostTotal = 0;
-            for (const mat of materials) {
-              const issueQty = Number(mat.total_qty > 0 ? mat.total_qty : mat.quantity_required) * completionRatio;
-              if (issueQty <= 0 || !mat.item_id) continue;
-              await conn.query('UPDATE wo_materials SET quantity_issued = quantity_issued + ?, total_cost = (quantity_issued + ?) * unit_cost WHERE id = ?', [issueQty, issueQty, mat.id]);
-              await conn.query('UPDATE items SET qty_on_hand = GREATEST(0, qty_on_hand - ?) WHERE id = ?', [issueQty, mat.item_id]);
-              await conn.query(`INSERT INTO inventory_transactions (item_id, transaction_type, quantity, reference_type, reference_id, reference_number, notes, created_by) VALUES (?, 'wo_issue', ?, 'work_order', ?, ?, ?, ?)`,
-                [mat.item_id, -issueQty, req.params.id, wo.order_number, 'Auto-backflush on WO complete', req.user.id]);
-              matCostTotal += issueQty * Number(mat.unit_cost || 0);
-              // === FIX GAP 3: Check low stock alert ===
-              const [itemCheck] = await conn.query('SELECT qty_on_hand, reorder_point, item_number, description FROM items WHERE id = ?', [mat.item_id]);
-              if (itemCheck.length && Number(itemCheck[0].qty_on_hand) <= Number(itemCheck[0].reorder_point || 0) && Number(itemCheck[0].reorder_point) > 0) {
-                await conn.query(`INSERT INTO notification_log (notification_type, subject, details) VALUES ('low_stock', CONCAT('Low Stock Alert: ', ?), JSON_OBJECT('reference_id', ?))`,
-                  [`${itemCheck[0].item_number} - ${itemCheck[0].description} is below reorder point (${itemCheck[0].qty_on_hand} on hand, reorder at ${itemCheck[0].reorder_point})`, mat.item_id]);
-              }
-            }
-            // Add finished goods to inventory
-            await conn.query('UPDATE items SET qty_on_hand = qty_on_hand + ? WHERE id = ?', [qtyToReceipt, wo.item_id]);
-            const locId = wo.location_id || 1;
-            const [existBal] = await conn.query('SELECT id FROM inventory_balances WHERE item_id = ? AND location_id = ?', [wo.item_id, locId]);
-            if (existBal.length > 0) {
-              await conn.query('UPDATE inventory_balances SET quantity_on_hand = quantity_on_hand + ?, last_count_date = NOW() WHERE id = ?', [qtyToReceipt, existBal[0].id]);
-            } else {
-              await conn.query('INSERT INTO inventory_balances (item_id, location_id, quantity_on_hand, last_count_date) VALUES (?, ?, ?, NOW())', [wo.item_id, locId, qtyToReceipt]);
-            }
-            await conn.query(`INSERT INTO inventory_transactions (item_id, transaction_type, quantity, location_id, reference_type, reference_id, reference_number, notes, created_by) VALUES (?, 'wo_receipt', ?, ?, 'work_order', ?, ?, ?, ?)`,
-              [wo.item_id, qtyToReceipt, locId, req.params.id, wo.order_number, 'Auto-receipt on WO complete ' + receiptNumber, req.user.id]);
-            // Create WO receipt record
-            await conn.query(`INSERT INTO wo_receipts (receipt_number, work_order_id, receipt_date, quantity_completed, quantity_scrapped, material_cost, labor_cost, total_cost, location_id, notes, received_by) VALUES (?,?,CURDATE(),?,?,?,0,?,?,?,?)`,
-              [receiptNumber, req.params.id, qtyToReceipt, wo.qty_scrapped || 0, matCostTotal, matCostTotal, locId, 'Auto-generated on WO complete', req.user.id]);
-            // Update WO qty_completed
-            await conn.query('UPDATE work_orders SET qty_completed = qty_completed + ? WHERE id = ?', [qtyToReceipt, req.params.id]);
-            // GL posting
-            if (matCostTotal > 0) {
-              try { await GLService.postMaterialIssue({ workOrderId: req.params.id, lines: materials.filter(m => m.item_id).map(m => ({ itemId: m.item_id, quantity: Number(m.total_qty || m.quantity_required) * completionRatio })), transactionDate: new Date(), memo: 'Auto-backflush WO ' + wo.order_number, postedBy: req.user.id, connection: conn }); } catch(e) {}
-              try { await GLService.postWOReceipt({ workOrderId: req.params.id, itemId: wo.item_id, quantity: qtyToReceipt, transactionDate: new Date(), memo: 'Auto-receipt WO ' + wo.order_number + ' ' + receiptNumber, postedBy: req.user.id, connection: conn }); } catch(e) {}
-            }
-            await conn.commit();
-          } catch (innerErr) { await conn.rollback(); console.error('Auto-receipt error:', innerErr.message); }
-          finally { conn.release(); }
-        }
-      } catch (receiptErr) { console.error('Auto-receipt generation error:', receiptErr.message); }
-    }
+    // Notify warehouse: WO ready for receipt (human verification with serial number required)
+    try {
+      await pool.query(
+        "INSERT INTO notification_log (notification_type, subject, details) VALUES ('wo_awaiting_receipt', CONCAT('WO Ready for Receipt: ', ?), JSON_OBJECT('reference_id', ?, 'order_number', ?, 'item_id', ?, 'quantity', ?))",
+        [wo.order_number + ' - production complete, please verify qty and enter serial number', req.params.id, wo.order_number, wo.item_id || null, wo.quantity || 0]);
+    } catch(e) {}
     // WebSocket broadcast
     if (global.wsBroadcast) global.wsBroadcast({ type: 'wo_completed', work_order_id: req.params.id, order_number: wo.order_number });
     // Notification
-    try { await pool.query(`INSERT INTO notification_log (notification_type, subject, details) VALUES ('wo_complete', CONCAT('Work Order Completed: ', ?), JSON_OBJECT('reference_id', ?))`, [`${wo.order_number} completed - finished goods received to inventory`, req.params.id]); } catch(e) {}
-    res.json({ message: 'Work order completed with auto-receipt', receipt_generated: true });
+    try { await pool.query(`INSERT INTO notification_log (notification_type, subject, details) VALUES ('wo_awaiting_receipt', CONCAT('WO Ready for Receipt: ', ?), JSON_OBJECT('reference_id', ?))`, [`${wo.order_number} production complete - awaiting receipt verification`, req.params.id]); } catch(e) {}
+    res.json({ message: 'Work order production complete - awaiting receipt verification', status: 'awaiting_receipt' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
@@ -371,58 +342,24 @@ router.post('/shop-floor/complete', authenticate, async (req, res) => {
           } else if (cwo.sales_order_id) {
             await pool.query("UPDATE sales_order_lines SET production_status = 'complete' WHERE work_order_id = ?", [work_order_id]);
           }
-          // === FIX GAP: Auto-receipt finished goods ===
-          if (cwo.item_id && cwo.quantity > 0) {
-            try {
-              const qtyToReceipt = Math.max(0, Number(cwo.quantity) - Number(cwo.qty_completed || 0));
-              if (qtyToReceipt > 0) {
-                const receiptNumber = await getNextNumber('wo_receipt');
-                const conn2 = await pool.getConnection();
-                await conn2.beginTransaction();
-                try {
-                  const [materials] = await conn2.query('SELECT * FROM wo_materials WHERE work_order_id = ?', [work_order_id]);
-                  const completionRatio = qtyToReceipt / Number(cwo.quantity || 1);
-                  let matCostTotal = 0;
-                  for (const mat of materials) {
-                    const issueQty = Number(mat.total_qty > 0 ? mat.total_qty : mat.quantity_required) * completionRatio;
-                    if (issueQty <= 0 || !mat.item_id) continue;
-                    await conn2.query('UPDATE wo_materials SET quantity_issued = quantity_issued + ?, total_cost = (quantity_issued + ?) * unit_cost WHERE id = ?', [issueQty, issueQty, mat.id]);
-                    await conn2.query('UPDATE items SET qty_on_hand = GREATEST(0, qty_on_hand - ?) WHERE id = ?', [issueQty, mat.item_id]);
-                    await conn2.query("INSERT INTO inventory_transactions (item_id, transaction_type, quantity, reference_type, reference_id, reference_number, notes, created_by) VALUES (?, 'wo_issue', ?, 'work_order', ?, ?, ?, ?)",
-                      [mat.item_id, -issueQty, work_order_id, cwo.order_number, 'Auto-backflush on shop-floor complete', req.user.id]);
-                    matCostTotal += issueQty * Number(mat.unit_cost || 0);
-                    // Low stock alert
-                    const [itemChk] = await conn2.query('SELECT qty_on_hand, reorder_point, item_number, description FROM items WHERE id = ?', [mat.item_id]);
-                    if (itemChk.length && Number(itemChk[0].qty_on_hand) <= Number(itemChk[0].reorder_point || 0) && Number(itemChk[0].reorder_point) > 0) {
-                      await conn2.query("INSERT INTO notification_log (notification_type, subject, details) VALUES ('low_stock', CONCAT('Low Stock Alert: ', ?), JSON_OBJECT('reference_id', ?))",
-                        [itemChk[0].item_number + ' - ' + itemChk[0].description + ' below reorder point (' + itemChk[0].qty_on_hand + ' on hand, reorder at ' + itemChk[0].reorder_point + ')', mat.item_id]);
-                    }
-                  }
-                  // Add finished goods
-                  await conn2.query('UPDATE items SET qty_on_hand = qty_on_hand + ? WHERE id = ?', [qtyToReceipt, cwo.item_id]);
-                  const locId = cwo.location_id || 1;
-                  await conn2.query("INSERT INTO inventory_balances (item_id, location_id, quantity_on_hand, last_count_date) VALUES (?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE quantity_on_hand = quantity_on_hand + ?, last_count_date = NOW()", [cwo.item_id, locId, qtyToReceipt, qtyToReceipt]);
-                  await conn2.query("INSERT INTO inventory_transactions (item_id, transaction_type, quantity, location_id, reference_type, reference_id, reference_number, notes, created_by) VALUES (?, 'wo_receipt', ?, ?, 'work_order', ?, ?, ?, ?)",
-                    [cwo.item_id, qtyToReceipt, locId, work_order_id, cwo.order_number, 'Auto-receipt on shop-floor complete ' + receiptNumber, req.user.id]);
-                  await conn2.query("INSERT INTO wo_receipts (receipt_number, work_order_id, receipt_date, quantity_completed, quantity_scrapped, material_cost, labor_cost, total_cost, location_id, notes, received_by) VALUES (?,?,CURDATE(),?,?,?,0,?,?,?,?)",
-                    [receiptNumber, work_order_id, qtyToReceipt, cwo.qty_scrapped || 0, matCostTotal, matCostTotal, locId, 'Auto-generated on shop-floor complete', req.user.id]);
-                  await conn2.query('UPDATE work_orders SET qty_completed = qty_completed + ? WHERE id = ?', [qtyToReceipt, work_order_id]);
-                  if (matCostTotal > 0) {
-                    try { await GLService.postMaterialIssue({ workOrderId: work_order_id, lines: materials.filter(m => m.item_id).map(m => ({ itemId: m.item_id, quantity: Number(m.total_qty || m.quantity_required) * completionRatio })), transactionDate: new Date(), memo: 'Auto-backflush WO ' + cwo.order_number, postedBy: req.user.id, connection: conn2 }); } catch(e) {}
-                    try { await GLService.postWOReceipt({ workOrderId: work_order_id, itemId: cwo.item_id, quantity: qtyToReceipt, transactionDate: new Date(), memo: 'Auto-receipt WO ' + cwo.order_number, postedBy: req.user.id, connection: conn2 }); } catch(e) {}
-                  }
-                  await conn2.commit();
-                } catch (innerErr) { await conn2.rollback(); console.error('Shop-floor auto-receipt error:', innerErr.message); }
-                finally { conn2.release(); }
-              }
-            } catch (receiptErr) { console.error('Shop-floor receipt error:', receiptErr.message); }
+          // WO production complete - set to awaiting_receipt (human must verify with serial number)
+          await pool.query("UPDATE work_orders SET status = 'awaiting_receipt', actual_finish_date = NOW() WHERE id = ?", [work_order_id]);
+          // Update SO line production_status
+          if (cwo.sales_order_id) {
+            try { await pool.query("UPDATE sales_order_lines SET production_status = 'complete' WHERE work_order_id = ?", [work_order_id]); } catch(e) {}
           }
+          // Notify warehouse team
+          try {
+            await pool.query(
+              "INSERT INTO notification_log (notification_type, subject, details) VALUES ('wo_awaiting_receipt', CONCAT('WO Ready for Receipt: ', ?), JSON_OBJECT('reference_id', ?, 'order_number', ?))",
+              [cwo.order_number + ' - all operations complete, please verify and enter serial number', work_order_id, cwo.order_number]);
+          } catch(e) {}
           // WebSocket broadcast
           if (global.wsBroadcast) global.wsBroadcast({ type: 'wo_completed', work_order_id: work_order_id, order_number: cwo.order_number });
           // Notification
-          try { await pool.query("INSERT INTO notification_log (notification_type, subject, details) VALUES ('wo_complete', CONCAT('Work Order Completed: ', ?), JSON_OBJECT('reference_id', ?))", [cwo.order_number + ' completed via shop floor - finished goods received', work_order_id]); } catch(e) {}
+          try { await pool.query("INSERT INTO notification_log (notification_type, subject, details) VALUES ('wo_awaiting_receipt', CONCAT('WO Ready for Receipt: ', ?), JSON_OBJECT('reference_id', ?))", [cwo.order_number + ' completed via shop floor - finished goods received', work_order_id]); } catch(e) {}
         }
-        res.json({ message: 'All operations complete - auto-receipt generated', all_complete: true, receipt_generated: true });
+        res.json({ message: 'All operations complete - WO awaiting receipt verification', all_complete: true, awaiting_receipt: true });
       }
     } else { res.json({ message: 'Operation completed' }); }
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -501,7 +438,7 @@ router.get('/receipts', authenticate, async (req, res) => {
 router.post('/receipts', authenticate, async (req, res) => {
   try {
     const receiptNumber = await getNextNumber('wo_receipt');
-    const { work_order_id, quantity_completed, quantity_scrapped, scrap_code, location_id, lot_number, notes } = req.body;
+    const { work_order_id, quantity_completed, quantity_scrapped, scrap_code, location_id, lot_number, serial_number_start, serial_number_end, notes } = req.body;
     if (!work_order_id || !quantity_completed) return res.status(400).json({ error: 'Work order and quantity required' });
     
     const [wos] = await pool.query('SELECT * FROM work_orders WHERE id = ?', [work_order_id]);
@@ -599,8 +536,8 @@ router.post('/receipts', authenticate, async (req, res) => {
 
       // Create the receipt record
       const [result] = await conn.query(
-        'INSERT INTO wo_receipts (receipt_number, work_order_id, receipt_date, quantity_completed, quantity_scrapped, scrap_code, location_id, lot_number, material_cost, labor_cost, total_cost, notes, received_by) VALUES (?,?,CURDATE(),?,?,?,?,?,?,?,?,?,?)',
-        [receiptNumber, work_order_id, quantity_completed, quantity_scrapped || 0, scrap_code, location_id, lot_number, matCostTotal, labCostTotal, totalCost, notes, req.user.id]);
+        'INSERT INTO wo_receipts (receipt_number, work_order_id, receipt_date, quantity_completed, quantity_scrapped, scrap_code, location_id, lot_number, serial_number_start, serial_number_end, material_cost, labor_cost, total_cost, notes, received_by) VALUES (?,?,CURDATE(),?,?,?,?,?,?,?,?,?,?,?,?)',
+        [receiptNumber, work_order_id, quantity_completed, quantity_scrapped || 0, scrap_code, location_id, lot_number, serial_number_start || null, serial_number_end || null, matCostTotal, labCostTotal, totalCost, notes, req.user.id]);
 
       // Update WO quantities
       await conn.query('UPDATE work_orders SET qty_completed = qty_completed + ?, qty_scrapped = qty_scrapped + ? WHERE id = ?', 
