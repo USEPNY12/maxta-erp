@@ -3340,6 +3340,70 @@ INSERT INTO `journal_vouchers` VALUES (1,'JV-01001','2026-06-25',NULL,NULL,NULL,
 UNLOCK TABLES;
 
 --
+-- Table structure for table `kiosk_sessions`
+--
+
+DROP TABLE IF EXISTS `kiosk_sessions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `kiosk_sessions` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `station_id` int NOT NULL,
+  `user_id` int DEFAULT NULL,
+  `action_type` varchar(50) DEFAULT NULL,
+  `action_data` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `station_id` (`station_id`),
+  CONSTRAINT `kiosk_sessions_ibfk_1` FOREIGN KEY (`station_id`) REFERENCES `kiosk_stations` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `kiosk_sessions`
+--
+
+LOCK TABLES `kiosk_sessions` WRITE;
+/*!40000 ALTER TABLE `kiosk_sessions` DISABLE KEYS */;
+INSERT INTO `kiosk_sessions` VALUES (1,1,1,'scan_wo','{\"station\": \"CUT-01\", \"quantity\": 5, \"stationId\": 1, \"workOrderId\": 1}','2026-06-28 11:00:49'),(2,1,1,'scan_wo','{\"station\": \"CUT-01\", \"quantity\": 5, \"stationId\": 1, \"workOrderId\": 1}','2026-06-28 11:01:33');
+/*!40000 ALTER TABLE `kiosk_sessions` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `kiosk_stations`
+--
+
+DROP TABLE IF EXISTS `kiosk_stations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `kiosk_stations` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `station_name` varchar(100) NOT NULL,
+  `station_code` varchar(20) NOT NULL,
+  `work_center_id` int DEFAULT NULL,
+  `department_id` int DEFAULT NULL,
+  `pin_code` varchar(10) DEFAULT NULL,
+  `allowed_actions` json DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT '1',
+  `last_heartbeat` timestamp NULL DEFAULT NULL,
+  `registered_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `config` json DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `station_code` (`station_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `kiosk_stations`
+--
+
+LOCK TABLES `kiosk_stations` WRITE;
+/*!40000 ALTER TABLE `kiosk_stations` DISABLE KEYS */;
+INSERT INTO `kiosk_stations` VALUES (1,'Cutting Table 1','CUT-01',1,NULL,'1234','[\"scan_wo\", \"log_production\", \"report_issue\"]',1,'2026-06-28 11:00:40','2026-06-28 10:58:21','{\"theme\": \"dark\", \"timeout\": 120}'),(2,'Tempering Oven','TEMP-01',2,NULL,'1234','[\"scan_wo\", \"log_production\", \"clock_in\", \"clock_out\"]',1,NULL,'2026-06-28 10:58:21','{\"theme\": \"dark\", \"timeout\": 120}'),(3,'Lamination Station','LAMI-01',3,NULL,'1234','[\"scan_wo\", \"log_production\", \"report_issue\", \"quality_check\"]',1,NULL,'2026-06-28 10:58:21','{\"theme\": \"dark\", \"timeout\": 120}'),(4,'Shipping Dock','SHIP-01',NULL,NULL,'5678','[\"scan_shipment\", \"verify_packing\", \"log_dispatch\"]',1,NULL,'2026-06-28 10:58:21','{\"theme\": \"dark\", \"timeout\": 180}'),(5,'Receiving Bay','RECV-01',NULL,NULL,'5678','[\"scan_po\", \"receive_item\", \"inspect_quality\"]',1,NULL,'2026-06-28 10:58:21','{\"theme\": \"dark\", \"timeout\": 180}'),(11,'Lamination Station','LAM-01',3,NULL,'1234','[\"scan_wo\", \"log_production\", \"report_issue\"]',1,NULL,'2026-06-28 10:59:24','{\"timeout\": 120}');
+/*!40000 ALTER TABLE `kiosk_stations` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `kpi_snapshots`
 --
 
@@ -4078,6 +4142,40 @@ LOCK TABLES `notifications` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `offline_sync_queue`
+--
+
+DROP TABLE IF EXISTS `offline_sync_queue`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `offline_sync_queue` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `device_id` varchar(100) DEFAULT NULL,
+  `action_type` varchar(50) NOT NULL,
+  `payload` json NOT NULL,
+  `status` enum('pending','synced','failed','conflict') DEFAULT 'pending',
+  `error_message` text,
+  `queued_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `synced_at` timestamp NULL DEFAULT NULL,
+  `retry_count` int DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `offline_sync_queue_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `offline_sync_queue`
+--
+
+LOCK TABLES `offline_sync_queue` WRITE;
+/*!40000 ALTER TABLE `offline_sync_queue` DISABLE KEYS */;
+INSERT INTO `offline_sync_queue` VALUES (1,1,'tablet-001','shipping_verify','{\"verified\": true, \"shipmentId\": 1}','synced',NULL,'2026-06-28 10:01:00','2026-06-28 11:01:33',0);
+/*!40000 ALTER TABLE `offline_sync_queue` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `order_documents`
 --
 
@@ -4671,6 +4769,40 @@ LOCK TABLES `purchase_orders` WRITE;
 /*!40000 ALTER TABLE `purchase_orders` DISABLE KEYS */;
 INSERT INTO `purchase_orders` VALUES (1,'PO-05002',1,'standard','2026-06-25','2026-07-05',NULL,'closed',NULL,NULL,NULL,NULL,NULL,500.00,0.00,0.00,500.00,'Raw glass order',NULL,1,NULL,NULL,0,'2026-06-25 23:39:53','2026-06-26 02:59:22',NULL,1,'2026-06-26 02:59:22',NULL,NULL,NULL,NULL,NULL),(2,'PO-05003',1,'standard','2026-06-25','2026-07-01',NULL,'closed',NULL,NULL,NULL,NULL,NULL,2250.00,0.00,0.00,2250.00,NULL,NULL,1,1,NULL,0,'2026-06-26 00:13:07','2026-06-26 19:17:05','2026-06-26 00:14:00',1,'2026-06-26 19:17:05',NULL,NULL,NULL,NULL,NULL),(3,'PO-05004',1,'standard','2026-06-26','2026-07-10',NULL,'partial',NULL,NULL,NULL,NULL,NULL,1800.00,0.00,0.00,1800.00,'Test PO for full workflow',NULL,NULL,1,NULL,0,'2026-06-26 03:10:24','2026-06-27 00:32:13','2026-06-26 03:11:25',NULL,NULL,'2026-06-26 03:11:25',1,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `purchase_orders` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `push_subscriptions`
+--
+
+DROP TABLE IF EXISTS `push_subscriptions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `push_subscriptions` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `endpoint` text NOT NULL,
+  `p256dh` varchar(500) DEFAULT NULL,
+  `auth_key` varchar(255) DEFAULT NULL,
+  `device_name` varchar(100) DEFAULT NULL,
+  `device_type` enum('desktop','mobile','tablet') DEFAULT 'desktop',
+  `is_active` tinyint(1) DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_used_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `push_subscriptions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `push_subscriptions`
+--
+
+LOCK TABLES `push_subscriptions` WRITE;
+/*!40000 ALTER TABLE `push_subscriptions` DISABLE KEYS */;
+INSERT INTO `push_subscriptions` VALUES (1,1,'https://fcm.googleapis.com/fcm/send/test123','testkey123','testauthkey','Admin Tablet','tablet',1,'2026-06-28 11:00:49','2026-06-28 11:00:49');
+/*!40000 ALTER TABLE `push_subscriptions` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -6344,7 +6476,7 @@ CREATE TABLE `system_settings` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `setting_key` (`setting_key`)
-) ENGINE=InnoDB AUTO_INCREMENT=35 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=36 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -6353,7 +6485,7 @@ CREATE TABLE `system_settings` (
 
 LOCK TABLES `system_settings` WRITE;
 /*!40000 ALTER TABLE `system_settings` DISABLE KEYS */;
-INSERT INTO `system_settings` VALUES (1,'email_host','','string','email','SMTP server hostname','2026-06-26 00:09:23'),(2,'email_port','587','number','email','SMTP server port','2026-06-26 00:09:23'),(3,'email_secure','false','boolean','email','Use TLS/SSL','2026-06-26 00:09:23'),(4,'email_user','','string','email','SMTP username/email','2026-06-26 00:09:23'),(5,'email_password','','string','email','SMTP password','2026-06-26 00:09:23'),(6,'email_from','','string','email','From email address','2026-06-26 00:09:23'),(7,'email_company_name','Max TA Group LLC','string','email','Company name in emails','2026-06-26 00:09:23'),(8,'company_phone','','string','company','Company phone number','2026-06-26 00:09:23'),(9,'company_address','','string','company','Company address','2026-06-26 00:09:23'),(10,'default_payment_terms','Net 30','string','sales','Default payment terms for new customers','2026-06-26 00:09:23'),(11,'tax_rate','0','number','sales','Default tax rate percentage','2026-06-26 00:09:23'),(12,'require_deposit','false','boolean','sales','Require deposit on new orders','2026-06-26 00:09:23'),(13,'deposit_percentage','50','number','sales','Default deposit percentage','2026-06-26 00:09:23'),(14,'gl_default_bank','1000','string','accounting','Default Bank/Cash GL Account','2026-06-26 18:07:32'),(15,'gl_default_ar','1100','string','accounting','Default Accounts Receivable GL Account','2026-06-26 18:07:32'),(16,'gl_default_ap','2000','string','accounting','Default Accounts Payable GL Account','2026-06-26 18:07:32'),(17,'gl_default_inventory_raw','1200','string','accounting','Default Raw Materials Inventory GL Account','2026-06-26 18:07:32'),(18,'gl_default_inventory_wip','1210','string','accounting','Default Work-in-Progress GL Account','2026-06-26 18:07:32'),(19,'gl_default_inventory_fg','1220','string','accounting','Default Finished Goods Inventory GL Account','2026-06-26 18:07:32'),(20,'gl_default_cogs','5000','string','accounting','Default Cost of Goods Sold GL Account','2026-06-26 18:07:32'),(21,'gl_default_sales_revenue','4000','string','accounting','Default Sales Revenue GL Account','2026-06-26 18:07:32'),(22,'gl_default_freight_revenue','4100','string','accounting','Default Freight Revenue GL Account','2026-06-26 18:07:32'),(23,'gl_default_direct_labor','5100','string','accounting','Default Direct Labor GL Account','2026-06-26 18:07:32'),(24,'gl_default_mfg_overhead','5200','string','accounting','Default Manufacturing Overhead GL Account','2026-06-26 18:07:32'),(25,'gl_default_material_variance','5010','string','accounting','Default Material Cost Variance GL Account','2026-06-26 18:07:32'),(26,'gl_default_labor_variance','5020','string','accounting','Default Labor Cost Variance GL Account','2026-06-26 18:07:32'),(27,'gl_default_ppv','5010','string','accounting','Default Purchase Price Variance GL Account','2026-06-26 18:07:32'),(28,'gl_default_retained_earnings','3100','string','accounting','Default Retained Earnings GL Account','2026-06-26 18:07:32'),(29,'gl_default_sales_tax','2200','string','accounting','Default Sales Tax Payable GL Account','2026-06-26 18:07:32'),(30,'inv_default_costing_method','standard','string','inventory','Default Costing Method (standard or average)','2026-06-26 18:07:32'),(31,'inv_auto_lot_control','false','boolean','inventory','Default lot control for new items','2026-06-26 18:07:32'),(32,'mfg_auto_backflush','true','boolean','manufacturing','Auto-issue materials on WO receipt (backflush)','2026-06-26 18:07:32'),(33,'mfg_track_wip','true','boolean','manufacturing','Track WIP costs through GL','2026-06-26 18:07:32'),(34,'mfg_auto_close_wo','true','boolean','manufacturing','Auto-close WO when fully received','2026-06-26 18:07:32');
+INSERT INTO `system_settings` VALUES (1,'email_host','','string','email','SMTP server hostname','2026-06-26 00:09:23'),(2,'email_port','587','number','email','SMTP server port','2026-06-26 00:09:23'),(3,'email_secure','false','boolean','email','Use TLS/SSL','2026-06-26 00:09:23'),(4,'email_user','','string','email','SMTP username/email','2026-06-26 00:09:23'),(5,'email_password','','string','email','SMTP password','2026-06-26 00:09:23'),(6,'email_from','','string','email','From email address','2026-06-26 00:09:23'),(7,'email_company_name','Max TA Group LLC','string','email','Company name in emails','2026-06-26 00:09:23'),(8,'company_phone','','string','company','Company phone number','2026-06-26 00:09:23'),(9,'company_address','','string','company','Company address','2026-06-26 00:09:23'),(10,'default_payment_terms','Net 30','string','sales','Default payment terms for new customers','2026-06-26 00:09:23'),(11,'tax_rate','0','number','sales','Default tax rate percentage','2026-06-26 00:09:23'),(12,'require_deposit','false','boolean','sales','Require deposit on new orders','2026-06-26 00:09:23'),(13,'deposit_percentage','50','number','sales','Default deposit percentage','2026-06-26 00:09:23'),(14,'gl_default_bank','1000','string','accounting','Default Bank/Cash GL Account','2026-06-26 18:07:32'),(15,'gl_default_ar','1100','string','accounting','Default Accounts Receivable GL Account','2026-06-26 18:07:32'),(16,'gl_default_ap','2000','string','accounting','Default Accounts Payable GL Account','2026-06-26 18:07:32'),(17,'gl_default_inventory_raw','1200','string','accounting','Default Raw Materials Inventory GL Account','2026-06-26 18:07:32'),(18,'gl_default_inventory_wip','1210','string','accounting','Default Work-in-Progress GL Account','2026-06-26 18:07:32'),(19,'gl_default_inventory_fg','1220','string','accounting','Default Finished Goods Inventory GL Account','2026-06-26 18:07:32'),(20,'gl_default_cogs','5000','string','accounting','Default Cost of Goods Sold GL Account','2026-06-26 18:07:32'),(21,'gl_default_sales_revenue','4000','string','accounting','Default Sales Revenue GL Account','2026-06-26 18:07:32'),(22,'gl_default_freight_revenue','4100','string','accounting','Default Freight Revenue GL Account','2026-06-26 18:07:32'),(23,'gl_default_direct_labor','5100','string','accounting','Default Direct Labor GL Account','2026-06-26 18:07:32'),(24,'gl_default_mfg_overhead','5200','string','accounting','Default Manufacturing Overhead GL Account','2026-06-26 18:07:32'),(25,'gl_default_material_variance','5010','string','accounting','Default Material Cost Variance GL Account','2026-06-26 18:07:32'),(26,'gl_default_labor_variance','5020','string','accounting','Default Labor Cost Variance GL Account','2026-06-26 18:07:32'),(27,'gl_default_ppv','5010','string','accounting','Default Purchase Price Variance GL Account','2026-06-26 18:07:32'),(28,'gl_default_retained_earnings','3100','string','accounting','Default Retained Earnings GL Account','2026-06-26 18:07:32'),(29,'gl_default_sales_tax','2200','string','accounting','Default Sales Tax Payable GL Account','2026-06-26 18:07:32'),(30,'inv_default_costing_method','standard','string','inventory','Default Costing Method (standard or average)','2026-06-26 18:07:32'),(31,'inv_auto_lot_control','false','boolean','inventory','Default lot control for new items','2026-06-26 18:07:32'),(32,'mfg_auto_backflush','true','boolean','manufacturing','Auto-issue materials on WO receipt (backflush)','2026-06-26 18:07:32'),(33,'mfg_track_wip','true','boolean','manufacturing','Track WIP costs through GL','2026-06-26 18:07:32'),(34,'mfg_auto_close_wo','true','boolean','manufacturing','Auto-close WO when fully received','2026-06-26 18:07:32'),(35,'vapid_keys','{\"publicKey\":\"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEDoB3d_ZZwGrUuVckXPmI4XYpLMQwj3M7iqr2F9OjTc8WTg811_HiIS8Jz2WyRkz00KJSWQs95M-4RkWoqzjtlw\",\"privateKey\":\"MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgn1Qj_sktD0bWTtrrvVp8OPEatnHTr0GgoDPGO5aeOJChRANCAAQOgHd39lnAatS5VyRc-YjhdiksxDCPczuKqvYX06NNzxZODzXX8eIhLwnPZbJGTPTQolJZCz3kz7hGRairOO2X\"}','string',NULL,NULL,'2026-06-28 10:59:51');
 /*!40000 ALTER TABLE `system_settings` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -6547,7 +6679,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'admin','admin@maxtagroup.com','$2a$10$UIW2K3EfwZ.ffKKx3X2cL.y9jeqNgbbKqqkvLzj10Azml436o/X2.','Admin','User','admin',1,'2026-06-28 10:16:01','2026-06-25 22:52:45','2026-06-28 10:16:01',NULL),(2,'jsmith','jsmith@maxtagroup.com','$2a$10$D3OumPRQPWK3MdVL6ijfZO2EsVFDfA7sAnazw.Rv2VTJw2G0pmCca','John','Smith','sales',1,NULL,'2026-06-26 12:07:55','2026-06-26 12:07:55','Sales');
+INSERT INTO `users` VALUES (1,'admin','admin@maxtagroup.com','$2a$10$UIW2K3EfwZ.ffKKx3X2cL.y9jeqNgbbKqqkvLzj10Azml436o/X2.','Admin','User','admin',1,'2026-06-28 11:01:33','2026-06-25 22:52:45','2026-06-28 11:01:33',NULL),(2,'jsmith','jsmith@maxtagroup.com','$2a$10$D3OumPRQPWK3MdVL6ijfZO2EsVFDfA7sAnazw.Rv2VTJw2G0pmCca','John','Smith','sales',1,NULL,'2026-06-26 12:07:55','2026-06-26 12:07:55','Sales');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -7128,10 +7260,6 @@ LOCK TABLES `work_orders` WRITE;
 INSERT INTO `work_orders` VALUES (1,'WO-20003',NULL,'standard',2,NULL,10.0000,0.0000,0.0000,0.0000,1.0000,NULL,NULL,NULL,NULL,NULL,'in_progress','high','floating',NULL,NULL,'2026-06-25','2026-07-01',NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,1,'2026-06-25 23:39:53','2026-06-26 12:04:51',NULL,'Urgent order','tempered_panel','Clear Float','6.00',24.00,36.00,'Flat Polish',NULL,NULL,0,0,NULL,NULL,6),(2,'WO-20005',NULL,'standard',2,NULL,100.0000,0.0000,0.0000,0.0000,1.0000,NULL,NULL,NULL,NULL,NULL,'in_progress','normal','floating',NULL,NULL,'2026-06-27','2026-07-05',NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,1,'2026-06-26 00:18:59','2026-06-26 16:09:46',NULL,'Rush order for ABC Glass','tempered_panel','Clear Float','6.00',24.00,36.00,'Flat Polish',NULL,NULL,0,0,NULL,NULL,2),(4,'WO-20012',NULL,'standard',NULL,NULL,25.0000,0.0000,0.0000,0.0000,0.0000,5,2,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-26',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-26 02:16:30','2026-06-26 02:16:30',NULL,'Standard balustrade panel with 4 mounting holes','tempered_laminated','Clear Float','10mm',48.00,42.00,'Flat Polish','PVB 0.76mm',NULL,1,0,NULL,NULL,NULL),(5,'WO-20013',NULL,'standard',NULL,NULL,10.0000,0.0000,0.0000,0.0000,0.0000,5,3,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-26',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-26 02:16:30','2026-06-26 02:16:30',NULL,'End panels - same spec as standard but narrower','tempered_laminated','Clear Float','10mm',36.00,42.00,'Flat Polish','PVB 0.76mm',NULL,1,0,NULL,NULL,NULL),(6,'WO-20014',NULL,'standard',NULL,NULL,15.0000,0.0000,0.0000,0.0000,0.0000,5,4,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-26',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-26 02:16:30','2026-06-26 02:16:30',NULL,'IGU: 6mm Low-E / 12mm Argon / 6mm Clear. Warm edge spacer.','igu_low_e','Low-E','6mm',60.00,72.00,'Seamed',NULL,NULL,0,0,NULL,NULL,NULL),(7,'WO-20015',NULL,'standard',NULL,NULL,8.0000,0.0000,0.0000,0.0000,0.0000,6,5,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-26',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-26 02:32:10','2026-06-26 02:32:10',NULL,'Standard storefront panel - heat soak test required','tempered_panel','Clear Float','6mm',48.00,72.00,'Flat Polish',NULL,NULL,0,0,NULL,NULL,NULL),(8,'WO-20016',NULL,'standard',NULL,NULL,4.0000,0.0000,0.0000,0.0000,0.0000,6,6,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-26',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-26 02:32:11','2026-06-26 02:32:11',NULL,'Door lite with 2 hinge holes - tight tolerance','tempered_panel','Clear Float','10mm',24.00,60.00,'Pencil Polish',NULL,NULL,1,0,NULL,NULL,NULL),(9,'WO-20017',NULL,'standard',NULL,NULL,6.0000,0.0000,0.0000,0.0000,0.0000,6,7,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-26',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-26 02:32:11','2026-06-26 02:32:11',NULL,'Black ceramic frit spandrel - tempered','tempered_panel','Spandrel Black','6mm',48.00,48.00,'Seamed',NULL,NULL,0,0,NULL,NULL,NULL),(10,'WO-20018',NULL,'standard',2,NULL,5.0000,0.0000,0.0000,0.0000,0.0000,8,9,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-26',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-26 23:38:27','2026-06-26 23:38:27',NULL,NULL,'tempered_panel','Clear Float','8mm',NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,NULL),(12,'WO-20020',NULL,'standard',8,NULL,5.0000,0.0000,0.0000,0.0000,0.0000,11,12,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-27',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 12:39:32','2026-06-27 12:39:32',NULL,NULL,'laminated',NULL,NULL,47.24,94.49,NULL,NULL,NULL,0,0,NULL,NULL,1),(13,'WO-20021',NULL,'glass_component',3,NULL,5.0000,0.0000,0.0000,0.0000,0.0000,11,NULL,12,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-27',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 12:39:32','2026-06-27 12:39:32',NULL,'Glass lite cutting for WO-20020','tempered_panel',NULL,NULL,47.24,94.49,NULL,NULL,NULL,0,0,NULL,NULL,NULL),(14,'WO-20022',NULL,'glass_component',3,NULL,5.0000,0.0000,0.0000,0.0000,0.0000,11,NULL,12,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-27',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 12:39:32','2026-06-27 12:39:32',NULL,'Glass lite cutting for WO-20020','tempered_panel',NULL,NULL,47.24,94.49,NULL,NULL,NULL,0,0,NULL,NULL,NULL),(15,'WO-20023',NULL,'standard',2,NULL,10.0000,0.0000,0.0000,0.0000,0.0000,12,13,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-27',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 12:46:21','2026-06-27 12:46:21',NULL,NULL,'tempered_panel','Clear Float',NULL,24.00,36.00,NULL,NULL,NULL,0,0,NULL,NULL,1),(16,'WO-20024',NULL,'standard',8,NULL,3.0000,0.0000,0.0000,0.0000,0.0000,13,14,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-27',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 12:47:08','2026-06-27 12:47:09',NULL,NULL,'laminated','Clear Float',NULL,48.00,72.00,NULL,NULL,NULL,0,0,NULL,NULL,1),(17,'WO-20025',NULL,'glass_component',3,NULL,3.0000,0.0000,0.0000,0.0000,0.0000,13,NULL,16,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-27',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 12:47:09','2026-06-27 12:47:09',NULL,'Glass lite cutting for WO-20024','tempered_panel',NULL,NULL,48.00,72.00,NULL,NULL,NULL,0,0,NULL,NULL,NULL),(18,'WO-20026',NULL,'glass_component',3,NULL,3.0000,0.0000,0.0000,0.0000,0.0000,13,NULL,16,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-27',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 12:47:09','2026-06-27 12:47:09',NULL,'Glass lite cutting for WO-20024','tempered_panel',NULL,NULL,48.00,72.00,NULL,NULL,NULL,0,0,NULL,NULL,NULL),(19,'WO-20027',NULL,'standard',2,NULL,5.0000,0.0000,5.0000,0.0000,0.0000,14,15,NULL,NULL,NULL,'completed','normal','floating','2026-06-27',NULL,'2026-06-27',NULL,'2026-06-27 13:15:41',NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 13:14:57','2026-06-27 13:15:41',NULL,NULL,'tempered_panel','tempered','6mm',NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,1),(20,'WO-20028',NULL,'standard',8,NULL,3.0000,0.0000,0.0000,0.0000,0.0000,13,14,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-27',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 13:25:55','2026-06-27 13:25:55',NULL,NULL,'laminated','Clear Float',NULL,48.00,72.00,NULL,NULL,NULL,0,0,NULL,NULL,1),(21,'WO-20029',NULL,'glass_component',3,NULL,3.0000,0.0000,0.0000,0.0000,0.0000,13,NULL,20,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-27',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 13:25:55','2026-06-27 13:25:55',NULL,'Glass lite cutting for WO-20028','tempered_panel',NULL,NULL,48.00,72.00,NULL,NULL,NULL,0,0,NULL,NULL,NULL),(22,'WO-20030',NULL,'glass_component',3,NULL,3.0000,0.0000,0.0000,0.0000,0.0000,13,NULL,20,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-27',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 13:25:55','2026-06-27 13:25:55',NULL,'Glass lite cutting for WO-20028','tempered_panel',NULL,NULL,48.00,72.00,NULL,NULL,NULL,0,0,NULL,NULL,NULL),(23,'WO-20031',NULL,'standard',2,NULL,3.0000,0.0000,0.0000,0.0000,0.0000,15,16,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-27',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 13:39:26','2026-06-27 13:39:26',NULL,NULL,'tempered_panel',NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,1),(24,'WO-20032',NULL,'standard',2,NULL,3.0000,0.0000,0.0000,0.0000,0.0000,16,17,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-27',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 13:40:17','2026-06-27 13:40:17',NULL,NULL,'tempered_panel',NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,1),(25,'WO-20033',NULL,'standard',2,NULL,3.0000,0.0000,0.0000,0.0000,0.0000,17,18,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-27',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 14:02:40','2026-06-27 14:02:40',NULL,NULL,'tempered_panel',NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,1),(26,'WO-20034',NULL,'standard',2,NULL,3.0000,0.0000,0.0000,0.0000,0.0000,18,19,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-27',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 14:14:10','2026-06-27 14:14:11',NULL,NULL,'tempered_panel',NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,1),(27,'WO-20035',NULL,'standard',2,NULL,3.0000,0.0000,0.0000,0.0000,0.0000,19,20,NULL,NULL,NULL,'planned','normal','floating',NULL,NULL,'2026-06-27',NULL,NULL,NULL,NULL,NULL,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,NULL,NULL,NULL,NULL,0,NULL,'2026-06-27 14:32:06','2026-06-27 14:32:06',NULL,NULL,'tempered_panel',NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,0,NULL,NULL,1);
 /*!40000 ALTER TABLE `work_orders` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Dumping routines for database 'maxta_erp'
---
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -7142,4 +7270,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-06-28 10:21:01
+-- Dump completed on 2026-06-28 11:02:07
