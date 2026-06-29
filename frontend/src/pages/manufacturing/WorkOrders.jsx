@@ -415,15 +415,15 @@ function WorkOrders() {
         <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 pt-4 overflow-auto">
           <div className="bg-white rounded-lg shadow-2xl w-[950px] max-h-[90vh] overflow-auto">
             {/* Header */}
-            <div className="bg-gradient-to-r from-gray-800 to-gray-700 text-white px-5 py-4 sticky top-0 z-10">
+            <div className="bg-gradient-to-r from-blue-900 to-blue-800 text-white px-5 py-4 sticky top-0 z-10">
               <div className="flex justify-between items-start">
                 <div>
                   <div className="flex items-center gap-3">
-                    <h3 className="text-xl font-bold">{selected.order_number || `WO-${selected.id}`}</h3>
+                    <h3 className="text-2xl font-black tracking-wide text-white">{selected.order_number || `WO-${selected.id}`}</h3>
                     <span className="text-sm px-2 py-0.5 rounded-full" style={{ backgroundColor: (statusConfig[selected.status] || {}).bg, color: (statusConfig[selected.status] || {}).color }}>{(statusConfig[selected.status] || {}).icon} {(statusConfig[selected.status] || {}).label}</span>
                     <span className="text-sm px-2 py-0.5 rounded" style={{ backgroundColor: (priorityConfig[selected.priority] || {}).bg, color: (priorityConfig[selected.priority] || {}).color }}>{(priorityConfig[selected.priority] || {}).label}</span>
                   </div>
-                  <p className="text-gray-300 text-sm mt-1">{selected.item_description || selected.item_number} | {getProductLabel(selected.product_type)}</p>
+                  <p className="text-blue-200 text-sm mt-1">{selected.item_description || selected.item_number} | {getProductLabel(selected.product_type)}</p>
                 </div>
                 <div className="flex gap-2 items-center">
                   {selected.status === 'planned' && <button className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-4 py-1.5 rounded font-bold" onClick={() => handleAction('release')}>Release</button>}
@@ -482,7 +482,19 @@ function WorkOrders() {
                         </div>
                       </div>
                     ))}
-                    {(!selected.routing || selected.routing.length === 0) && <p className="text-gray-500 text-sm text-center py-8">No routing defined for this work order</p>}
+                    {(!selected.routing || selected.routing.length === 0) && (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500 text-sm mb-4">No routing defined for this work order</p>
+                        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold text-sm" onClick={async () => {
+                          try {
+                            await api.post(`/api/manufacturing/work-orders/${selected.id}/assign-routing`);
+                            toast.success('Routing assigned from template');
+                            openDetail(selected);
+                          } catch (err) { toast.error(err.response?.data?.error || 'Failed to assign routing'); }
+                        }}>Assign Routing from Template</button>
+                        <p className="text-xs text-gray-400 mt-2">Will auto-assign based on product type: {getProductLabel(selected.product_type)}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

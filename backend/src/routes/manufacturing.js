@@ -267,6 +267,36 @@ router.post('/work-orders/:id/close', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// Assign routing from template to an existing WO
+router.post('/work-orders/:id/assign-routing', authenticate, async (req, res) => {
+  try {
+    const [wos] = await pool.query('SELECT id, product_type, quantity, has_holes, has_notches FROM work_orders WHERE id = ?', [req.params.id]);
+    if (wos.length === 0) return res.status(404).json({ error: 'Work order not found' });
+    const wo = wos[0];
+    const [existing] = await pool.query('SELECT COUNT(*) as cnt FROM wo_routing WHERE work_order_id = ?', [req.params.id]);
+    if (existing[0].cnt > 0) return res.status(400).json({ error: 'Routing already assigned. Delete existing routing first.' });
+    const productType = wo.product_type || 'tempered_panel';
+    const [templates] = await pool.query('SELECT id FROM routing_templates WHERE product_type = ? AND is_active = TRUE LIMIT 1', [productType]);
+    if (templates.length === 0) return res.status(400).json({ error: `No routing template found for product type: ${productType}` });
+    const [ops] = await pool.query('SELECT * FROM routing_template_operations WHERE template_id = ? ORDER BY sequence', [templates[0].id]);
+    if (ops.length === 0) return res.status(400).json({ error: 'Template has no operations defined' });
+    const [cncCenter] = await pool.query("SELECT id FROM work_centers WHERE code='CNC'");
+    const cncId = cncCenter.length > 0 ? cncCenter[0].id : null;
+    for (const op of ops) {
+      if (op.work_center_id === cncId && !wo.has_holes && !wo.has_notches) continue;
+      await pool.query(
+        'INSERT INTO wo_routing (work_order_id, sequence, operation_number, work_center_id, operation_description, setup_hours_estimated, run_hours_estimated, qc_required, status) VALUES (?,?,?,?,?,?,?,?,?)',
+        [req.params.id, op.sequence, op.sequence, op.work_center_id, op.operation_description, op.setup_time_hours, op.run_time_per_unit * wo.quantity, op.qc_required, 'pending']
+      );
+    }
+    const [firstOp] = await pool.query('SELECT work_center_id FROM wo_routing WHERE work_order_id = ? ORDER BY sequence LIMIT 1', [req.params.id]);
+    if (firstOp.length > 0) {
+      await pool.query('UPDATE work_orders SET current_station_id = ? WHERE id = ?', [firstOp[0].work_center_id, req.params.id]);
+    }
+    res.json({ message: 'Routing assigned successfully', steps: ops.length });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 // ============ SHOP FLOOR TRACKING ============
 router.get('/shop-floor/queue/:work_center_id', authenticate, async (req, res) => {
   try {
