@@ -1419,4 +1419,52 @@ module.exports = async () => {
     }
     console.log('Phase 9 tables + seeds: verified');
   } catch(e) { console.log('Phase9 error:', e.message); }
+
+  // === PHASE 10: Serial Number Traceability ===
+  try {
+    const phase10Tables = [
+      `CREATE TABLE IF NOT EXISTS serial_numbers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        serial_number VARCHAR(100) NOT NULL UNIQUE,
+        item_id INT,
+        lot_id INT,
+        location_id INT,
+        status ENUM('available','reserved','sold','scrapped','in_service','in_transit') DEFAULT 'available',
+        received_date DATE,
+        sold_date DATE,
+        customer_id INT,
+        sales_order_id INT,
+        shipment_id INT,
+        work_order_id INT,
+        wo_receipt_id INT,
+        lot_number VARCHAR(100),
+        manufactured_date DATE,
+        qc_status ENUM('pending','passed','failed') DEFAULT 'pending',
+        qc_notes TEXT,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_serial_status (status),
+        INDEX idx_serial_wo (work_order_id),
+        INDEX idx_serial_so (sales_order_id),
+        INDEX idx_serial_item (item_id)
+      )`,
+      `CREATE TABLE IF NOT EXISTS serial_number_sequences (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        prefix VARCHAR(50) NOT NULL UNIQUE,
+        next_number INT DEFAULT 1,
+        pad_length INT DEFAULT 4,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`
+    ];
+    for (const sql of phase10Tables) {
+      await pool.query(sql);
+    }
+    // Add awaiting_receipt to work_orders status ENUM if not already there
+    try {
+      await pool.query(`ALTER TABLE work_orders MODIFY COLUMN status ENUM('draft','planned','released','in_progress','completed','closed','cancelled','on_hold','awaiting_receipt') DEFAULT 'draft'`);
+    } catch(e) { /* already modified */ }
+    console.log('Phase 10 tables (Serial Numbers): verified');
+  } catch(e) { console.log('Phase10 error:', e.message); }
 };
