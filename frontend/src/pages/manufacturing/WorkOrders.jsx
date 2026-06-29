@@ -164,8 +164,9 @@ function WorkOrders() {
                   </div>
                   <div className="flex items-center gap-3 mt-1">
                     <span className="text-lg font-black text-gray-900">×{wo.quantity}</span>
-                    {wo.has_holes === 1 && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">HOLES</span>}
-                    {wo.has_notches === 1 && <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">NOTCHES</span>}
+                    {wo.has_holes === 1 && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">HOLES{wo.holes_count ? ` (${wo.holes_count})` : ''}</span>}
+                    {wo.has_notches === 1 && <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">NOTCHES{wo.notches_count ? ` (${wo.notches_count})` : ''}</span>}
+                    {(wo.has_holes === 1 || wo.has_notches === 1) && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-bold">🔩 CNC</span>}
                   </div>
                 </div>
               </div>
@@ -443,7 +444,9 @@ function WorkOrders() {
               <div className="text-center"><div className="text-gray-500 text-[10px]">EDGE</div><div className="font-bold">{selected.edge_type || '-'}</div></div>
               <div className="text-center"><div className="text-gray-500 text-[10px]">QUANTITY</div><div className="font-bold text-lg">{selected.quantity}</div></div>
               <div className="text-center"><div className="text-gray-500 text-[10px]">STATION</div><div className="font-bold">{selected.station_icon} {selected.current_station_name || '-'}</div></div>
-              <div className="text-center"><div className="text-gray-500 text-[10px]">HOLES</div><div className="font-bold">{selected.has_holes ? '✓ Yes' : 'No'}</div></div>
+              <div className="text-center"><div className="text-gray-500 text-[10px]">HOLES</div><div className="font-bold">{selected.has_holes ? `✓ ${selected.holes_count || 'Yes'}` : 'No'}</div></div>
+              <div className="text-center"><div className="text-gray-500 text-[10px]">NOTCHES</div><div className="font-bold">{selected.has_notches ? `✓ ${selected.notches_count || 'Yes'}` : 'No'}</div></div>
+              {(selected.has_holes || selected.has_notches) && <div className="text-center"><div className="text-gray-500 text-[10px]">🔩 CNC COST</div><div className="font-bold text-purple-700">${selected.cnc_estimated_cost ? parseFloat(selected.cnc_estimated_cost).toFixed(2) : '0.00'}</div></div>}
               <div className="text-center"><div className="text-gray-500 text-[10px]">INTERLAYER</div><div className="font-bold">{selected.interlayer_type || '-'}</div></div>
             </div>
 
@@ -472,32 +475,37 @@ function WorkOrders() {
                   {selected.routing && selected.routing.length > 0 && (
                     <div className="mb-4">
                       <div className="flex justify-between text-xs text-gray-500 mb-1">
-                        <span>{selected.routing.filter(r => r.status === 'complete').length} of {selected.routing.length} steps complete</span>
-                        <span>{Math.round((selected.routing.filter(r => r.status === 'complete').length / selected.routing.length) * 100)}%</span>
+                        <span>{selected.routing.filter(r => ['complete','completed','skipped'].includes(r.status)).length} of {selected.routing.length} steps complete</span>
+                        <span>{Math.round((selected.routing.filter(r => ['complete','completed','skipped'].includes(r.status)).length / selected.routing.length) * 100)}%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${(selected.routing.filter(r => r.status === 'complete').length / selected.routing.length) * 100}%` }}></div>
+                        <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${(selected.routing.filter(r => ['complete','completed','skipped'].includes(r.status)).length / selected.routing.length) * 100}%` }}></div>
                       </div>
                     </div>
                   )}
                   <div className="space-y-2">
                     {(selected.routing || [])?.map((r, i) => {
-                      const isNextStep = r.status === 'pending' && (i === 0 || selected.routing[i-1]?.status === 'complete');
+                      const isNextStep = r.status === 'pending' && (i === 0 || ['complete','completed','skipped'].includes(selected.routing[i-1]?.status));
                       const canStart = isNextStep && ['scheduled','released','in_progress'].includes(selected.status);
                       const canComplete = r.status === 'in_progress';
+                      const canSkip = r.status === 'pending' && canStart && r.work_center_code === 'CNC';
                       return (
-                      <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${r.status === 'complete' ? 'bg-green-50 border-green-200' : r.status === 'in_progress' ? 'bg-yellow-50 border-yellow-300 shadow-md ring-2 ring-yellow-200' : isNextStep && ['scheduled','released','in_progress'].includes(selected.status) ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 opacity-60'}`}>
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow" style={{ backgroundColor: r.status === 'complete' ? '#16a34a' : r.status === 'in_progress' ? '#d97706' : r.color || '#6b7280' }}>
-                          {r.status === 'complete' ? '✓' : r.status === 'in_progress' ? '▶' : r.icon || (i+1)}
+                      <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${r.status === 'complete' || r.status === 'completed' ? 'bg-green-50 border-green-200' : r.status === 'skipped' ? 'bg-gray-50 border-gray-300 opacity-50' : r.status === 'in_progress' ? 'bg-yellow-50 border-yellow-300 shadow-md ring-2 ring-yellow-200' : isNextStep && ['scheduled','released','in_progress'].includes(selected.status) ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 opacity-60'}`}>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow" style={{ backgroundColor: r.status === 'complete' || r.status === 'completed' ? '#16a34a' : r.status === 'skipped' ? '#9ca3af' : r.status === 'in_progress' ? '#d97706' : r.color || '#6b7280' }}>
+                          {r.status === 'complete' || r.status === 'completed' ? '✓' : r.status === 'skipped' ? '⏭' : r.status === 'in_progress' ? '▶' : r.icon || (i+1)}
                         </div>
                         <div className="flex-1">
-                          <div className="font-bold text-sm">{r.work_center_name} <span className="text-gray-400 font-normal text-xs">({r.work_center_code})</span></div>
+                          <div className="font-bold text-sm">{r.work_center_name} <span className="text-gray-400 font-normal text-xs">({r.work_center_code})</span>
+                            {r.work_center_code === 'CNC' && <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-bold">🔩 CNC</span>}
+                          </div>
                           <div className="text-xs text-gray-600">{r.operation_description}</div>
                           {r.status === 'in_progress' && r.actual_start && <div className="text-[10px] text-yellow-700 mt-0.5">Started: {new Date(r.actual_start).toLocaleString()}</div>}
-                          {r.status === 'complete' && r.actual_finish && <div className="text-[10px] text-green-700 mt-0.5">Completed: {new Date(r.actual_finish).toLocaleString()}</div>}
+                          {(r.status === 'complete' || r.status === 'completed') && r.actual_finish && <div className="text-[10px] text-green-700 mt-0.5">Completed: {new Date(r.actual_finish).toLocaleString()}</div>}
+                          {r.status === 'skipped' && <div className="text-[10px] text-gray-500 mt-0.5 italic">Skipped - Not required for this order</div>}
                         </div>
                         <div className="text-right flex items-center gap-2">
-                          {r.status === 'complete' && <span className="text-xs px-2 py-1 rounded-full font-bold bg-green-100 text-green-700">✓ Done</span>}
+                          {(r.status === 'complete' || r.status === 'completed') && <span className="text-xs px-2 py-1 rounded-full font-bold bg-green-100 text-green-700">✓ Done</span>}
+                          {r.status === 'skipped' && <span className="text-xs px-2 py-1 rounded-full font-bold bg-gray-200 text-gray-600">⏭ Skipped</span>}
                           {r.status === 'in_progress' && (
                             <button className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded font-bold shadow-sm transition-colors" onClick={async (e) => {
                               e.stopPropagation();
@@ -517,6 +525,17 @@ function WorkOrders() {
                                 openDetail(selected);
                               } catch (err) { toast.error(err.response?.data?.error || 'Failed to start step'); }
                             }}>▶ Start Step</button>
+                          )}
+                          {canSkip && (
+                            <button className="bg-gray-500 hover:bg-gray-600 text-white text-xs px-3 py-1.5 rounded font-bold shadow-sm transition-colors" onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!window.confirm('Skip CNC Drilling step? This order does not require holes/notches.')) return;
+                              try {
+                                await api.post('/api/manufacturing/shop-floor/skip', { wo_routing_id: r.id, reason: 'No holes/notches required' });
+                                toast.success(`${r.work_center_name} skipped!`);
+                                openDetail(selected);
+                              } catch (err) { toast.error(err.response?.data?.error || 'Failed to skip step'); }
+                            }}>⏭ Skip</button>
                           )}
                           {r.status === 'pending' && !canStart && <span className="text-xs px-2 py-1 rounded-full font-bold bg-gray-100 text-gray-500">○ Waiting</span>}
                           {r.qc_required === 1 && <div className="text-[10px] text-amber-600 mt-1 font-bold">⚠ QC</div>}

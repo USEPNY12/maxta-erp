@@ -26,7 +26,7 @@ function Quotes() {
   const [quoteFabCharges, setQuoteFabCharges] = useState({});
   const [newQuote, setNewQuote] = useState({
     customer_id: '', project_name: '', expiry_date: '', payment_terms: 'Net 30', lead_time_days: 21, notes: '', internal_notes: '',
-    lines: [{ item_id: '', description: '', quantity: 1, unit_price: 0, width_inches: '', height_inches: '', product_type: '', glass_type: '', thickness: '', edge_type: '', interlayer: '', has_holes: false, holes_count: 0, manufacturing_notes: '', fabrication: [] }]
+    lines: [{ item_id: '', description: '', quantity: 1, unit_price: 0, width_inches: '', height_inches: '', product_type: '', glass_type: '', thickness: '', edge_type: '', interlayer: '', has_holes: false, holes_count: 0, has_notches: false, notches_count: 0, hole_type: 'Standard Round Hole', notch_type: 'Standard Hinge Notch', hole_diameter: '', cnc_surcharge: 0, cnc_notes: '', manufacturing_notes: '', fabrication: [] }]
   });
 
   useEffect(() => { fetchQuotes(); fetchCustomers(); fetchItems(); fetchFabCharges(); }, [statusFilter]);
@@ -88,7 +88,7 @@ function Quotes() {
       }
       toast.success(`Quote ${res.data.quote_number || ''} created`);
       setShowNew(false);
-      setNewQuote({ customer_id: '', project_name: '', expiry_date: '', payment_terms: 'Net 30', lead_time_days: 21, notes: '', internal_notes: '', lines: [{ item_id: '', description: '', quantity: 1, unit_price: 0, width_inches: '', height_inches: '', product_type: '', glass_type: '', thickness: '', edge_type: '', interlayer: '', has_holes: false, holes_count: 0, manufacturing_notes: '', fabrication: [] }] });
+      setNewQuote({ customer_id: '', project_name: '', expiry_date: '', payment_terms: 'Net 30', lead_time_days: 21, notes: '', internal_notes: '', lines: [{ item_id: '', description: '', quantity: 1, unit_price: 0, width_inches: '', height_inches: '', product_type: '', glass_type: '', thickness: '', edge_type: '', interlayer: '', has_holes: false, holes_count: 0, has_notches: false, notches_count: 0, hole_type: 'Standard Round Hole', notch_type: 'Standard Hinge Notch', hole_diameter: '', cnc_surcharge: 0, cnc_notes: '', manufacturing_notes: '', fabrication: [] }] });
       fetchQuotes();
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to create quote'); }
   };
@@ -115,7 +115,7 @@ function Quotes() {
     } catch (err) { toast.error(err.response?.data?.error || 'Failed'); }
   };
 
-  const addLine = () => setNewQuote({ ...newQuote, lines: [...newQuote.lines, { item_id: '', description: '', quantity: 1, unit_price: 0, width_inches: '', height_inches: '', product_type: '', glass_type: '', thickness: '', edge_type: '', interlayer: '', has_holes: false, holes_count: 0, manufacturing_notes: '', fabrication: [] }] });
+  const addLine = () => setNewQuote({ ...newQuote, lines: [...newQuote.lines, { item_id: '', description: '', quantity: 1, unit_price: 0, width_inches: '', height_inches: '', product_type: '', glass_type: '', thickness: '', edge_type: '', interlayer: '', has_holes: false, holes_count: 0, has_notches: false, notches_count: 0, hole_type: 'Standard Round Hole', notch_type: 'Standard Hinge Notch', hole_diameter: '', cnc_surcharge: 0, cnc_notes: '', manufacturing_notes: '', fabrication: [] }] });
   const removeLine = (idx) => setNewQuote({ ...newQuote, lines: newQuote.lines?.filter((_, i) => i !== idx) });
   const updateLine = (idx, field, value) => {
     const lines = [...newQuote.lines];

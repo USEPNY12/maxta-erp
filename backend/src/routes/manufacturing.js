@@ -396,6 +396,34 @@ router.post('/shop-floor/complete', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// ============ SKIP STEP ============
+// Skip a routing step (e.g., CNC Drilling not needed for this order)
+router.post('/shop-floor/skip', authenticate, async (req, res) => {
+  try {
+    const { wo_routing_id, reason } = req.body;
+    if (!wo_routing_id) return res.status(400).json({ error: 'wo_routing_id required' });
+    // Verify step exists and is pending
+    const [step] = await pool.query('SELECT * FROM wo_routing WHERE id = ?', [wo_routing_id]);
+    if (!step.length) return res.status(404).json({ error: 'Routing step not found' });
+    if (step[0].status !== 'pending') return res.status(400).json({ error: 'Can only skip pending steps' });
+    // Mark as skipped
+    await pool.query("UPDATE wo_routing SET status = 'skipped', notes = CONCAT(COALESCE(notes,''), ' [SKIPPED: ', ?, ']'), end_date = NOW() WHERE id = ?", [reason || 'Not required', wo_routing_id]);
+    // Update shop_floor_tracking if exists
+    await pool.query("UPDATE shop_floor_tracking SET status = 'skipped', notes = ? WHERE wo_routing_id = ?", [reason || 'Step skipped - not required', wo_routing_id]);
+    // Advance to next step
+    const work_order_id = step[0].work_order_id;
+    const [next] = await pool.query("SELECT id, work_center_id, operation_description FROM wo_routing WHERE work_order_id = ? AND status = 'pending' ORDER BY sequence LIMIT 1", [work_order_id]);
+    if (next.length > 0) {
+      await pool.query('UPDATE work_orders SET current_station_id = ? WHERE id = ?', [next[0].work_center_id, work_order_id]);
+      res.json({ message: 'Step skipped', next_station: next[0], all_complete: false });
+    } else {
+      // All remaining steps done/skipped
+      await pool.query("UPDATE work_orders SET status = 'awaiting_receipt', actual_finish_date = NOW(), current_station_id = NULL WHERE id = ?", [work_order_id]);
+      res.json({ message: 'Step skipped - all operations complete', all_complete: true, awaiting_receipt: true });
+    }
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 router.post('/shop-floor/recut', authenticate, async (req, res) => {
   try {
     const { wo_routing_id, quantity, reason_code, notes } = req.body;

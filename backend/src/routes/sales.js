@@ -473,12 +473,14 @@ router.post('/orders', authenticate, async (req, res) => {
         await pool.query(
           `INSERT INTO sales_order_lines (sales_order_id, line_number, item_id, description, quantity_ordered, uom, unit_price, discount_percent, line_total, 
            width_inches, height_inches, sqft, required_date, notes, product_type, glass_type, thickness, edge_type, shape, interlayer, has_holes, holes_count, 
+           has_notches, notches_count, hole_diameter, hole_type, notch_type, cnc_surcharge, cnc_notes,
            cutouts, coating, spacer_type, gas_fill, manufacturing_notes, drawing_ref, status)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [result.insertId, i + 1, l.item_id || null, l.description, qty, l.uom || 'Each', l.unit_price, l.discount_percent || 0, lineTotal,
            l.width_inches || null, l.height_inches || null, sqft, required_date, l.notes || null,
            l.product_type || null, l.glass_type || null, l.thickness || null, l.edge_type || null, l.shape || 'rectangular',
            l.interlayer || null, l.has_holes ? 1 : 0, l.holes_count || 0,
+           l.has_notches ? 1 : 0, l.notches_count || 0, l.hole_diameter || null, l.hole_type || null, l.notch_type || null, l.cnc_surcharge || 0, l.cnc_notes || null,
            l.cutouts || null, l.coating || null, l.spacer_type || null, l.gas_fill || null, l.manufacturing_notes || null, l.drawing_ref || null, 'open']
         );
       }
@@ -534,11 +536,13 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
       const woNumber = await getNextNumber('work_order');
       const [woResult] = await conn.query(
         `INSERT INTO work_orders (order_number, sales_order_id, sales_order_line_id, item_id, product_type, quantity, 
-         glass_type, thickness, width, height, edge_type, interlayer_type, has_holes,
+         glass_type, thickness, width, height, edge_type, interlayer_type, has_holes, has_notches,
+         notches_count, hole_specs, hole_diameter, hole_type, cnc_estimated_cost,
          status, priority, start_date, notes, wo_category)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURDATE(),?,?)`,
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURDATE(),?,?)`,
         [woNumber, req.params.id, line.id, line.item_id, productType, line.quantity_ordered,
-         line.glass_type, line.thickness, line.width_inches, line.height_inches, line.edge_type, line.interlayer, line.has_holes || 0,
+         line.glass_type, line.thickness, line.width_inches, line.height_inches, line.edge_type, line.interlayer, line.has_holes || 0, line.has_notches || 0,
+         line.notches_count || 0, line.cnc_notes || null, line.hole_diameter || null, line.hole_type || null, line.cnc_surcharge || 0,
          'planned', 'normal', line.manufacturing_notes || line.notes, 'standard']
       );
       const woId = woResult.insertId;
@@ -1617,6 +1621,39 @@ router.get('/orders/:id/fabrication', authenticate, async (req, res) => {
     `, [req.params.id]);
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ============ CNC SURCHARGE CALCULATOR ============
+// Auto-calculate CNC drilling surcharge based on holes_count, notches_count, and types
+router.post('/calculate-cnc-surcharge', authenticate, async (req, res) => {
+  try {
+    const { holes_count, notches_count, hole_type, notch_type, quantity } = req.body;
+    let surcharge = 0;
+    const breakdown = [];
+    // Lookup hole rate from fabrication_charges
+    if (holes_count > 0) {
+      const holeTypeName = hole_type || 'Standard Round Hole';
+      const [holeCharge] = await pool.query(
+        "SELECT default_rate FROM fabrication_charges WHERE category = 'Holes' AND name = ? AND is_active = 1 LIMIT 1",
+        [holeTypeName]);
+      const holeRate = holeCharge.length > 0 ? parseFloat(holeCharge[0].default_rate) : 12.00;
+      const holeCost = holes_count * holeRate * (quantity || 1);
+      surcharge += holeCost;
+      breakdown.push({ type: 'Holes', name: holeTypeName, count: holes_count, rate: holeRate, qty: quantity || 1, total: holeCost });
+    }
+    // Lookup notch rate from fabrication_charges
+    if (notches_count > 0) {
+      const notchTypeName = notch_type || 'Standard Hinge Notch';
+      const [notchCharge] = await pool.query(
+        "SELECT default_rate FROM fabrication_charges WHERE category = 'Notches' AND name = ? AND is_active = 1 LIMIT 1",
+        [notchTypeName]);
+      const notchRate = notchCharge.length > 0 ? parseFloat(notchCharge[0].default_rate) : 25.00;
+      const notchCost = notches_count * notchRate * (quantity || 1);
+      surcharge += notchCost;
+      breakdown.push({ type: 'Notches', name: notchTypeName, count: notches_count, rate: notchRate, qty: quantity || 1, total: notchCost });
+    }
+    res.json({ surcharge, breakdown });
+  } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 module.exports = router;

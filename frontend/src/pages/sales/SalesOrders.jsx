@@ -27,7 +27,7 @@ function SalesOrders() {
   const [depositForm, setDepositForm] = useState({ amount: '', payment_method: 'check', reference_number: '' });
   const [newOrder, setNewOrder] = useState({
     customer_id: '', customer_po: '', project_name: '', required_date: '', notes: '',
-    lines: [{ description: '', quantity_ordered: 1, unit_price: 0, product_type: '', glass_type: '', thickness: '', width_inches: '', height_inches: '', edge_type: '', manufacturing_notes: '' }]
+    lines: [{ description: '', quantity_ordered: 1, unit_price: 0, product_type: '', glass_type: '', thickness: '', width_inches: '', height_inches: '', edge_type: '', has_holes: false, holes_count: 0, has_notches: false, notches_count: 0, hole_type: 'Standard Round Hole', notch_type: 'Standard Hinge Notch', hole_diameter: '', cnc_surcharge: 0, cnc_notes: '', manufacturing_notes: '' }]
   });
 
   useEffect(() => { fetchOrders(); fetchCustomers(); api.get('/api/inventory/items').then(r => setItems(Array.isArray(r.data) ? r.data : r.data.items || [])).catch(() => setItems([])); }, [statusFilter]);
@@ -137,7 +137,7 @@ function SalesOrders() {
     } catch {}
   };
 
-  const addLine = () => setNewOrder({ ...newOrder, lines: [...newOrder.lines, { description: '', quantity_ordered: 1, unit_price: 0, product_type: '', glass_type: '', thickness: '', width_inches: '', height_inches: '', edge_type: '', manufacturing_notes: '' }] });
+  const addLine = () => setNewOrder({ ...newOrder, lines: [...newOrder.lines, { description: '', quantity_ordered: 1, unit_price: 0, product_type: '', glass_type: '', thickness: '', width_inches: '', height_inches: '', edge_type: '', has_holes: false, holes_count: 0, has_notches: false, notches_count: 0, hole_type: 'Standard Round Hole', notch_type: 'Standard Hinge Notch', hole_diameter: '', cnc_surcharge: 0, cnc_notes: '', manufacturing_notes: '' }] });
   const updateLine = (idx, field, value) => { const lines = [...newOrder.lines]; lines[idx] = { ...lines[idx], [field]: value }; setNewOrder({ ...newOrder, lines }); };
   const removeLine = (idx) => setNewOrder({ ...newOrder, lines: newOrder.lines?.filter((_, i) => i !== idx) });
 
@@ -452,7 +452,7 @@ function SalesOrders() {
               <div className="mb-2 flex items-center gap-2"><span className="text-xs font-bold">Line Items</span><button className="erp-btn text-xs" onClick={addLine}>+ Add Line</button></div>
               <div className="overflow-x-auto">
                 <table className="erp-grid" style={{ minWidth: '850px' }}>
-                  <thead><tr><th>Description*</th><th>Product Type</th><th>Glass</th><th>Thickness</th><th>W"</th><th>H"</th><th>Edge</th><th>Qty</th><th>Price</th><th></th></tr></thead>
+                  <thead><tr><th>Description*</th><th>Product Type</th><th>Glass</th><th>Thickness</th><th>W"</th><th>H"</th><th>Edge</th><th>Holes</th><th>Notches</th><th>Qty</th><th>Price</th><th>CNC $</th><th></th></tr></thead>
                   <tbody>{newOrder.lines?.map((line, idx) => (
                     <tr key={idx}>
                       <td><input className="erp-form-input w-full" value={line.description} onChange={e => updateLine(idx, 'description', e.target.value)} /></td>
@@ -462,8 +462,21 @@ function SalesOrders() {
                       <td><input className="erp-form-input w-14 text-right" type="number" value={line.width_inches} onChange={e => updateLine(idx, 'width_inches', e.target.value)} /></td>
                       <td><input className="erp-form-input w-14 text-right" type="number" value={line.height_inches} onChange={e => updateLine(idx, 'height_inches', e.target.value)} /></td>
                       <td><select className="erp-form-select w-full" value={line.edge_type} onChange={e => updateLine(idx, 'edge_type', e.target.value)}><option value="">-</option>{edgeTypes?.map(et => <option key={et} value={et}>{et}</option>)}</select></td>
+                      <td className="text-center">
+                        <label className="flex items-center gap-1 justify-center">
+                          <input type="checkbox" checked={line.has_holes} onChange={e => { updateLine(idx, 'has_holes', e.target.checked); if (!e.target.checked) { updateLine(idx, 'holes_count', 0); updateLine(idx, 'cnc_surcharge', 0); } }} />
+                          {line.has_holes && <input className="erp-form-input w-10 text-center" type="number" min="1" placeholder="#" value={line.holes_count} onChange={e => updateLine(idx, 'holes_count', parseInt(e.target.value) || 0)} />}
+                        </label>
+                      </td>
+                      <td className="text-center">
+                        <label className="flex items-center gap-1 justify-center">
+                          <input type="checkbox" checked={line.has_notches} onChange={e => { updateLine(idx, 'has_notches', e.target.checked); if (!e.target.checked) { updateLine(idx, 'notches_count', 0); updateLine(idx, 'cnc_surcharge', 0); } }} />
+                          {line.has_notches && <input className="erp-form-input w-10 text-center" type="number" min="1" placeholder="#" value={line.notches_count} onChange={e => updateLine(idx, 'notches_count', parseInt(e.target.value) || 0)} />}
+                        </label>
+                      </td>
                       <td><input className="erp-form-input w-14 text-right" type="number" value={line.quantity_ordered} onChange={e => updateLine(idx, 'quantity_ordered', e.target.value)} /></td>
                       <td><input className="erp-form-input w-20 text-right" type="number" step="0.01" value={line.unit_price} onChange={e => updateLine(idx, 'unit_price', e.target.value)} /></td>
+                      <td className="text-right text-xs font-bold text-purple-700">{(line.has_holes || line.has_notches) ? `$${((line.holes_count || 0) * 12 + (line.notches_count || 0) * 25).toFixed(2)}` : '-'}</td>
                       <td><button className="text-red-600 text-xs" onClick={() => removeLine(idx)}>✕</button></td>
                     </tr>
                   ))}</tbody>
