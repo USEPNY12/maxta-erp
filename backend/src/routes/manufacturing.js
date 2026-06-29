@@ -142,6 +142,7 @@ router.get('/work-orders/awaiting-receipt', authenticate, async (req, res) => {
   try {
     const [wos] = await pool.query(`
       SELECT wo.*, i.item_number, i.description as item_description, 
+             i.serial_control, i.lot_control, i.serial_prefix as item_serial_prefix,
              so.order_number as so_number, c.company_name as customer_name
       FROM work_orders wo
       LEFT JOIN items i ON wo.item_id = i.id
@@ -441,9 +442,14 @@ router.post('/receipts', authenticate, async (req, res) => {
     const { work_order_id, quantity_completed, quantity_scrapped, scrap_code, location_id, lot_number, serial_number_start, serial_number_end, serial_prefix, serial_pad_length, notes } = req.body;
     if (!work_order_id || !quantity_completed) return res.status(400).json({ error: 'Work order and quantity required' });
     
-    const [wos] = await pool.query('SELECT * FROM work_orders WHERE id = ?', [work_order_id]);
+    const [wos] = await pool.query('SELECT wo.*, i.serial_control, i.lot_control, i.serial_prefix as item_serial_prefix FROM work_orders wo LEFT JOIN items i ON wo.item_id = i.id WHERE wo.id = ?', [work_order_id]);
     if (wos.length === 0) return res.status(404).json({ error: 'Work order not found' });
     const wo = wos[0];
+
+    // Enforce serial number requirement for serial-controlled items
+    if (wo.serial_control && !serial_prefix && !serial_number_start) {
+      return res.status(400).json({ error: 'Serial prefix is required for serial-controlled items. Enable serial tracking in Item Setup.' });
+    }
 
     const conn = await pool.getConnection();
     await conn.beginTransaction();

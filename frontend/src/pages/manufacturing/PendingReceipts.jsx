@@ -78,12 +78,12 @@ function PendingReceipts() {
 
   const openReceiptForm = (wo) => {
     setSelectedWO(wo);
-    // Auto-suggest prefix based on item number
-    const itemPrefix = wo.item_number ? wo.item_number.replace(/[^A-Z0-9]/gi, '') + '-' : 'SN-';
+    // Auto-suggest prefix: use item's serial_prefix if set, otherwise derive from item_number
+    const itemPrefix = wo.item_serial_prefix || (wo.item_number ? wo.item_number.replace(/[^A-Z0-9]/gi, '') + '-' : 'SN-');
     setForm({
       quantity_completed: wo.quantity || '',
       quantity_scrapped: '0',
-      serial_prefix: itemPrefix,
+      serial_prefix: wo.serial_control ? itemPrefix : '',
       serial_pad_length: '4',
       lot_number: `LOT-${new Date().toISOString().slice(0,10)}`,
       location_id: wo.location_id || '',
@@ -122,8 +122,8 @@ function PendingReceipts() {
       toast.error('Quantity completed is required');
       return;
     }
-    if (!form.serial_prefix) {
-      toast.error('Serial number prefix is required for traceability');
+    if (selectedWO.serial_control && !form.serial_prefix) {
+      toast.error('Serial number prefix is required for serial-controlled items');
       return;
     }
     setSubmitting(true);
@@ -261,12 +261,19 @@ function PendingReceipts() {
                             {wo.actual_finish_date && <span>Finished: {formatDate(wo.actual_finish_date)}</span>}
                           </div>
                         </div>
-                        <button
-                          onClick={() => openReceiptForm(wo)}
-                          className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded shadow-sm whitespace-nowrap"
-                        >
-                          Receive & Assign Serials
-                        </button>
+                        <div className="flex flex-col items-end gap-1">
+                          {wo.serial_control ? (
+                            <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Serial Tracked</span>
+                          ) : (
+                            <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">No Serial</span>
+                          )}
+                          <button
+                            onClick={() => openReceiptForm(wo)}
+                            className="bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded shadow-sm whitespace-nowrap"
+                          >
+                            {wo.serial_control ? 'Receive & Assign Serials' : 'Receive into Inventory'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -513,7 +520,8 @@ function PendingReceipts() {
                     </div>
                   </div>
 
-                  {/* Serial Number Prefix Section */}
+                  {/* Serial Number Prefix Section - only for serial-controlled items */}
+                  {selectedWO.serial_control ? (
                   <div className="border border-blue-200 bg-blue-50 rounded p-3">
                     <label className="text-xs font-bold text-blue-800 block mb-2">
                       Serial Number Generation <span className="text-red-500">*</span>
@@ -561,6 +569,13 @@ function PendingReceipts() {
                       Each piece gets a unique serial number. Numbers auto-increment from last used.
                     </div>
                   </div>
+                  ) : (
+                  <div className="border border-gray-200 bg-gray-50 rounded p-3">
+                    <div className="text-xs text-gray-600">
+                      <strong>No Serial Tracking:</strong> This item does not have serial control enabled. To enable serial numbers, go to Inventory → Items → edit this item and check "Serial Control".
+                    </div>
+                  </div>
+                  )}
 
                   {/* Lot & Location */}
                   <div className="grid grid-cols-2 gap-3">
@@ -603,7 +618,10 @@ function PendingReceipts() {
 
                   {/* Summary */}
                   <div className="bg-gray-50 border rounded p-3 text-xs text-gray-600">
-                    <strong>On Submit:</strong> {parseInt(form.quantity_completed) || 0} individual serial numbers will be created, materials backflushed, finished goods added to stock, and GL entries posted.
+                    <strong>On Submit:</strong> {selectedWO.serial_control
+                      ? `${parseInt(form.quantity_completed) || 0} individual serial numbers will be created, materials backflushed, finished goods added to stock, and GL entries posted.`
+                      : `Qty ${parseInt(form.quantity_completed) || 0} will be received into inventory, materials backflushed, and GL entries posted (no serial numbers).`
+                    }
                   </div>
 
                   {/* Actions */}
@@ -613,7 +631,7 @@ function PendingReceipts() {
                       disabled={submitting}
                       className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-2.5 rounded shadow text-sm"
                     >
-                      {submitting ? 'Generating Serials...' : `Receive & Generate ${parseInt(form.quantity_completed) || 0} Serial Numbers`}
+                      {submitting ? 'Processing...' : (selectedWO.serial_control ? `Receive & Generate ${parseInt(form.quantity_completed) || 0} Serial Numbers` : `Receive ${parseInt(form.quantity_completed) || 0} into Inventory`)}
                     </button>
                     <button type="button" onClick={closeForm} className="px-4 py-2.5 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 text-sm">
                       Cancel

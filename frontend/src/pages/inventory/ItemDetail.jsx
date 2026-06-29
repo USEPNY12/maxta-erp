@@ -359,9 +359,18 @@ function ItemDetail() {
             <div className="space-y-3">
               <fieldset className="border border-gray-400 p-3">
                 <legend className="text-xs font-bold px-1">Lot and Serial</legend>
-                <div className="space-y-1 text-xs">
+                <div className="space-y-2 text-xs">
                   <label className="block"><input type="checkbox" checked={!!item.lot_control} onChange={e => updateField('lot_control', e.target.checked)} /> Lot Control</label>
                   <label className="block"><input type="checkbox" checked={!!item.serial_control} onChange={e => updateField('serial_control', e.target.checked)} /> Serial Control</label>
+                  {item.serial_control && (
+                    <div className="mt-2 pl-5">
+                      <div className="erp-form-group">
+                        <label className="erp-form-label">Serial Prefix:</label>
+                        <input className="erp-form-input" placeholder="e.g. TG001-" value={item.serial_prefix || ''} onChange={e => updateField('serial_prefix', e.target.value)} />
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">Auto-used when receiving WO. Leave blank to enter manually at receipt.</div>
+                    </div>
+                  )}
                 </div>
               </fieldset>
               <fieldset className="border border-gray-400 p-3">
