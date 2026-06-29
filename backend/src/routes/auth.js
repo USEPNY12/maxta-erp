@@ -107,11 +107,11 @@ router.post('/run-migration', authenticate, authorize('admin'), async (req, res)
     results.push('Renamed CNC/Waterjet to CNC Drilling');
     
     // Update routing template operations
-    await pool.query("UPDATE routing_template_operations SET operation_name='CNC Drilling', operation_description='Drill holes/notches per drawing' WHERE work_center_id=(SELECT id FROM work_centers WHERE code='CNC')");
+    await pool.query("UPDATE routing_template_operations SET operation_description='Drill holes/notches per drawing' WHERE work_center_id=(SELECT id FROM work_centers WHERE code='CNC')");
     results.push('Updated routing template operations');
     
     // Update existing wo_routing records
-    await pool.query("UPDATE wo_routing SET operation_name='CNC Drilling', operation_description='Drill holes/notches per drawing' WHERE work_center_id=(SELECT id FROM work_centers WHERE code='CNC')");
+    await pool.query("UPDATE wo_routing SET operation_description='Drill holes/notches per drawing' WHERE work_center_id=(SELECT id FROM work_centers WHERE code='CNC')");
     results.push('Updated wo_routing records');
     
     // Delete Drilling Station if exists
