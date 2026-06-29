@@ -514,20 +514,30 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
     
     // Helper: map item_type_id to routing product_type
     const itemTypeToProductType = {
-      8: 'tempered_panel',   // Tempered Glass
-      9: 'laminated',        // Laminated Glass
-      7: null,               // Raw Glass - no routing
-      11: 'custom'           // Finished Good
+      7: null,                // Raw Glass - no routing
+      8: 'tempered_panel',    // Tempered Glass
+      9: 'laminated',         // Laminated Glass (UL certified)
+      11: 'custom',           // Finished Good
+      13: 'tempered_laminated', // Tempered Laminated
+      14: 'igu',              // Standard IGU
+      15: 'low_e_igu',        // Low-E IGU
+      16: 'heat_soaked'       // Heat Soaked Tempered
     };
     
     const createdWOs = [];
     for (const line of lines) {
-      // === FIX BUG 2: Detect product_type from item's item_type_id ===
-      let productType = line.product_type; // Use SO line product_type if explicitly set
+      // === Detect product_type: SO line → item.product_type → item.item_type_id fallback ===
+      let productType = line.product_type; // 1st priority: SO line explicitly sets product_type
       if (!productType && line.item_id) {
-        const [itemRows] = await conn.query('SELECT item_type_id FROM items WHERE id = ?', [line.item_id]);
-        if (itemRows.length > 0 && itemRows[0].item_type_id) {
-          productType = itemTypeToProductType[itemRows[0].item_type_id] || 'custom';
+        // 2nd priority: item's own product_type field (set when item is created)
+        const [itemRows] = await conn.query('SELECT product_type, routing_template_id, item_type_id FROM items WHERE id = ?', [line.item_id]);
+        if (itemRows.length > 0) {
+          if (itemRows[0].product_type) {
+            productType = itemRows[0].product_type;
+          } else if (itemRows[0].item_type_id) {
+            // 3rd priority: map from item_type_id
+            productType = itemTypeToProductType[itemRows[0].item_type_id] || 'custom';
+          }
         }
       }
       if (!productType) productType = 'tempered_panel'; // Final fallback

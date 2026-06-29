@@ -283,8 +283,11 @@ function ItemDetail() {
             <option value="">Select...</option>
             <option value="Raw Glass">Raw Glass</option>
             <option value="Tempered Glass">Tempered Glass</option>
-            <option value="Laminated Glass">Laminated Glass</option>
-            <option value="IGU">IGU</option>
+            <option value="Tempered Laminated">Tempered Laminated</option>
+            <option value="Laminated Glass">Laminated Glass (UL)</option>
+            <option value="Heat Soaked Tempered">Heat Soaked Tempered</option>
+            <option value="IGU">Standard IGU</option>
+            <option value="Low-E IGU">Low-E IGU</option>
             <option value="Hardware">Hardware</option>
             <option value="Finished Good">Finished Good</option>
             <option value="Consumable">Consumable</option>
