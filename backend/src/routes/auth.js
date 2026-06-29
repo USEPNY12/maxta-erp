@@ -97,4 +97,65 @@ router.put('/users/:id', authenticate, authorize('admin'), async (req, res) => {
   }
 });
 
+// Temporary migration endpoint - remove after use
+router.post('/run-migration', authenticate, authorize('admin'), async (req, res) => {
+  try {
+    const results = [];
+    
+    // Rename CNC/Waterjet to CNC Drilling
+    await pool.query("UPDATE work_centers SET name='CNC Drilling', icon='🔩' WHERE code='CNC'");
+    results.push('Renamed CNC/Waterjet to CNC Drilling');
+    
+    // Update routing template operations
+    await pool.query("UPDATE routing_template_operations SET operation_name='CNC Drilling', operation_description='Drill holes/notches per drawing' WHERE work_center_id=(SELECT id FROM work_centers WHERE code='CNC')");
+    results.push('Updated routing template operations');
+    
+    // Update existing wo_routing records
+    await pool.query("UPDATE wo_routing SET operation_name='CNC Drilling', operation_description='Drill holes/notches per drawing' WHERE work_center_id=(SELECT id FROM work_centers WHERE code='CNC')");
+    results.push('Updated wo_routing records');
+    
+    // Delete Drilling Station if exists
+    const [drillCheck] = await pool.query("SELECT id FROM work_centers WHERE code='DRILL'");
+    if (drillCheck.length > 0) {
+      // Reassign any wo_routing using DRILL to CNC
+      const [cncWc] = await pool.query("SELECT id FROM work_centers WHERE code='CNC'");
+      if (cncWc.length > 0) {
+        await pool.query('UPDATE wo_routing SET work_center_id=? WHERE work_center_id=?', [cncWc[0].id, drillCheck[0].id]);
+        await pool.query('UPDATE routing_template_operations SET work_center_id=? WHERE work_center_id=?', [cncWc[0].id, drillCheck[0].id]);
+      }
+      await pool.query("DELETE FROM work_centers WHERE code='DRILL'");
+      results.push('Deleted Drilling Station work center');
+    }
+    
+    // Add new columns if not exist
+    const migrations = [
+      "ALTER TABLE sales_order_lines ADD COLUMN IF NOT EXISTS notches_count INT DEFAULT 0",
+      "ALTER TABLE sales_order_lines ADD COLUMN IF NOT EXISTS hole_diameter VARCHAR(20) DEFAULT NULL",
+      "ALTER TABLE sales_order_lines ADD COLUMN IF NOT EXISTS hole_type VARCHAR(50) DEFAULT 'standard'",
+      "ALTER TABLE sales_order_lines ADD COLUMN IF NOT EXISTS notch_type VARCHAR(50) DEFAULT 'standard'",
+      "ALTER TABLE sales_order_lines ADD COLUMN IF NOT EXISTS cnc_surcharge DECIMAL(10,2) DEFAULT 0",
+      "ALTER TABLE sales_order_lines ADD COLUMN IF NOT EXISTS cnc_notes TEXT DEFAULT NULL",
+      "ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS has_notches BOOLEAN DEFAULT FALSE",
+      "ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS notches_count INT DEFAULT 0",
+      "ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS cnc_estimated_cost DECIMAL(10,2) DEFAULT 0",
+      "ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS hole_diameter VARCHAR(20) DEFAULT NULL",
+      "ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS hole_type VARCHAR(50) DEFAULT 'standard'",
+      "ALTER TABLE wo_routing ADD COLUMN IF NOT EXISTS skipped_at DATETIME DEFAULT NULL",
+      "ALTER TABLE wo_routing ADD COLUMN IF NOT EXISTS skipped_by INT DEFAULT NULL",
+      "ALTER TABLE wo_routing ADD COLUMN IF NOT EXISTS skip_reason VARCHAR(255) DEFAULT NULL"
+    ];
+    for (const sql of migrations) {
+      try { await pool.query(sql); } catch(e) { /* column may already exist */ }
+    }
+    results.push('Schema migrations applied');
+    
+    // Get final work centers list
+    const [wcs] = await pool.query('SELECT id, name, code FROM work_centers ORDER BY id');
+    
+    res.json({ success: true, results, work_centers: wcs });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
