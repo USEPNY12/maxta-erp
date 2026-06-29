@@ -1580,6 +1580,7 @@ module.exports = async () => {
     console.log('Phase 11 (Customer Master Upgrade): verified');
   } catch(e) { console.log('Phase11 error:', e.message); }
   await migrateCNCDrilling();
+  await migrateItemTypeRouting();
 };
 
 // === CNC Drilling Upgrade Migration ===
@@ -1645,4 +1646,37 @@ async function migrateCNCDrilling() {
     
     console.log('CNC Drilling migration: applied successfully');
   } catch(e) { console.log('CNC Drilling migration error:', e.message); }
+}
+
+// === Item Type → Product Type / Routing Template Migration ===
+async function migrateItemTypeRouting() {
+  try {
+    // Add product_type and routing_template_id columns to item_types
+    try { await pool.query("ALTER TABLE item_types ADD COLUMN product_type VARCHAR(50) DEFAULT NULL AFTER description"); } catch(e) { /* exists */ }
+    try { await pool.query("ALTER TABLE item_types ADD COLUMN routing_template_id INT DEFAULT NULL AFTER product_type"); } catch(e) { /* exists */ }
+
+    // Populate existing item_types with correct product_type and routing_template_id
+    const mappings = [
+      [7, null, null],           // Raw Glass - no routing
+      [8, 'tempered_panel', 1],  // Tempered Glass
+      [9, 'laminated', 2],      // Laminated Glass
+      [10, null, null],          // Hardware
+      [11, 'custom', 7],        // Finished Good
+      [12, null, null],          // Consumable
+      [13, 'tempered_laminated', 3], // Tempered Laminated
+      [14, 'igu', 4],           // Standard IGU
+      [15, 'low_e_igu', 5],     // Low-E IGU
+      [16, 'heat_soaked', 6]    // Heat Soaked Tempered
+    ];
+    for (const [id, pt, rtId] of mappings) {
+      try {
+        await pool.query(
+          "UPDATE item_types SET product_type = ?, routing_template_id = ? WHERE id = ? AND (product_type IS NULL OR product_type = '')",
+          [pt, rtId, id]
+        );
+      } catch(e) { /* ignore */ }
+    }
+
+    console.log('Item Type Routing migration: applied successfully');
+  } catch(e) { console.log('Item Type Routing migration error:', e.message); }
 }

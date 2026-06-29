@@ -74,26 +74,21 @@ router.post('/items', authenticate, async (req, res) => {
     // Convert empty strings to null for integer/decimal columns
     const intFields = ['receipt_location_id','shipping_location_id','qty_on_hand','standard_cost','weighted_avg_cost','last_cost','min_order_qty','minimum_qty','lead_time_days','production_days','production_qty','batch_size','unit_weight','item_type_id','routing_template_id'];
     intFields.forEach(f => { if (fields[f] === '' || fields[f] === undefined) fields[f] = null; });
-    // Auto-set product_type from item_type (determines routing template for WO)
-    if (!fields.product_type && fields.item_type) {
-      const itemTypeToProduct = {
-        'Raw Glass': 'raw_material',
-        'Tempered Glass': 'tempered_panel',
-        'Tempered Laminated': 'tempered_laminated',
-        'Laminated Glass': 'laminated',
-        'Heat Soaked Tempered': 'heat_soaked',
-        'IGU': 'igu',
-        'Low-E IGU': 'low_e_igu',
-        'Hardware': null,
-        'Finished Good': 'custom',
-        'Consumable': null
-      };
-      fields.product_type = itemTypeToProduct[fields.item_type] || null;
-    }
-    // Auto-set routing_template_id based on product_type
-    if (!fields.routing_template_id && fields.product_type) {
-      const productToTemplate = { 'tempered_panel': 1, 'laminated': 2, 'tempered_laminated': 3 };
-      fields.routing_template_id = productToTemplate[fields.product_type] || null;
+    // Auto-set product_type and routing_template_id from item_type (DB-driven)
+    if (fields.item_type_id || fields.item_type) {
+      let typeRow = null;
+      if (fields.item_type_id) {
+        const [rows] = await pool.query('SELECT product_type, routing_template_id FROM item_types WHERE id = ?', [fields.item_type_id]);
+        typeRow = rows[0];
+      } else if (fields.item_type) {
+        const [rows] = await pool.query('SELECT id, product_type, routing_template_id FROM item_types WHERE name = ?', [fields.item_type]);
+        typeRow = rows[0];
+        if (typeRow && !fields.item_type_id) fields.item_type_id = typeRow.id;
+      }
+      if (typeRow) {
+        if (!fields.product_type) fields.product_type = typeRow.product_type || null;
+        if (!fields.routing_template_id) fields.routing_template_id = typeRow.routing_template_id || null;
+      }
     }
     const columns = Object.keys(fields).filter(k => !['pricing','vendors','read_only','item_type_name','updated_at','created_at'].includes(k));
     const values = columns.map(k => fields[k]);
@@ -139,24 +134,21 @@ router.put('/items/:id', authenticate, async (req, res) => {
     // Convert empty strings to null for integer/decimal columns
     const intFields = ['receipt_location_id','shipping_location_id','qty_on_hand','standard_cost','weighted_avg_cost','last_cost','min_order_qty','minimum_qty','lead_time_days','production_days','production_qty','batch_size','unit_weight','item_type_id','routing_template_id'];
     intFields.forEach(f => { if (fields[f] === '' || fields[f] === undefined) fields[f] = null; });
-    // Auto-set product_type from item_type on update (determines routing template for WO)
-    if (fields.item_type) {
-      const itemTypeToProduct = {
-        'Raw Glass': 'raw_material',
-        'Tempered Glass': 'tempered_panel',
-        'Tempered Laminated': 'tempered_laminated',
-        'Laminated Glass': 'laminated',
-        'Heat Soaked Tempered': 'heat_soaked',
-        'IGU': 'igu',
-        'Low-E IGU': 'low_e_igu',
-        'Hardware': null,
-        'Finished Good': 'custom',
-        'Consumable': null
-      };
-      fields.product_type = itemTypeToProduct[fields.item_type] || null;
-      // Auto-set routing_template_id based on product_type
-      const productToTemplate = { 'tempered_panel': 1, 'laminated': 2, 'tempered_laminated': 3 };
-      fields.routing_template_id = productToTemplate[fields.product_type] || null;
+    // Auto-set product_type and routing_template_id from item_type on update (DB-driven)
+    if (fields.item_type_id || fields.item_type) {
+      let typeRow = null;
+      if (fields.item_type_id) {
+        const [rows] = await pool.query('SELECT product_type, routing_template_id FROM item_types WHERE id = ?', [fields.item_type_id]);
+        typeRow = rows[0];
+      } else if (fields.item_type) {
+        const [rows] = await pool.query('SELECT id, product_type, routing_template_id FROM item_types WHERE name = ?', [fields.item_type]);
+        typeRow = rows[0];
+        if (typeRow && !fields.item_type_id) fields.item_type_id = typeRow.id;
+      }
+      if (typeRow) {
+        fields.product_type = typeRow.product_type || null;
+        fields.routing_template_id = typeRow.routing_template_id || null;
+      }
     }
 
     const columns = Object.keys(fields);

@@ -69,6 +69,114 @@ router.get('/routing-templates/by-product/:product_type', authenticate, async (r
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// POST create routing template
+router.post('/routing-templates', authenticate, async (req, res) => {
+  try {
+    const { code, name, product_type, description, operations } = req.body;
+    if (!code || !name || !product_type) return res.status(400).json({ error: 'Code, name, and product_type are required' });
+    const [result] = await pool.query(
+      'INSERT INTO routing_templates (code, name, product_type, description) VALUES (?,?,?,?)',
+      [code, name, product_type, description || null]
+    );
+    const templateId = result.insertId;
+    // Insert operations if provided
+    if (operations && operations.length > 0) {
+      for (const op of operations) {
+        await pool.query(
+          'INSERT INTO routing_template_operations (template_id, sequence, work_center_id, operation_description, setup_time_hours, run_time_per_unit, qc_required, notes) VALUES (?,?,?,?,?,?,?,?)',
+          [templateId, op.sequence, op.work_center_id, op.operation_description || '', op.setup_time_hours || 0, op.run_time_per_unit || 0, op.qc_required ? 1 : 0, op.notes || null]
+        );
+      }
+    }
+    res.status(201).json({ id: templateId, message: 'Routing template created' });
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Template code already exists' });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT update routing template
+router.put('/routing-templates/:id', authenticate, async (req, res) => {
+  try {
+    const { code, name, product_type, description, is_active, operations } = req.body;
+    await pool.query(
+      'UPDATE routing_templates SET code=?, name=?, product_type=?, description=?, is_active=? WHERE id=?',
+      [code, name, product_type, description || null, is_active !== undefined ? (is_active ? 1 : 0) : 1, req.params.id]
+    );
+    // If operations provided, replace all
+    if (operations !== undefined) {
+      await pool.query('DELETE FROM routing_template_operations WHERE template_id = ?', [req.params.id]);
+      if (operations && operations.length > 0) {
+        for (const op of operations) {
+          await pool.query(
+            'INSERT INTO routing_template_operations (template_id, sequence, work_center_id, operation_description, setup_time_hours, run_time_per_unit, qc_required, notes) VALUES (?,?,?,?,?,?,?,?)',
+            [req.params.id, op.sequence, op.work_center_id, op.operation_description || '', op.setup_time_hours || 0, op.run_time_per_unit || 0, op.qc_required ? 1 : 0, op.notes || null]
+          );
+        }
+      }
+    }
+    res.json({ message: 'Routing template updated' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// DELETE (deactivate) routing template
+router.delete('/routing-templates/:id', authenticate, async (req, res) => {
+  try {
+    await pool.query('UPDATE routing_templates SET is_active = 0 WHERE id = ?', [req.params.id]);
+    res.json({ message: 'Routing template deactivated' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// ============ ITEM TYPES (enhanced CRUD with product_type + routing) ============
+router.get('/item-types', authenticate, async (req, res) => {
+  try {
+    const [types] = await pool.query(`
+      SELECT it.*, rt.name as routing_template_name, rt.code as routing_template_code
+      FROM item_types it
+      LEFT JOIN routing_templates rt ON it.routing_template_id = rt.id
+      ORDER BY it.name
+    `);
+    res.json(types);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.post('/item-types', authenticate, async (req, res) => {
+  try {
+    const { name, description, product_type, routing_template_id, is_inventory, costing_method } = req.body;
+    if (!name) return res.status(400).json({ error: 'Name is required' });
+    const [result] = await pool.query(
+      'INSERT INTO item_types (name, description, product_type, routing_template_id, is_inventory, costing_method) VALUES (?,?,?,?,?,?)',
+      [name, description || null, product_type || null, routing_template_id || null, is_inventory !== undefined ? (is_inventory ? 1 : 0) : 1, costing_method || 'standard']
+    );
+    res.status(201).json({ id: result.insertId, message: 'Item type created' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.put('/item-types/:id', authenticate, async (req, res) => {
+  try {
+    const { name, description, product_type, routing_template_id, is_active, is_inventory, costing_method } = req.body;
+    await pool.query(
+      'UPDATE item_types SET name=?, description=?, product_type=?, routing_template_id=?, is_active=?, is_inventory=?, costing_method=? WHERE id=?',
+      [name, description || null, product_type || null, routing_template_id || null, is_active !== undefined ? (is_active ? 1 : 0) : 1, is_inventory !== undefined ? (is_inventory ? 1 : 0) : 1, costing_method || 'standard', req.params.id]
+    );
+    res.json({ message: 'Item type updated' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+router.delete('/item-types/:id', authenticate, async (req, res) => {
+  try {
+    // Check if any items use this type
+    const [items] = await pool.query('SELECT COUNT(*) as cnt FROM items WHERE item_type_id = ?', [req.params.id]);
+    if (items[0].cnt > 0) {
+      // Soft deactivate instead of delete
+      await pool.query('UPDATE item_types SET is_active = 0 WHERE id = ?', [req.params.id]);
+      return res.json({ message: 'Item type deactivated (items still reference it)' });
+    }
+    await pool.query('DELETE FROM item_types WHERE id = ?', [req.params.id]);
+    res.json({ message: 'Item type deleted' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 // ============ BILL OF MATERIALS ============
 router.get('/bom', authenticate, async (req, res) => {
   try {

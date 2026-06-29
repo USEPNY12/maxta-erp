@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import FabricationCharges from './setup/FabricationCharges';
+import ProductTypesManager from './setup/ProductTypesManager';
+import RoutingTemplatesManager from './setup/RoutingTemplatesManager';
 
 // ============ CONSTANTS ============
 const MODULES = ['system_setup', 'inventory', 'sales', 'manufacturing', 'purchasing', 'accounting', 'reports'];
@@ -155,7 +157,9 @@ export default function SystemSetup() {
         {(activeSection === 'templates' || activeSection === 'email-config') && <TemplateManager />}
         {activeSection === 'gl-defaults' && <GLDefaults />}
         {activeSection === 'fabrication-charges' && <FabricationCharges />}
-        {!['users', 'roles', 'permissions', 'company', 'templates', 'email-config', 'gl-defaults', 'fabrication-charges'].includes(activeSection) && <GenericSetupTable tableKey={activeSection} />}
+        {activeSection === 'item-types' && <ProductTypesManager />}
+        {activeSection === 'routing-templates' && <RoutingTemplatesManager />}
+        {!['users', 'roles', 'permissions', 'company', 'templates', 'email-config', 'gl-defaults', 'fabrication-charges', 'item-types', 'routing-templates'].includes(activeSection) && <GenericSetupTable tableKey={activeSection} />}
       </div>
 
       </div>{/* end flex row */}

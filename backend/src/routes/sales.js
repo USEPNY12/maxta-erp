@@ -512,17 +512,10 @@ router.post('/orders/:id/release-to-production', authenticate, async (req, res) 
     
     if (lines.length === 0) { await conn.rollback(); conn.release(); return res.status(400).json({ error: 'No lines available to release (all already in production or no pending lines)' }); }
     
-    // Helper: map item_type_id to routing product_type
-    const itemTypeToProductType = {
-      7: null,                // Raw Glass - no routing
-      8: 'tempered_panel',    // Tempered Glass
-      9: 'laminated',         // Laminated Glass (UL certified)
-      11: 'custom',           // Finished Good
-      13: 'tempered_laminated', // Tempered Laminated
-      14: 'igu',              // Standard IGU
-      15: 'low_e_igu',        // Low-E IGU
-      16: 'heat_soaked'       // Heat Soaked Tempered
-    };
+    // Helper: map item_type_id to routing product_type (DB-driven)
+    const [itemTypeRows] = await conn.query('SELECT id, product_type FROM item_types WHERE product_type IS NOT NULL');
+    const itemTypeToProductType = {};
+    for (const row of itemTypeRows) { itemTypeToProductType[row.id] = row.product_type; }
     
     const createdWOs = [];
     for (const line of lines) {
