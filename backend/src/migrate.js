@@ -1467,4 +1467,116 @@ module.exports = async () => {
     } catch(e) { /* already modified */ }
     console.log('Phase 10 tables (Serial Numbers): verified');
   } catch(e) { console.log('Phase10 error:', e.message); }
+
+  // Phase 11: Customer Master Upgrade
+  try {
+    const customerCols = [
+      ['dba_name', 'VARCHAR(200)'],
+      ['status', "ENUM('active','inactive','on_hold','prospect','cod_only') DEFAULT 'active'"],
+      ['parent_customer_id', 'INT'],
+      ['fax', 'VARCHAR(20)'],
+      ['website', 'VARCHAR(200)'],
+      ['bill_address1', 'VARCHAR(200)'],
+      ['bill_address2', 'VARCHAR(200)'],
+      ['bill_city', 'VARCHAR(100)'],
+      ['bill_state', 'VARCHAR(50)'],
+      ['bill_zip', 'VARCHAR(20)'],
+      ['bill_country', "VARCHAR(50) DEFAULT 'USA'"],
+      ['ship_address1', 'VARCHAR(200)'],
+      ['ship_address2', 'VARCHAR(200)'],
+      ['ship_city', 'VARCHAR(100)'],
+      ['ship_state', 'VARCHAR(50)'],
+      ['ship_zip', 'VARCHAR(20)'],
+      ['ship_country', "VARCHAR(50) DEFAULT 'USA'"],
+      ['payment_method', "ENUM('check','wire','ach','credit_card','cod') DEFAULT 'check'"],
+      ['discount_percent', 'DECIMAL(5,2) DEFAULT 0'],
+      ['credit_status', "ENUM('good','warning','hold','cod_only') DEFAULT 'good'"],
+      ['credit_approved_by', 'VARCHAR(100)'],
+      ['credit_approved_date', 'DATE'],
+      ['finance_charge_exempt', 'BOOLEAN DEFAULT FALSE'],
+      ['send_statements', 'BOOLEAN DEFAULT TRUE'],
+      ['statement_cycle', "ENUM('monthly','weekly','biweekly') DEFAULT 'monthly'"],
+      ['collection_priority', "ENUM('low','medium','high') DEFAULT 'medium'"],
+      ['territory', 'VARCHAR(100)'],
+      ['account_manager', 'VARCHAR(100)'],
+      ['source', 'VARCHAR(50)'],
+      ['industry', 'VARCHAR(100)'],
+      ['default_ship_via', 'VARCHAR(100)'],
+      ['shipping_method', "ENUM('our_truck','common_carrier','customer_pickup','will_call') DEFAULT 'our_truck'"],
+      ['freight_terms', "ENUM('prepaid','collect','prepaid_add','fob_origin','fob_destination') DEFAULT 'prepaid'"],
+      ['preferred_delivery_days', 'VARCHAR(100)'],
+      ['delivery_time_window', 'VARCHAR(50)'],
+      ['requires_appointment', 'BOOLEAN DEFAULT FALSE'],
+      ['requires_liftgate', 'BOOLEAN DEFAULT FALSE'],
+      ['loading_dock_available', 'BOOLEAN DEFAULT TRUE'],
+      ['requires_rack_return', 'BOOLEAN DEFAULT FALSE'],
+      ['rack_deposit_required', 'BOOLEAN DEFAULT FALSE'],
+      ['racks_at_customer', 'INT DEFAULT 0'],
+      ['max_truck_size', 'VARCHAR(50)'],
+      ['delivery_instructions', 'TEXT'],
+      ['delivery_contact_name', 'VARCHAR(100)'],
+      ['delivery_contact_phone', 'VARCHAR(20)'],
+      ['route_zone', 'VARCHAR(50)'],
+      ['tax_exempt_number', 'VARCHAR(50)'],
+      ['resale_cert_number', 'VARCHAR(50)'],
+      ['tax_exempt_expiry', 'DATE'],
+      ['tax_id', 'VARCHAR(50)'],
+      ['requires_coc', 'BOOLEAN DEFAULT FALSE'],
+      ['breakage_claim_days', 'INT DEFAULT 3'],
+      ['recut_policy', "ENUM('standard','free_recuts','charge_all','first_free') DEFAULT 'standard'"],
+      ['quality_tier', "ENUM('standard','premium','architectural') DEFAULT 'standard'"],
+      ['lead_time_days', 'INT'],
+      ['min_order_amount', 'DECIMAL(12,2)'],
+      ['alert_message', 'TEXT'],
+      ['internal_notes', 'TEXT'],
+      ['currency_code', "VARCHAR(3) DEFAULT 'USD'"],
+      ['current_balance', 'DECIMAL(12,2) DEFAULT 0']
+    ];
+    for (const [col, def] of customerCols) {
+      try { await pool.query(`ALTER TABLE customers ADD COLUMN ${col} ${def}`); } catch(e) { /* already exists */ }
+    }
+    // Customer addresses table
+    await pool.query(`CREATE TABLE IF NOT EXISTS customer_addresses (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      customer_id INT NOT NULL,
+      address_type ENUM('shipping','billing','job_site','mailing') DEFAULT 'shipping',
+      label VARCHAR(100),
+      attention_to VARCHAR(100),
+      address1 VARCHAR(200) NOT NULL,
+      address2 VARCHAR(200),
+      city VARCHAR(100),
+      state VARCHAR(50),
+      zip VARCHAR(20),
+      country VARCHAR(50) DEFAULT 'USA',
+      phone VARCHAR(20),
+      is_default_billing BOOLEAN DEFAULT FALSE,
+      is_default_shipping BOOLEAN DEFAULT FALSE,
+      delivery_instructions TEXT,
+      delivery_hours VARCHAR(100),
+      requires_liftgate BOOLEAN DEFAULT FALSE,
+      requires_inside_delivery BOOLEAN DEFAULT FALSE,
+      loading_dock BOOLEAN DEFAULT FALSE,
+      floor_suite VARCHAR(50),
+      is_active BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_cust_addr (customer_id)
+    )`);
+    // Expand customer_contacts
+    const contactCols = [
+      ['title', 'VARCHAR(100)'],
+      ['role', 'VARCHAR(50)'],
+      ['mobile', 'VARCHAR(20)'],
+      ['department', 'VARCHAR(100)'],
+      ['is_primary', 'BOOLEAN DEFAULT FALSE'],
+      ['is_active', 'BOOLEAN DEFAULT TRUE'],
+      ['receives_invoices', 'BOOLEAN DEFAULT FALSE'],
+      ['receives_statements', 'BOOLEAN DEFAULT FALSE'],
+      ['receives_quotes', 'BOOLEAN DEFAULT FALSE'],
+      ['receives_pos', 'BOOLEAN DEFAULT FALSE']
+    ];
+    for (const [col, def] of contactCols) {
+      try { await pool.query(`ALTER TABLE customer_contacts ADD COLUMN ${col} ${def}`); } catch(e) { /* already exists */ }
+    }
+    console.log('Phase 11 (Customer Master Upgrade): verified');
+  } catch(e) { console.log('Phase11 error:', e.message); }
 };
