@@ -139,21 +139,42 @@ function LocationLabel({ data, style }) {
 function ProductionLabel({ data, style }) {
   const d = data.data;
   return (
-    <div className="label" style={{ width: '4in', border: '2px solid #000', padding: '10px', fontSize: '11px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #000', paddingBottom: '4px', marginBottom: '6px' }}>
+    <div className="label" style={{ width: '4in', border: '2px solid #000', padding: '10px', fontSize: '11px', fontFamily: 'Arial, sans-serif' }}>
+      {/* Header with company name and WO number */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '3px solid #000', paddingBottom: '4px', marginBottom: '6px' }}>
         <span style={{ fontWeight: 'bold', fontSize: '16px' }}>MAX TA GROUP</span>
-        <span style={{ fontWeight: 'bold', fontSize: '14px' }}>{d.wo_number}</span>
+        <span style={{ fontWeight: 'bold', fontSize: '16px', backgroundColor: '#000', color: '#fff', padding: '2px 8px', borderRadius: '3px' }}>{d.wo_number}</span>
       </div>
-      <div className="label-row"><span className="label-field">Customer:</span><span className="label-value">{d.customer || '-'}</span></div>
-      {d.project && <div className="label-row"><span className="label-field">Project:</span><span className="label-value">{d.project}</span></div>}
-      <div className="label-row"><span className="label-field">SO#:</span><span className="label-value">{d.so_number || '-'}</span></div>
-      <div style={{ borderTop: '1px solid #ccc', marginTop: '6px', paddingTop: '6px' }}>
-        <div className="label-row"><span className="label-field">Item:</span><span className="label-value">{d.item_number} - {d.item_desc}</span></div>
-        <div className="label-row"><span className="label-field">Glass:</span><span className="label-value">{d.glass_type || '-'} {d.thickness || ''}</span></div>
-        <div className="label-row"><span className="label-field">Size:</span><span className="label-value">{d.width || '?'}" × {d.height || '?'}"</span></div>
-        <div className="label-row"><span className="label-field">Qty:</span><span className="label-value">{d.quantity}</span></div>
-        {d.edge_type && <div className="label-row"><span className="label-field">Edge:</span><span className="label-value">{d.edge_type}</span></div>}
+
+      {/* Customer & Order Info */}
+      <div style={{ marginBottom: '6px' }}>
+        <div className="label-row"><span className="label-field">Customer:</span><span className="label-value" style={{ fontSize: '12px' }}>{d.customer || '-'}</span></div>
+        {d.project && <div className="label-row"><span className="label-field">Project:</span><span className="label-value">{d.project}</span></div>}
+        <div className="label-row"><span className="label-field">SO#:</span><span className="label-value">{d.so_number || '-'}</span></div>
+        {d.priority && d.priority !== 'normal' && <div className="label-row"><span className="label-field">Priority:</span><span className="label-value" style={{ color: d.priority === 'urgent' ? '#dc2626' : '#ea580c', fontWeight: 'bold', textTransform: 'uppercase' }}>{d.priority}</span></div>}
       </div>
+
+      {/* Glass Specifications - the most important section */}
+      <div style={{ border: '2px solid #000', padding: '6px', marginBottom: '6px', backgroundColor: '#f9f9f9' }}>
+        <div style={{ fontWeight: 'bold', fontSize: '10px', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>GLASS SPECIFICATIONS</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px' }}>
+          <div className="label-row"><span className="label-field">Glass:</span><span className="label-value">{d.glass_type || '-'}</span></div>
+          <div className="label-row"><span className="label-field">Thick:</span><span className="label-value">{d.thickness || '-'}</span></div>
+          <div className="label-row"><span className="label-field">Size:</span><span className="label-value" style={{ fontSize: '12px', fontWeight: 'bold' }}>{d.width || '?'}" × {d.height || '?'}"</span></div>
+          <div className="label-row"><span className="label-field">Qty:</span><span className="label-value" style={{ fontSize: '14px', fontWeight: 'bold' }}>{d.quantity}</span></div>
+          <div className="label-row"><span className="label-field">Edge:</span><span className="label-value">{d.edge_type || 'None'}</span></div>
+          {d.has_holes ? <div className="label-row"><span className="label-field">Holes:</span><span className="label-value" style={{ color: '#dc2626' }}>✓ YES</span></div> : null}
+          {d.has_notches ? <div className="label-row"><span className="label-field">Notches:</span><span className="label-value" style={{ color: '#dc2626' }}>✓ YES</span></div> : null}
+          {d.interlayer_type && <div className="label-row"><span className="label-field">Interlayer:</span><span className="label-value">{d.interlayer_type}</span></div>}
+        </div>
+      </div>
+
+      {/* Item description */}
+      {d.item_desc && d.item_desc !== '-' && (
+        <div className="label-row" style={{ marginBottom: '4px' }}><span className="label-field">Item:</span><span className="label-value" style={{ fontSize: '9px' }}>{d.item_number} - {d.item_desc}</span></div>
+      )}
+
+      {/* Fabrication details */}
       {d.fabrication && Object.keys(d.fabrication).length > 0 && (
         <div className="fab-section">
           <div style={{ fontWeight: 'bold', fontSize: '10px', marginBottom: '2px' }}>FABRICATION:</div>
@@ -164,13 +185,16 @@ function ProductionLabel({ data, style }) {
           ))}
         </div>
       )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', borderTop: '1px solid #000', paddingTop: '6px' }}>
+
+      {/* Barcode and QR */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', borderTop: '2px solid #000', paddingTop: '6px' }}>
         <div className="label-barcode" style={{ flex: 1 }}>
           {data.barcode && <img src={`data:image/png;base64,${data.barcode}`} alt="barcode" style={{ maxWidth: '200px' }} />}
+          <div style={{ fontSize: '9px', textAlign: 'center', marginTop: '2px' }}>{d.wo_number}</div>
         </div>
         {data.qr_data_url && <div className="label-qr"><img src={data.qr_data_url} alt="QR" style={{ width: '70px', height: '70px' }} /></div>}
       </div>
-      {d.due_date && <div style={{ textAlign: 'right', fontSize: '9px', marginTop: '2px' }}>Due: {new Date(d.due_date).toLocaleDateString()}</div>}
+      {d.due_date && <div style={{ textAlign: 'right', fontSize: '9px', marginTop: '2px', fontWeight: 'bold' }}>Due: {new Date(d.due_date).toLocaleDateString()}</div>}
     </div>
   );
 }

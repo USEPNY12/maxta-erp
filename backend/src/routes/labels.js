@@ -103,13 +103,20 @@ router.get('/location/:id', authenticate, async (req, res) => {
 router.get('/work-order/:id', authenticate, async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT wo.*, i.item_number, i.description as item_desc, i.glass_type,
-        i.glass_thickness, i.edge_type,
-        so.order_number as so_number, c.company_name as customer_name, so.project_name
+      SELECT wo.*,
+        COALESCE(i.item_number, wo.item_description) as item_number,
+        COALESCE(i.description, wo.item_description) as item_desc,
+        COALESCE(i.glass_type, wo.glass_type) as resolved_glass_type,
+        COALESCE(i.glass_thickness, wo.thickness) as resolved_thickness,
+        COALESCE(i.edge_type, wo.edge_type) as resolved_edge_type,
+        so.order_number as so_number,
+        COALESCE(c.company_name, c2.company_name) as customer_name,
+        so.project_name
       FROM work_orders wo
       LEFT JOIN items i ON wo.item_id = i.id
       LEFT JOIN sales_orders so ON wo.sales_order_id = so.id
       LEFT JOIN customers c ON so.customer_id = c.id
+      LEFT JOIN customers c2 ON wo.customer_id = c2.id
       WHERE wo.id = ?`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Work order not found' });
     const wo = rows[0];
@@ -139,18 +146,23 @@ router.get('/work-order/:id', authenticate, async (req, res) => {
       data: {
         wo_number: barcodeText,
         status: wo.status,
-        item_number: wo.item_number,
-        item_desc: wo.item_desc,
-        glass_type: wo.glass_type,
-        thickness: wo.thickness || wo.glass_thickness,
-        edge_type: wo.edge_type,
+        item_number: wo.item_number || '-',
+        item_desc: wo.item_desc || wo.item_description || '-',
+        glass_type: wo.resolved_glass_type || wo.glass_type || '-',
+        thickness: wo.resolved_thickness || wo.thickness || '-',
+        edge_type: wo.resolved_edge_type || wo.edge_type || '-',
         width: wo.width,
         height: wo.height,
         quantity: wo.quantity,
-        customer: wo.customer_name,
+        customer: wo.customer_name || '-',
         project: wo.project_name,
-        so_number: wo.so_number,
-        due_date: wo.due_date,
+        so_number: wo.so_number || '-',
+        due_date: wo.due_date || wo.finish_date,
+        has_holes: wo.has_holes,
+        has_notches: wo.has_notches,
+        interlayer_type: wo.interlayer_type,
+        priority: wo.priority,
+        product_type: wo.product_type,
         fabrication: fabSummary
       },
       barcode,

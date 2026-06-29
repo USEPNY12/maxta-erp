@@ -468,20 +468,61 @@ function WorkOrders() {
               {activeTab === 'Routing' && (
                 <div>
                   <h4 className="font-bold text-sm mb-3">Production Routing Steps</h4>
+                  {/* Progress bar */}
+                  {selected.routing && selected.routing.length > 0 && (
+                    <div className="mb-4">
+                      <div className="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>{selected.routing.filter(r => r.status === 'complete').length} of {selected.routing.length} steps complete</span>
+                        <span>{Math.round((selected.routing.filter(r => r.status === 'complete').length / selected.routing.length) * 100)}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${(selected.routing.filter(r => r.status === 'complete').length / selected.routing.length) * 100}%` }}></div>
+                      </div>
+                    </div>
+                  )}
                   <div className="space-y-2">
-                    {(selected.routing || [])?.map((r, i) => (
-                      <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border ${r.status === 'complete' ? 'bg-green-50 border-green-200' : r.status === 'in_progress' ? 'bg-yellow-50 border-yellow-300 shadow-sm' : 'bg-white border-gray-200'}`}>
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow" style={{ backgroundColor: r.color || '#6b7280' }}>{r.icon || (i+1)}</div>
+                    {(selected.routing || [])?.map((r, i) => {
+                      const isNextStep = r.status === 'pending' && (i === 0 || selected.routing[i-1]?.status === 'complete');
+                      const canStart = isNextStep && ['released','in_progress'].includes(selected.status);
+                      const canComplete = r.status === 'in_progress';
+                      return (
+                      <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${r.status === 'complete' ? 'bg-green-50 border-green-200' : r.status === 'in_progress' ? 'bg-yellow-50 border-yellow-300 shadow-md ring-2 ring-yellow-200' : isNextStep && ['released','in_progress'].includes(selected.status) ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 opacity-60'}`}>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow" style={{ backgroundColor: r.status === 'complete' ? '#16a34a' : r.status === 'in_progress' ? '#d97706' : r.color || '#6b7280' }}>
+                          {r.status === 'complete' ? '✓' : r.status === 'in_progress' ? '▶' : r.icon || (i+1)}
+                        </div>
                         <div className="flex-1">
                           <div className="font-bold text-sm">{r.work_center_name} <span className="text-gray-400 font-normal text-xs">({r.work_center_code})</span></div>
                           <div className="text-xs text-gray-600">{r.operation_description}</div>
+                          {r.status === 'in_progress' && r.actual_start && <div className="text-[10px] text-yellow-700 mt-0.5">Started: {new Date(r.actual_start).toLocaleString()}</div>}
+                          {r.status === 'complete' && r.actual_finish && <div className="text-[10px] text-green-700 mt-0.5">Completed: {new Date(r.actual_finish).toLocaleString()}</div>}
                         </div>
-                        <div className="text-right">
-                          <span className={`text-xs px-2 py-1 rounded-full font-bold ${r.status === 'complete' ? 'bg-green-100 text-green-700' : r.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>{r.status === 'complete' ? '✓ Done' : r.status === 'in_progress' ? '⚙️ Active' : '○ Pending'}</span>
-                          {r.qc_required === 1 && <div className="text-[10px] text-amber-600 mt-1 font-bold">⚠ QC Required</div>}
+                        <div className="text-right flex items-center gap-2">
+                          {r.status === 'complete' && <span className="text-xs px-2 py-1 rounded-full font-bold bg-green-100 text-green-700">✓ Done</span>}
+                          {r.status === 'in_progress' && (
+                            <button className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded font-bold shadow-sm transition-colors" onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                await api.post('/api/manufacturing/shop-floor/complete', { work_order_id: selected.id, routing_step_id: r.id });
+                                toast.success(`${r.work_center_name} completed!`);
+                                openDetail(selected);
+                              } catch (err) { toast.error(err.response?.data?.error || 'Failed to complete step'); }
+                            }}>✓ Complete Step</button>
+                          )}
+                          {canStart && (
+                            <button className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded font-bold shadow-sm transition-colors" onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                await api.post('/api/manufacturing/shop-floor/start', { work_order_id: selected.id, routing_step_id: r.id });
+                                toast.success(`${r.work_center_name} started!`);
+                                openDetail(selected);
+                              } catch (err) { toast.error(err.response?.data?.error || 'Failed to start step'); }
+                            }}>▶ Start Step</button>
+                          )}
+                          {r.status === 'pending' && !canStart && <span className="text-xs px-2 py-1 rounded-full font-bold bg-gray-100 text-gray-500">○ Waiting</span>}
+                          {r.qc_required === 1 && <div className="text-[10px] text-amber-600 mt-1 font-bold">⚠ QC</div>}
                         </div>
                       </div>
-                    ))}
+                    );})}
                     {(!selected.routing || selected.routing.length === 0) && (
                       <div className="text-center py-8">
                         <p className="text-gray-500 text-sm mb-4">No routing defined for this work order</p>
