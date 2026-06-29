@@ -1579,4 +1579,70 @@ module.exports = async () => {
     }
     console.log('Phase 11 (Customer Master Upgrade): verified');
   } catch(e) { console.log('Phase11 error:', e.message); }
+  await migrateCNCDrilling();
 };
+
+// === CNC Drilling Upgrade Migration ===
+async function migrateCNCDrilling() {
+  try {
+    // Rename CNC/Waterjet to CNC Drilling
+    await pool.query("UPDATE work_centers SET name='CNC Drilling', icon='🔩', description='CNC drilling for holes and notches' WHERE code='CNC' AND name != 'CNC Drilling'");
+    
+    // Delete Drilling Station if not referenced in routing
+    try {
+      const [drillCenter] = await pool.query("SELECT id FROM work_centers WHERE code='DRILL'");
+      if (drillCenter.length > 0) {
+        const [refs] = await pool.query("SELECT COUNT(*) as cnt FROM wo_routing WHERE work_center_id = ?", [drillCenter[0].id]);
+        if (refs[0].cnt === 0) {
+          await pool.query("DELETE FROM work_centers WHERE code='DRILL'");
+        }
+      }
+    } catch(e) { /* no DRILL center */ }
+    
+    // Update routing template operations for CNC
+    try {
+      const [cncCenter] = await pool.query("SELECT id FROM work_centers WHERE code='CNC'");
+      if (cncCenter.length > 0) {
+        await pool.query("UPDATE routing_template_operations SET operation_description='Drill holes/notches per drawing' WHERE work_center_id = ?", [cncCenter[0].id]);
+      }
+    } catch(e) { /* ignore */ }
+    
+    // Add CNC-related columns to sales_order_lines
+    const solCols = [
+      ['notches_count', 'INT DEFAULT 0'],
+      ['hole_diameter', 'VARCHAR(20) DEFAULT NULL'],
+      ['hole_type', "VARCHAR(30) DEFAULT 'standard'"],
+      ['notch_type', "VARCHAR(30) DEFAULT 'standard'"],
+      ['cnc_surcharge', 'DECIMAL(10,2) DEFAULT 0'],
+      ['cnc_notes', 'TEXT DEFAULT NULL']
+    ];
+    for (const [col, def] of solCols) {
+      try { await pool.query(`ALTER TABLE sales_order_lines ADD COLUMN ${col} ${def}`); } catch(e) { /* exists */ }
+    }
+    
+    // Add CNC-related columns to work_orders
+    const woCols = [
+      ['has_notches', 'TINYINT(1) DEFAULT 0'],
+      ['notches_count', 'INT DEFAULT 0'],
+      ['holes_count', 'INT DEFAULT 0'],
+      ['hole_diameter', 'VARCHAR(20) DEFAULT NULL'],
+      ['hole_type', "VARCHAR(30) DEFAULT 'standard'"],
+      ['cnc_estimated_cost', 'DECIMAL(10,2) DEFAULT 0']
+    ];
+    for (const [col, def] of woCols) {
+      try { await pool.query(`ALTER TABLE work_orders ADD COLUMN ${col} ${def}`); } catch(e) { /* exists */ }
+    }
+    
+    // Add skip columns to wo_routing
+    const routingCols = [
+      ['skipped_at', 'DATETIME DEFAULT NULL'],
+      ['skipped_by', 'INT DEFAULT NULL'],
+      ['skip_reason', 'VARCHAR(255) DEFAULT NULL']
+    ];
+    for (const [col, def] of routingCols) {
+      try { await pool.query(`ALTER TABLE wo_routing ADD COLUMN ${col} ${def}`); } catch(e) { /* exists */ }
+    }
+    
+    console.log('CNC Drilling migration: applied successfully');
+  } catch(e) { console.log('CNC Drilling migration error:', e.message); }
+}
