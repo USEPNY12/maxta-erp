@@ -412,14 +412,14 @@ function WorkOrders() {
 
       {/* Detail Panel */}
       {showDetail && selected && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 pt-4 overflow-auto">
+        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 pt-16 overflow-auto">
           <div className="bg-white rounded-lg shadow-2xl w-[950px] max-h-[90vh] overflow-auto">
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-900 to-blue-800 text-white px-5 py-4 sticky top-0 z-10">
               <div className="flex justify-between items-start">
                 <div>
                   <div className="flex items-center gap-3">
-                    <h3 className="text-2xl font-black tracking-wide text-white">{selected.order_number || `WO-${selected.id}`}</h3>
+                    <h3 className="text-3xl font-black tracking-wide text-white drop-shadow-lg">{selected.order_number || `WO-${String(selected.id).padStart(5,'0')}`}</h3>
                     <span className="text-sm px-2 py-0.5 rounded-full" style={{ backgroundColor: (statusConfig[selected.status] || {}).bg, color: (statusConfig[selected.status] || {}).color }}>{(statusConfig[selected.status] || {}).icon} {(statusConfig[selected.status] || {}).label}</span>
                     <span className="text-sm px-2 py-0.5 rounded" style={{ backgroundColor: (priorityConfig[selected.priority] || {}).bg, color: (priorityConfig[selected.priority] || {}).color }}>{(priorityConfig[selected.priority] || {}).label}</span>
                   </div>
@@ -585,7 +585,7 @@ function WorkOrders() {
 
       {/* New Work Order Modal */}
       {showNew && (
-        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 pt-4 overflow-auto">
+        <div className="fixed inset-0 bg-black/40 flex items-start justify-center z-50 pt-16 overflow-auto">
           <div className="bg-white rounded-lg shadow-2xl w-[750px] max-h-[90vh] overflow-auto">
             <div className="bg-gradient-to-r from-green-700 to-green-600 text-white px-5 py-4 flex justify-between items-center">
               <h3 className="font-bold text-lg">New Work Order - Glass Fabrication</h3>
