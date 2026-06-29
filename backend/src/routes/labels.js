@@ -104,8 +104,8 @@ router.get('/work-order/:id', authenticate, async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT wo.*,
-        COALESCE(i.item_number, wo.item_description) as item_number,
-        COALESCE(i.description, wo.item_description) as item_desc,
+        COALESCE(i.item_number, wo.description) as item_number,
+        COALESCE(i.description, wo.description) as item_desc,
         COALESCE(i.glass_type, wo.glass_type) as resolved_glass_type,
         COALESCE(i.glass_thickness, wo.thickness) as resolved_thickness,
         COALESCE(i.edge_type, wo.edge_type) as resolved_edge_type,
@@ -147,7 +147,7 @@ router.get('/work-order/:id', authenticate, async (req, res) => {
         wo_number: barcodeText,
         status: wo.status,
         item_number: wo.item_number || '-',
-        item_desc: wo.item_desc || wo.item_description || '-',
+        item_desc: wo.item_desc || wo.description || '-',
         glass_type: wo.resolved_glass_type || wo.glass_type || '-',
         thickness: wo.resolved_thickness || wo.thickness || '-',
         edge_type: wo.resolved_edge_type || wo.edge_type || '-',
