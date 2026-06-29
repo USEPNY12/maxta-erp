@@ -57,7 +57,7 @@ function ProductionSchedule() {
     : schedule;
 
   // Board view columns
-  const boardStations = ['Cutting Table', 'Edge Polisher', 'CNC/Waterjet', 'Wash Line', 'Tempering Oven', 'Lamination Line', 'Quality Control', 'Packing Station'];
+  const boardStations = ['Cutting Table', 'Edge Polisher', 'CNC Drilling', 'Wash Line', 'Tempering Oven', 'Lamination Line', 'Quality Control', 'Packing Station'];
 
   return (
     <ModulePage {...manufacturingMenu}>

@@ -607,7 +607,7 @@ function WorkOrders() {
                   />
                   <div style={{marginTop:'12px', display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:'8px'}}>
                     <button onClick={() => {}} style={{padding:'8px', backgroundColor:'#1565c0', color:'#fff', border:'none', borderRadius:'4px', fontSize:'11px', fontWeight:'bold'}}>Cutting Table</button>
-                    <button onClick={() => {}} style={{padding:'8px', backgroundColor:'#2e7d32', color:'#fff', border:'none', borderRadius:'4px', fontSize:'11px', fontWeight:'bold'}}>CNC Machine</button>
+                    <button onClick={() => {}} style={{padding:'8px', backgroundColor:'#2e7d32', color:'#fff', border:'none', borderRadius:'4px', fontSize:'11px', fontWeight:'bold'}}>CNC Drilling</button>
                     <button onClick={() => {}} style={{padding:'8px', backgroundColor:'#e65100', color:'#fff', border:'none', borderRadius:'4px', fontSize:'11px', fontWeight:'bold'}}>Edging / Polish</button>
                     <button onClick={() => {}} style={{padding:'8px', backgroundColor:'#6a1b9a', color:'#fff', border:'none', borderRadius:'4px', fontSize:'11px', fontWeight:'bold'}}>Tempering</button>
                     <button onClick={() => {}} style={{padding:'8px', backgroundColor:'#00838f', color:'#fff', border:'none', borderRadius:'4px', fontSize:'11px', fontWeight:'bold'}}>QC / Inspection</button>

@@ -11,7 +11,7 @@ const SCAN_MODES = [
   { id: 'location', label: '📍 Location', desc: 'Scan a location to see its inventory' }
 ];
 
-const STATIONS = ['Cutting Table', 'CNC Machine', 'Edging', 'Tempering', 'Laminating', 'Washing', 'Inspection', 'Packaging'];
+const STATIONS = ['Cutting Table', 'CNC Drilling', 'Edging', 'Tempering', 'Laminating', 'Washing', 'Inspection', 'Packaging'];
 
 export default function Scanner() {
   const [mode, setMode] = useState('lookup');

@@ -4,8 +4,7 @@ import api from '../services/api';
 
 const MACHINE_TAGS = [
   { value: 'cutting_table', label: 'Cutting Table', icon: '🔪', color: '#e74c3c' },
-  { value: 'cnc_machine', label: 'CNC Machine', icon: '⚙️', color: '#3498db' },
-  { value: 'waterjet', label: 'Waterjet', icon: '💧', color: '#1abc9c' },
+  { value: 'cnc_drilling', label: 'CNC Drilling', icon: '🔩', color: '#3498db' },
   { value: 'edge_polisher', label: 'Edge Polisher', icon: '✨', color: '#9b59b6' },
   { value: 'shop_drawing', label: 'Shop Drawing', icon: '📐', color: '#f39c12' },
   { value: 'reference', label: 'Reference', icon: '📎', color: '#95a5a6' },
