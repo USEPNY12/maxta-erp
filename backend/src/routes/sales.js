@@ -30,30 +30,69 @@ router.get('/customers', authenticate, async (req, res) => {
 
 router.get('/customers/:id', authenticate, async (req, res) => {
   try {
-    const [customers] = await pool.query(`SELECT c.*, ct.name as customer_type_name FROM customers c LEFT JOIN customer_types ct ON c.customer_type_id = ct.id WHERE c.id = ?`, [req.params.id]);
+    const [customers] = await pool.query(`SELECT c.*, ct.name as customer_type_name, sp.name as salesperson_name FROM customers c LEFT JOIN customer_types ct ON c.customer_type_id = ct.id LEFT JOIN salespeople sp ON c.salesperson_id = sp.id WHERE c.id = ?`, [req.params.id]);
     if (customers.length === 0) return res.status(404).json({ error: 'Customer not found' });
-    const [contacts] = await pool.query('SELECT * FROM customer_contacts WHERE customer_id = ?', [req.params.id]);
+    const [contacts] = await pool.query('SELECT * FROM customer_contacts WHERE customer_id = ? AND is_active = 1 ORDER BY is_primary DESC', [req.params.id]);
+    const [addresses] = await pool.query('SELECT * FROM customer_addresses WHERE customer_id = ? AND is_active = 1 ORDER BY is_default_shipping DESC', [req.params.id]);
     const [recentOrders] = await pool.query('SELECT * FROM sales_orders WHERE customer_id = ? ORDER BY order_date DESC LIMIT 10', [req.params.id]);
     const [openInvoices] = await pool.query("SELECT * FROM ar_invoices WHERE customer_id = ? AND status IN ('posted','partial') ORDER BY due_date", [req.params.id]);
     const [deposits] = await pool.query("SELECT * FROM customer_deposits WHERE customer_id = ? AND status = 'unapplied' ORDER BY deposit_date DESC", [req.params.id]);
-    res.json({ ...customers[0], contacts, recent_orders: recentOrders, open_invoices: openInvoices, deposits });
+    const [payments] = await pool.query('SELECT * FROM customer_payments WHERE customer_id = ? ORDER BY payment_date DESC LIMIT 20', [req.params.id]);
+    res.json({ ...customers[0], contacts, addresses, recent_orders: recentOrders, open_invoices: openInvoices, deposits, payments });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 router.post('/customers', authenticate, async (req, res) => {
   try {
-    const customerNumber = await getNextNumber('customer');
     const b = req.body;
+    const customerNumber = b.customer_number || await getNextNumber('customer');
     const company_name = b.name || b.company_name;
     const [result] = await pool.query(
-      `INSERT INTO customers (customer_number, company_name, contact_name, bill_address1, bill_address2, bill_city, bill_state, bill_zip, bill_country,
-       ship_address1, ship_address2, ship_city, ship_state, ship_zip, ship_country, phone, fax, email, website,
-       customer_type_id, tax_group_id, payment_terms, credit_limit, price_list_id, salesperson_id, carrier_id, tax_exempt, tax_exempt_number, notes)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [customerNumber, company_name, b.contact_name, b.bill_address1 || b.address1, b.bill_address2 || b.address2, b.bill_city || b.city, b.bill_state || b.state, b.bill_zip || b.zip, b.bill_country || 'USA',
-       b.ship_address1, b.ship_address2, b.ship_city, b.ship_state, b.ship_zip, b.ship_country || 'USA', b.phone, b.fax, b.email, b.website,
-       b.customer_type_id, b.tax_group_id, b.payment_terms || 'Net 30', b.credit_limit || 0, b.price_list_id, b.salesperson_id, b.carrier_id, b.tax_exempt || false, b.tax_exempt_number, b.notes]
+      `INSERT INTO customers (customer_number, company_name, dba_name, status, parent_customer_id, contact_name,
+       bill_address1, bill_address2, bill_city, bill_state, bill_zip, bill_country,
+       ship_address1, ship_address2, ship_city, ship_state, ship_zip, ship_country,
+       phone, fax, email, website, customer_type_id, tax_group_id, payment_terms, payment_method, discount_percent,
+       credit_limit, credit_status, credit_approved_by, credit_approved_date,
+       finance_charge_exempt, send_statements, statement_cycle, collection_priority,
+       price_list_id, salesperson_id, territory, account_manager, source, industry,
+       carrier_id, default_ship_via, shipping_method, freight_terms,
+       preferred_delivery_days, delivery_time_window, requires_appointment, requires_liftgate,
+       loading_dock_available, requires_rack_return, rack_deposit_required, racks_at_customer,
+       max_truck_size, delivery_instructions, delivery_contact_name, delivery_contact_phone, route_zone,
+       tax_exempt, tax_exempt_number, resale_cert_number, tax_exempt_expiry, tax_id,
+       requires_coc, breakage_claim_days, recut_policy, quality_tier, lead_time_days, min_order_amount,
+       alert_message, notes, internal_notes, currency_code)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [customerNumber, company_name, b.dba_name, b.status || 'active', b.parent_customer_id,
+       b.contact_name, b.bill_address1 || b.address1, b.bill_address2 || b.address2, b.bill_city || b.city, b.bill_state || b.state, b.bill_zip || b.zip, b.bill_country || 'USA',
+       b.ship_address1, b.ship_address2, b.ship_city, b.ship_state, b.ship_zip, b.ship_country || 'USA',
+       b.phone, b.fax, b.email, b.website, b.customer_type_id, b.tax_group_id,
+       b.payment_terms || 'Net 30', b.payment_method || 'check', b.discount_percent || 0,
+       b.credit_limit || 0, b.credit_status || 'good', b.credit_approved_by, b.credit_approved_date,
+       b.finance_charge_exempt || 0, b.send_statements !== undefined ? b.send_statements : 1, b.statement_cycle || 'monthly', b.collection_priority || 'medium',
+       b.price_list_id, b.salesperson_id, b.territory, b.account_manager, b.source, b.industry,
+       b.carrier_id, b.default_ship_via, b.shipping_method || 'our_truck', b.freight_terms || 'prepaid',
+       b.preferred_delivery_days, b.delivery_time_window, b.requires_appointment || 0, b.requires_liftgate || 0,
+       b.loading_dock_available !== undefined ? b.loading_dock_available : 1, b.requires_rack_return || 0, b.rack_deposit_required || 0, b.racks_at_customer || 0,
+       b.max_truck_size, b.delivery_instructions, b.delivery_contact_name, b.delivery_contact_phone, b.route_zone,
+       b.tax_exempt || 0, b.tax_exempt_number, b.resale_cert_number, b.tax_exempt_expiry, b.tax_id,
+       b.requires_coc || 0, b.breakage_claim_days || 3, b.recut_policy || 'standard', b.quality_tier || 'standard', b.lead_time_days, b.min_order_amount || 0,
+       b.alert_message, b.notes, b.internal_notes, b.currency_code || 'USD']
     );
+    // Save contacts if provided
+    if (b.contacts && b.contacts.length > 0) {
+      for (const c of b.contacts) {
+        await pool.query(`INSERT INTO customer_contacts (customer_id, name, title, role, phone, mobile, email, department, is_primary, receives_invoices, receives_statements, receives_quotes, notes)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`, [result.insertId, c.name, c.title, c.role, c.phone, c.mobile, c.email, c.department, c.is_primary||0, c.receives_invoices||0, c.receives_statements||0, c.receives_quotes||0, c.notes]);
+      }
+    }
+    // Save addresses if provided
+    if (b.addresses && b.addresses.length > 0) {
+      for (const a of b.addresses) {
+        await pool.query(`INSERT INTO customer_addresses (customer_id, address_type, label, attention_to, address1, address2, city, state, zip, country, phone, is_default_billing, is_default_shipping, delivery_instructions, delivery_hours, requires_liftgate, requires_inside_delivery, loading_dock, floor_suite)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [result.insertId, a.address_type||'shipping', a.label, a.attention_to, a.address1, a.address2, a.city, a.state, a.zip, a.country||'USA', a.phone, a.is_default_billing||0, a.is_default_shipping||0, a.delivery_instructions, a.delivery_hours, a.requires_liftgate||0, a.requires_inside_delivery||0, a.loading_dock||0, a.floor_suite]);
+      }
+    }
     await req.audit('customers', result.insertId, 'INSERT', null, { customer_number: customerNumber, company_name });
     res.status(201).json({ id: result.insertId, customer_number: customerNumber });
   } catch (error) { res.status(500).json({ error: error.message }); }
@@ -62,16 +101,93 @@ router.post('/customers', authenticate, async (req, res) => {
 router.put('/customers/:id', authenticate, async (req, res) => {
   try {
     const [old] = await pool.query('SELECT * FROM customers WHERE id = ?', [req.params.id]);
-    const fields = req.body;
-    delete fields.id; delete fields.customer_number; delete fields.created_at;
+    const fields = { ...req.body };
+    delete fields.id; delete fields.customer_number; delete fields.created_at; delete fields.updated_at;
+    delete fields.contacts; delete fields.addresses; delete fields.orders; delete fields.invoices; delete fields.payments; delete fields.credits; delete fields.deposits;
+    delete fields.recent_orders; delete fields.open_invoices; delete fields.customer_type_name; delete fields.salesperson_name;
     if (fields.name) { fields.company_name = fields.name; delete fields.name; }
-    const allowedCols = ['company_name','contact_name','bill_address1','bill_address2','bill_city','bill_state','bill_zip','bill_country','ship_address1','ship_address2','ship_city','ship_state','ship_zip','ship_country','phone','fax','email','website','customer_type_id','tax_group_id','payment_terms','credit_limit','price_list_id','salesperson_id','carrier_id','tax_exempt','tax_exempt_number','is_active','notes'];
+    const allowedCols = ['company_name','dba_name','status','parent_customer_id','contact_name',
+      'bill_address1','bill_address2','bill_city','bill_state','bill_zip','bill_country',
+      'ship_address1','ship_address2','ship_city','ship_state','ship_zip','ship_country',
+      'phone','fax','email','website','customer_type_id','tax_group_id','payment_terms','payment_method','discount_percent',
+      'credit_limit','credit_status','credit_approved_by','credit_approved_date',
+      'finance_charge_exempt','send_statements','statement_cycle','collection_priority',
+      'price_list_id','salesperson_id','territory','account_manager','source','industry',
+      'carrier_id','default_ship_via','shipping_method','freight_terms',
+      'preferred_delivery_days','delivery_time_window','requires_appointment','requires_liftgate',
+      'loading_dock_available','requires_rack_return','rack_deposit_required','racks_at_customer',
+      'max_truck_size','delivery_instructions','delivery_contact_name','delivery_contact_phone','route_zone',
+      'tax_exempt','tax_exempt_number','resale_cert_number','tax_exempt_expiry','tax_id',
+      'requires_coc','breakage_claim_days','recut_policy','quality_tier','lead_time_days','min_order_amount',
+      'alert_message','notes','internal_notes','currency_code','is_active'];
     const columns = Object.keys(fields).filter(k => allowedCols.includes(k));
     if (columns.length === 0) return res.status(400).json({ error: 'No valid fields to update' });
     const values = columns.map(k => fields[k]);
     await pool.query(`UPDATE customers SET ${columns.map(k => `${k}=?`).join(',')} WHERE id=?`, [...values, req.params.id]);
     await req.audit('customers', req.params.id, 'UPDATE', old[0], fields);
     res.json({ message: 'Customer updated successfully' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Customer Addresses CRUD
+router.get('/customers/:id/addresses', authenticate, async (req, res) => {
+  try {
+    const [addresses] = await pool.query('SELECT * FROM customer_addresses WHERE customer_id = ? AND is_active = 1 ORDER BY is_default_shipping DESC, label', [req.params.id]);
+    res.json(addresses);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+router.post('/customers/:id/addresses', authenticate, async (req, res) => {
+  try {
+    const a = req.body;
+    const [result] = await pool.query(`INSERT INTO customer_addresses (customer_id, address_type, label, attention_to, address1, address2, city, state, zip, country, phone, is_default_billing, is_default_shipping, delivery_instructions, delivery_hours, requires_liftgate, requires_inside_delivery, loading_dock, floor_suite)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [req.params.id, a.address_type||'shipping', a.label, a.attention_to, a.address1, a.address2, a.city, a.state, a.zip, a.country||'USA', a.phone, a.is_default_billing||0, a.is_default_shipping||0, a.delivery_instructions, a.delivery_hours, a.requires_liftgate||0, a.requires_inside_delivery||0, a.loading_dock||0, a.floor_suite]);
+    res.status(201).json({ id: result.insertId });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+router.put('/customers/:cid/addresses/:aid', authenticate, async (req, res) => {
+  try {
+    const a = req.body; delete a.id; delete a.customer_id; delete a.created_at;
+    const cols = Object.keys(a);
+    if (cols.length === 0) return res.status(400).json({ error: 'No fields' });
+    await pool.query(`UPDATE customer_addresses SET ${cols.map(k=>`${k}=?`).join(',')} WHERE id=? AND customer_id=?`, [...cols.map(k=>a[k]), req.params.aid, req.params.cid]);
+    res.json({ message: 'Address updated' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+router.delete('/customers/:cid/addresses/:aid', authenticate, async (req, res) => {
+  try {
+    await pool.query('UPDATE customer_addresses SET is_active = 0 WHERE id = ? AND customer_id = ?', [req.params.aid, req.params.cid]);
+    res.json({ message: 'Address removed' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// Customer Contacts CRUD
+router.get('/customers/:id/contacts', authenticate, async (req, res) => {
+  try {
+    const [contacts] = await pool.query('SELECT * FROM customer_contacts WHERE customer_id = ? AND is_active = 1 ORDER BY is_primary DESC, name', [req.params.id]);
+    res.json(contacts);
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+router.post('/customers/:id/contacts', authenticate, async (req, res) => {
+  try {
+    const c = req.body;
+    const [result] = await pool.query(`INSERT INTO customer_contacts (customer_id, name, title, role, phone, mobile, email, department, is_primary, receives_invoices, receives_statements, receives_quotes, receives_pos, notes)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, [req.params.id, c.name, c.title, c.role, c.phone, c.mobile, c.email, c.department, c.is_primary||0, c.receives_invoices||0, c.receives_statements||0, c.receives_quotes||0, c.receives_pos||0, c.notes]);
+    res.status(201).json({ id: result.insertId });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+router.put('/customers/:cid/contacts/:conid', authenticate, async (req, res) => {
+  try {
+    const c = req.body; delete c.id; delete c.customer_id;
+    const cols = Object.keys(c);
+    if (cols.length === 0) return res.status(400).json({ error: 'No fields' });
+    await pool.query(`UPDATE customer_contacts SET ${cols.map(k=>`${k}=?`).join(',')} WHERE id=? AND customer_id=?`, [...cols.map(k=>c[k]), req.params.conid, req.params.cid]);
+    res.json({ message: 'Contact updated' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+router.delete('/customers/:cid/contacts/:conid', authenticate, async (req, res) => {
+  try {
+    await pool.query('UPDATE customer_contacts SET is_active = 0 WHERE id = ? AND customer_id = ?', [req.params.conid, req.params.cid]);
+    res.json({ message: 'Contact removed' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
