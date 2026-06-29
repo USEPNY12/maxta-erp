@@ -219,7 +219,7 @@ router.post('/work-orders', authenticate, async (req, res) => {
 
 router.post('/work-orders/:id/release', authenticate, async (req, res) => {
   try {
-    await pool.query("UPDATE work_orders SET status = 'scheduled', release_date = CURDATE() WHERE id = ? AND status = 'planned'", [req.params.id]);
+    await pool.query("UPDATE work_orders SET status = 'released', release_date = CURDATE() WHERE id = ? AND status = 'planned'", [req.params.id]);
     const [firstOp] = await pool.query('SELECT work_center_id FROM wo_routing WHERE work_order_id = ? ORDER BY sequence LIMIT 1', [req.params.id]);
     if (firstOp.length > 0) await pool.query('UPDATE work_orders SET current_station_id = ? WHERE id = ?', [firstOp[0].work_center_id, req.params.id]);
     res.json({ message: 'Work order released to production' });

@@ -483,10 +483,10 @@ function WorkOrders() {
                   <div className="space-y-2">
                     {(selected.routing || [])?.map((r, i) => {
                       const isNextStep = r.status === 'pending' && (i === 0 || selected.routing[i-1]?.status === 'complete');
-                      const canStart = isNextStep && ['released','in_progress'].includes(selected.status);
+                      const canStart = isNextStep && ['scheduled','released','in_progress'].includes(selected.status);
                       const canComplete = r.status === 'in_progress';
                       return (
-                      <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${r.status === 'complete' ? 'bg-green-50 border-green-200' : r.status === 'in_progress' ? 'bg-yellow-50 border-yellow-300 shadow-md ring-2 ring-yellow-200' : isNextStep && ['released','in_progress'].includes(selected.status) ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 opacity-60'}`}>
+                      <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${r.status === 'complete' ? 'bg-green-50 border-green-200' : r.status === 'in_progress' ? 'bg-yellow-50 border-yellow-300 shadow-md ring-2 ring-yellow-200' : isNextStep && ['scheduled','released','in_progress'].includes(selected.status) ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 opacity-60'}`}>
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow" style={{ backgroundColor: r.status === 'complete' ? '#16a34a' : r.status === 'in_progress' ? '#d97706' : r.color || '#6b7280' }}>
                           {r.status === 'complete' ? '✓' : r.status === 'in_progress' ? '▶' : r.icon || (i+1)}
                         </div>
@@ -502,7 +502,7 @@ function WorkOrders() {
                             <button className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded font-bold shadow-sm transition-colors" onClick={async (e) => {
                               e.stopPropagation();
                               try {
-                                await api.post('/api/manufacturing/shop-floor/complete', { work_order_id: selected.id, routing_step_id: r.id });
+                                await api.post('/api/manufacturing/shop-floor/complete', { wo_routing_id: r.id, quantity_good: selected.quantity || 0, quantity_scrap: 0 });
                                 toast.success(`${r.work_center_name} completed!`);
                                 openDetail(selected);
                               } catch (err) { toast.error(err.response?.data?.error || 'Failed to complete step'); }
@@ -512,7 +512,7 @@ function WorkOrders() {
                             <button className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded font-bold shadow-sm transition-colors" onClick={async (e) => {
                               e.stopPropagation();
                               try {
-                                await api.post('/api/manufacturing/shop-floor/start', { work_order_id: selected.id, routing_step_id: r.id });
+                                await api.post('/api/manufacturing/shop-floor/start', { wo_routing_id: r.id });
                                 toast.success(`${r.work_center_name} started!`);
                                 openDetail(selected);
                               } catch (err) { toast.error(err.response?.data?.error || 'Failed to start step'); }
