@@ -12,6 +12,7 @@ const { auditMiddleware } = require('./middleware/auditLog');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
 const app = express();
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 5000;
 
 // Create HTTP server (needed for WebSocket upgrade)

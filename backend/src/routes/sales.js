@@ -120,13 +120,16 @@ router.put('/customers/:id', authenticate, async (req, res) => {
       'tax_exempt','tax_exempt_number','resale_cert_number','tax_exempt_expiry','tax_id',
       'requires_coc','breakage_claim_days','recut_policy','quality_tier','lead_time_days','min_order_amount',
       'alert_message','notes','internal_notes','currency_code','is_active'];
+    // Convert empty strings to null for integer/numeric/date fields
+    const nullableCols = ["customer_type_id","parent_customer_id","tax_group_id","price_list_id","salesperson_id","carrier_id","discount_percent","credit_limit","breakage_claim_days","lead_time_days","min_order_amount","racks_at_customer","rack_deposit_required","credit_approved_date","tax_exempt_expiry"];
+    nullableCols.forEach(k => { if (fields[k] === "" || fields[k] === undefined) fields[k] = null; });
     const columns = Object.keys(fields).filter(k => allowedCols.includes(k));
     if (columns.length === 0) return res.status(400).json({ error: 'No valid fields to update' });
     const values = columns.map(k => fields[k]);
     await pool.query(`UPDATE customers SET ${columns.map(k => `${k}=?`).join(',')} WHERE id=?`, [...values, req.params.id]);
     await req.audit('customers', req.params.id, 'UPDATE', old[0], fields);
     res.json({ message: 'Customer updated successfully' });
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) { console.error("Customer PUT error:", error.message); res.status(500).json({ error: error.message }); }
 });
 
 // Customer Addresses CRUD
