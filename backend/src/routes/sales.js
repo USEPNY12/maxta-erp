@@ -856,8 +856,13 @@ router.post('/shipments', authenticate, async (req, res) => {
         }
       }
     } catch (invoiceErr) { console.error('Auto-invoice generation error:', invoiceErr.message); }
-    // WebSocket broadcast
-    if (global.wsBroadcast) global.wsBroadcast({ type: 'shipment_created', shipment_id: result.insertId, shipment_number: shipmentNumber, invoice_id: autoInvoiceId });
+    // WebSocket broadcast - notify accounting team of pending draft invoice
+    if (global.wsBroadcast) {
+      global.wsBroadcast({ type: 'shipment_created', shipment_id: result.insertId, shipment_number: shipmentNumber, invoice_id: autoInvoiceId });
+      if (autoInvoiceId) {
+        global.wsBroadcast({ type: 'draft_invoice_pending_review', invoice_id: autoInvoiceId, invoice_number: invoiceNumber, message: `Draft invoice ${invoiceNumber} auto-generated from shipment ${shipmentNumber}. Awaiting human review before posting.` });
+      }
+    }
     // Notification
     try { await pool.query("INSERT INTO notification_log (notification_type, subject, details) VALUES ('shipment', CONCAT('Shipment Created: ', ?), JSON_OBJECT('reference_id', ?))", [shipmentNumber + ' created' + (autoInvoiceId ? ' - Draft invoice auto-generated' : ''), result.insertId]); } catch(e) {}
     res.status(201).json({ id: result.insertId, shipment_number: shipmentNumber, auto_invoice_id: autoInvoiceId });
@@ -891,9 +896,18 @@ router.get('/invoices', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// Get count of draft invoices awaiting review (for dashboard badge)
+router.get('/invoices/pending-review/count', authenticate, async (req, res) => {
+  try {
+    const [result] = await pool.query("SELECT COUNT(*) as count FROM ar_invoices WHERE status = 'draft'");
+    res.json({ pending_count: result[0].count });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 router.get('/invoices/:id', authenticate, async (req, res) => {
   try {
-    const [invoices] = await pool.query(`SELECT i.*, c.company_name, c.email as customer_email, 
+    const [invoices] = await pool.query(`SELECT i.*, c.company_name, c.email as 
+customer_email, 
       so.order_number as so_number, s.shipment_number,
       (i.total - COALESCE(i.amount_paid,0)) as balance 
       FROM ar_invoices i JOIN customers c ON i.customer_id = c.id 
@@ -1013,7 +1027,83 @@ router.post('/shipments/:id/create-invoice', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// Post invoice
+// Review & update draft invoice (human review before posting)
+router.put('/invoices/:id/review', authenticate, async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [invoices] = await conn.query('SELECT * FROM ar_invoices WHERE id = ? FOR UPDATE', [req.params.id]);
+    if (!invoices.length) { await conn.rollback(); conn.release(); return res.status(404).json({ error: 'Invoice not found' }); }
+    if (invoices[0].status !== 'draft') { await conn.rollback(); conn.release(); return res.status(400).json({ error: 'Only draft invoices can be reviewed/edited' }); }
+
+    const { lines, discount_amount, adjustment_amount, adjustment_reason, tax_amount, freight_amount, notes, due_date, review_notes } = req.body;
+
+    // Update invoice lines if provided (human can adjust pricing)
+    if (lines && Array.isArray(lines)) {
+      await conn.query('DELETE FROM ar_invoice_lines WHERE invoice_id = ?', [req.params.id]);
+      let subtotal = 0;
+      for (let idx = 0; idx < lines.length; idx++) {
+        const l = lines[idx];
+        const lineTotal = (Number(l.quantity) || 0) * (Number(l.unit_price) || 0);
+        subtotal += lineTotal;
+        await conn.query(
+          'INSERT INTO ar_invoice_lines (invoice_id, line_number, item_id, description, quantity, unit_price, line_total) VALUES (?,?,?,?,?,?,?)',
+          [req.params.id, idx + 1, l.item_id || null, l.description, l.quantity, l.unit_price, lineTotal]
+        );
+      }
+      // Recalculate totals
+      const disc = Number(discount_amount) || 0;
+      const adj = Number(adjustment_amount) || 0;
+      const tax = Number(tax_amount) || 0;
+      const freight = Number(freight_amount) || 0;
+      const total = subtotal - disc + adj + tax + freight;
+      await conn.query(
+        'UPDATE ar_invoices SET subtotal = ?, discount_amount = ?, adjustment_amount = ?, adjustment_reason = ?, tax_amount = ?, freight_amount = ?, total = ?, balance = ?, notes = ?, due_date = ?, review_notes = ?, reviewed_by = ?, reviewed_at = NOW() WHERE id = ?',
+        [subtotal, disc, adj, adjustment_reason || null, tax, freight, total, total - (invoices[0].amount_paid || 0), notes || invoices[0].notes, due_date || invoices[0].due_date, review_notes || null, req.user.id, req.params.id]
+      );
+    } else {
+      // Just update header fields without touching lines
+      const updates = {};
+      if (discount_amount !== undefined) updates.discount_amount = Number(discount_amount) || 0;
+      if (adjustment_amount !== undefined) updates.adjustment_amount = Number(adjustment_amount) || 0;
+      if (adjustment_reason !== undefined) updates.adjustment_reason = adjustment_reason;
+      if (tax_amount !== undefined) updates.tax_amount = Number(tax_amount) || 0;
+      if (freight_amount !== undefined) updates.freight_amount = Number(freight_amount) || 0;
+      if (notes !== undefined) updates.notes = notes;
+      if (due_date !== undefined) updates.due_date = due_date;
+      if (review_notes !== undefined) updates.review_notes = review_notes;
+      updates.reviewed_by = req.user.id;
+      updates.reviewed_at = new Date();
+
+      if (Object.keys(updates).length > 0) {
+        const setClauses = Object.keys(updates).map(k => `${k} = ?`).join(', ');
+        const values = Object.values(updates);
+        await conn.query(`UPDATE ar_invoices SET ${setClauses} WHERE id = ?`, [...values, req.params.id]);
+
+        // Recalculate total if any amount fields changed
+        if (discount_amount !== undefined || adjustment_amount !== undefined || tax_amount !== undefined || freight_amount !== undefined) {
+          const [updated] = await conn.query('SELECT subtotal, discount_amount, adjustment_amount, tax_amount, freight_amount, amount_paid FROM ar_invoices WHERE id = ?', [req.params.id]);
+          if (updated.length) {
+            const u = updated[0];
+            const newTotal = Number(u.subtotal) - Number(u.discount_amount) + Number(u.adjustment_amount) + Number(u.tax_amount) + Number(u.freight_amount);
+            await conn.query('UPDATE ar_invoices SET total = ?, balance = ? WHERE id = ?', [newTotal, newTotal - Number(u.amount_paid), req.params.id]);
+          }
+        }
+      }
+    }
+
+    await conn.commit();
+    await req.audit('ar_invoices', req.params.id, 'REVIEW', { status: 'draft' }, { reviewed_by: req.user.id, review_notes });
+    res.json({ message: 'Invoice reviewed and updated', reviewed_by: req.user.id });
+  } catch (error) {
+    await conn.rollback();
+    res.status(500).json({ error: error.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// Post invoice (human approval - finalizes the invoice)
 router.post('/invoices/:id/post', authenticate, async (req, res) => {
   const conn = await pool.getConnection();
   try {
@@ -1049,7 +1139,13 @@ router.post('/invoices/:id/post', authenticate, async (req, res) => {
     }
     await conn.commit();
     await req.audit('ar_invoices', req.params.id, 'POST', { status: 'draft' }, { status: 'posted' });
-    res.json({ message: 'Invoice posted' });
+    // Notify: invoice posted - ready for customer communication
+    try {
+      await pool.query("INSERT INTO notification_log (notification_type, subject, details) VALUES ('invoice_posted', ?, JSON_OBJECT('invoice_id', ?, 'total', ?, 'customer', ?))",
+        [`Invoice ${invoices[0].invoice_number} posted - $${invoices[0].total}`, req.params.id, String(invoices[0].total), invoices[0].customer_id]);
+      if (global.wsBroadcast) global.wsBroadcast({ type: 'invoice_posted', invoice_id: parseInt(req.params.id), invoice_number: invoices[0].invoice_number, total: invoices[0].total });
+    } catch(e) {}
+    res.json({ message: 'Invoice posted', invoice_number: invoices[0].invoice_number });
   } catch (error) {
     await conn.rollback();
     res.status(500).json({ error: error.message });
