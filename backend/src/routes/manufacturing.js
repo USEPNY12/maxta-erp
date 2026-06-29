@@ -655,9 +655,9 @@ router.post('/receipts', authenticate, async (req, res) => {
         for (let i = 0; i < parseInt(quantity_completed); i++) {
           const sn = serial_prefix + String(nextNum + i).padStart(padLen, '0');
           await conn.query(
-            `INSERT INTO serial_numbers (serial_number, item_id, work_order_id, wo_receipt_id, lot_number, location_id, status, manufactured_date, qc_status, qc_notes)
-             VALUES (?, ?, ?, ?, ?, ?, 'available', CURDATE(), 'passed', ?)`,
-            [sn, wo.item_id, work_order_id, result.insertId, lot_number || null, location_id || null, notes || null]);
+            `INSERT INTO serial_numbers (serial_number, item_id, work_order_id, wo_receipt_id, sales_order_id, lot_number, location_id, status, manufactured_date, qc_status, qc_notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'available', CURDATE(), 'passed', ?)`,
+            [sn, wo.item_id, work_order_id, result.insertId, wo.sales_order_id || null, lot_number || null, location_id || null, notes || null]);
           generatedSerials.push(sn);
         }
       } else if (serial_number_start && serial_number_end && quantity_completed > 0) {
@@ -671,9 +671,9 @@ router.post('/receipts', authenticate, async (req, res) => {
           for (let i = 0; i < parseInt(quantity_completed); i++) {
             const sn = prefix + String(startNum + i).padStart(padLen, '0');
             await conn.query(
-              `INSERT INTO serial_numbers (serial_number, item_id, work_order_id, wo_receipt_id, lot_number, location_id, status, manufactured_date, qc_status, qc_notes)
-               VALUES (?, ?, ?, ?, ?, ?, 'available', CURDATE(), 'passed', ?)`,
-              [sn, wo.item_id, work_order_id, result.insertId, lot_number || null, location_id || null, notes || null]);
+              `INSERT INTO serial_numbers (serial_number, item_id, work_order_id, wo_receipt_id, sales_order_id, lot_number, location_id, status, manufactured_date, qc_status, qc_notes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 'available', CURDATE(), 'passed', ?)`,
+              [sn, wo.item_id, work_order_id, result.insertId, wo.sales_order_id || null, lot_number || null, location_id || null, notes || null]);
             generatedSerials.push(sn);
           }
         }

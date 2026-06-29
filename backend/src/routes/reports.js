@@ -7,7 +7,7 @@ const { authenticate } = require('../middleware/auth');
 router.get('/dashboard', authenticate, async (req, res) => {
   try {
     const [openSO] = await pool.query("SELECT COUNT(*) as count FROM sales_orders WHERE status IN ('open','partial')");
-    const [openMfg] = await pool.query("SELECT COUNT(*) as count FROM work_orders WHERE status IN ('released','in_progress')");
+    const [openMfg] = await pool.query("SELECT COUNT(*) as count FROM work_orders WHERE status IN ('planned','released','in_progress','awaiting_receipt')");
     const [openPO] = await pool.query("SELECT COUNT(*) as count FROM purchase_orders WHERE status IN ('open','partial')");
     
     const [salesMTD] = await pool.query("SELECT COALESCE(SUM(total),0) as total FROM sales_orders WHERE MONTH(order_date) = MONTH(NOW()) AND YEAR(order_date) = YEAR(NOW())");
