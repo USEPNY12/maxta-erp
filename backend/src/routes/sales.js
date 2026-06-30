@@ -450,6 +450,56 @@ router.get('/orders/:id', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// ============ UPDATE SALES ORDER (edit lines on existing order) ============
+router.put('/orders/:id', authenticate, async (req, res) => {
+  try {
+    const [old] = await pool.query('SELECT * FROM sales_orders WHERE id = ?', [req.params.id]);
+    if (!old.length) return res.status(404).json({ error: 'Order not found' });
+    if (['closed', 'cancelled', 'invoiced'].includes(old[0].status)) return res.status(403).json({ error: 'Cannot edit a closed/cancelled/invoiced order' });
+    const { customer_id, customer_po, project_name, required_date, notes, lines } = req.body;
+    
+    // Recalculate subtotal from lines
+    let subtotal = 0;
+    if (lines) lines.forEach(l => { subtotal += ((parseFloat(l.quantity_ordered) || 0) * (parseFloat(l.unit_price) || 0) * (1 - (parseFloat(l.discount_percent) || 0) / 100)); });
+    
+    // Update header
+    await pool.query(
+      'UPDATE sales_orders SET customer_id=?, customer_po=?, project_name=?, required_date=?, subtotal=?, total=?, notes=? WHERE id=?',
+      [customer_id || old[0].customer_id, customer_po || old[0].customer_po, project_name || old[0].project_name, required_date || old[0].required_date, subtotal, subtotal, notes !== undefined ? notes : old[0].notes, req.params.id]
+    );
+    
+    // Delete existing lines that haven't been released to production, then reinsert
+    if (lines) {
+      // Only delete lines that are still 'pending' or 'open' (not released/shipped)
+      await pool.query("DELETE FROM sales_order_lines WHERE sales_order_id = ? AND (production_status = 'pending' OR production_status = 'open' OR production_status IS NULL)", [req.params.id]);
+      
+      for (let i = 0; i < lines.length; i++) {
+        const l = lines[i];
+        // Skip lines that already have a WO (they were already released)
+        if (l.work_order_id || l.production_status === 'released') continue;
+        const qty = parseFloat(l.quantity_ordered) || 0;
+        const lineTotal = qty * (parseFloat(l.unit_price) || 0) * (1 - (parseFloat(l.discount_percent) || 0) / 100);
+        const sqft = l.width_inches && l.height_inches ? (parseFloat(l.width_inches) * parseFloat(l.height_inches)) / 144 : null;
+        await pool.query(
+          `INSERT INTO sales_order_lines (sales_order_id, line_number, item_id, description, quantity_ordered, uom, unit_price, discount_percent, line_total, 
+           width_inches, height_inches, sqft, required_date, notes, product_type, glass_type, thickness, edge_type, shape, interlayer, has_holes, holes_count, 
+           has_notches, notches_count, hole_diameter, hole_type, notch_type, cnc_surcharge, cnc_notes,
+           cutouts, coating, spacer_type, gas_fill, manufacturing_notes, drawing_ref, status)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [req.params.id, i + 1, l.item_id || null, l.description, qty, l.uom || 'Each', l.unit_price, l.discount_percent || 0, lineTotal,
+           l.width_inches || null, l.height_inches || null, sqft, required_date || old[0].required_date, l.notes || null,
+           l.product_type || null, l.glass_type || null, l.thickness || null, l.edge_type || null, l.shape || 'rectangular',
+           l.interlayer || null, l.has_holes ? 1 : 0, l.holes_count || 0,
+           l.has_notches ? 1 : 0, l.notches_count || 0, l.hole_diameter || null, l.hole_type || null, l.notch_type || null, l.cnc_surcharge || 0, l.cnc_notes || null,
+           l.cutouts || null, l.coating || null, l.spacer_type || null, l.gas_fill || null, l.manufacturing_notes || null, l.drawing_ref || null, 'open']
+        );
+      }
+    }
+    await req.audit('sales_orders', req.params.id, 'UPDATE', old[0], req.body);
+    res.json({ message: 'Sales order updated' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 router.post('/orders', authenticate, async (req, res) => {
   try {
     const orderNumber = await getNextNumber('sales_order');

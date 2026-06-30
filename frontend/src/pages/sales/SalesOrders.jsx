@@ -144,6 +144,45 @@ function SalesOrders() {
   const hasPendingLines = selected?.lines?.some(l => l.production_status === 'pending');
   const hasShippableLines = selected?.lines?.some(l => (parseFloat(l.quantity_ordered) || 0) > (parseFloat(l.quantity_shipped) || 0));
 
+  // Edit mode for existing orders
+  const [editMode, setEditMode] = useState(false);
+  const [editLines, setEditLines] = useState([]);
+
+  const startEditLines = () => {
+    setEditLines((selected.lines || []).filter(l => l.production_status !== 'released' && !l.work_order_id).map(l => ({
+      description: l.description || '', product_type: l.product_type || '', glass_type: l.glass_type || '', thickness: l.thickness || '',
+      width_inches: l.width_inches || '', height_inches: l.height_inches || '', edge_type: l.edge_type || '',
+      has_holes: !!l.has_holes, holes_count: l.holes_count || 0, has_notches: !!l.has_notches, notches_count: l.notches_count || 0,
+      hole_type: l.hole_type || 'Standard Round Hole', notch_type: l.notch_type || 'Standard Hinge Notch', hole_diameter: l.hole_diameter || '',
+      cnc_surcharge: l.cnc_surcharge || 0, cnc_notes: l.cnc_notes || '', manufacturing_notes: l.manufacturing_notes || '',
+      quantity_ordered: l.quantity_ordered || 1, unit_price: l.unit_price || 0, item_id: l.item_id || null
+    })));
+    setEditMode(true);
+  };
+
+  const addEditLine = () => setEditLines([...editLines, { description: '', product_type: '', glass_type: '', thickness: '', width_inches: '', height_inches: '', edge_type: '', has_holes: false, holes_count: 0, has_notches: false, notches_count: 0, hole_type: 'Standard Round Hole', notch_type: 'Standard Hinge Notch', hole_diameter: '', cnc_surcharge: 0, cnc_notes: '', manufacturing_notes: '', quantity_ordered: 1, unit_price: 0, item_id: null }]);
+  const removeEditLine = (idx) => setEditLines(editLines.filter((_, i) => i !== idx));
+  const updateEditLine = (idx, field, value) => { const lines = [...editLines]; lines[idx] = { ...lines[idx], [field]: value }; setEditLines(lines); };
+
+  const handleSaveLines = async () => {
+    try {
+      await api.put(`/api/sales/orders/${selected.id}`, {
+        customer_id: selected.customer_id,
+        customer_po: selected.customer_po,
+        project_name: selected.project_name,
+        required_date: selected.required_date,
+        notes: selected.notes,
+        lines: editLines.filter(l => l.description).map(l => ({
+          ...l, quantity_ordered: parseFloat(l.quantity_ordered) || 1, unit_price: parseFloat(l.unit_price) || 0
+        }))
+      });
+      toast.success('Order lines saved!');
+      setEditMode(false);
+      openDetail(selected);
+      fetchOrders();
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to save lines'); }
+  };
+
   return (
     <ModulePage {...salesMenu}>
       <div className="p-3 h-full flex flex-col">
@@ -207,27 +246,78 @@ function SalesOrders() {
               </div>
               <div className="p-3 border border-t-0" style={{ minHeight: '220px' }}>
                 {activeTab === 'Lines' && (
-                  <table className="erp-grid">
-                    <thead><tr><th>#</th><th>Description</th><th>Product Type</th><th>Glass</th><th>Size</th><th>Edge</th><th>Qty</th><th>Shipped</th><th>Price</th><th>Total</th><th>Prod Status</th><th>WO#</th></tr></thead>
-                    <tbody>
-                      {(selected.lines || [])?.map((l, i) => (
-                        <tr key={i}>
-                          <td>{l.line_number}</td>
-                          <td className="font-medium">{l.description}</td>
-                          <td><span className="bg-blue-100 text-blue-800 px-1 rounded text-[10px]">{(l.product_type || '').replace(/_/g, ' ')}</span></td>
-                          <td className="text-[10px]">{l.glass_type} {l.thickness}</td>
-                          <td className="text-center text-[10px]">{l.width_inches && l.height_inches ? `${l.width_inches}"×${l.height_inches}"` : '-'}</td>
-                          <td className="text-[10px]">{l.edge_type || '-'}</td>
-                          <td className="text-right">{l.quantity_ordered}</td>
-                          <td className="text-right">{l.quantity_shipped || 0}</td>
-                          <td className="text-right">${parseFloat(l.unit_price || 0).toFixed(2)}</td>
-                          <td className="text-right font-bold">${parseFloat(l.line_total || 0).toFixed(2)}</td>
-                          <td><span className={`erp-status erp-status-${(l.production_status || 'pending').toLowerCase()}`}>{l.production_status || 'pending'}</span></td>
-                          <td className="text-blue-700 text-[10px]">{l.wo_number || '-'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div>
+                    <div className="mb-2 flex items-center gap-2">
+                      {!editMode && selected.status !== 'closed' && selected.status !== 'cancelled' && selected.status !== 'invoiced' && (
+                        <button className="erp-btn text-xs" onClick={startEditLines}>✏️ Edit Lines</button>
+                      )}
+                      {editMode && (
+                        <>
+                          <button className="erp-btn text-xs" onClick={addEditLine}>+ Add Line</button>
+                          <button className="erp-btn erp-btn-primary text-xs" onClick={handleSaveLines}>💾 Save</button>
+                          <button className="erp-btn text-xs" onClick={() => setEditMode(false)}>Cancel</button>
+                        </>
+                      )}
+                    </div>
+                    {!editMode ? (
+                      <table className="erp-grid">
+                        <thead><tr><th>#</th><th>Description</th><th>Product Type</th><th>Glass</th><th>Size</th><th>Edge</th><th>Qty</th><th>Shipped</th><th>Price</th><th>Total</th><th>Prod Status</th><th>WO#</th></tr></thead>
+                        <tbody>
+                          {(selected.lines || []).length === 0 ? (
+                            <tr><td colSpan="12" className="text-center py-6 text-gray-500">No lines yet. Click "Edit Lines" to add items.</td></tr>
+                          ) : (selected.lines || [])?.map((l, i) => (
+                            <tr key={i}>
+                              <td>{l.line_number}</td>
+                              <td className="font-medium">{l.description}</td>
+                              <td><span className="bg-blue-100 text-blue-800 px-1 rounded text-[10px]">{(l.product_type || '').replace(/_/g, ' ')}</span></td>
+                              <td className="text-[10px]">{l.glass_type} {l.thickness}</td>
+                              <td className="text-center text-[10px]">{l.width_inches && l.height_inches ? `${l.width_inches}"×${l.height_inches}"` : '-'}</td>
+                              <td className="text-[10px]">{l.edge_type || '-'}</td>
+                              <td className="text-right">{l.quantity_ordered}</td>
+                              <td className="text-right">{l.quantity_shipped || 0}</td>
+                              <td className="text-right">${parseFloat(l.unit_price || 0).toFixed(2)}</td>
+                              <td className="text-right font-bold">${parseFloat(l.line_total || 0).toFixed(2)}</td>
+                              <td><span className={`erp-status erp-status-${(l.production_status || 'pending').toLowerCase()}`}>{l.production_status || 'pending'}</span></td>
+                              <td className="text-blue-700 text-[10px]">{l.wo_number || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="erp-grid" style={{ minWidth: '850px' }}>
+                          <thead><tr><th>Description*</th><th>Product Type</th><th>Glass</th><th>Thickness</th><th>W"</th><th>H"</th><th>Edge</th><th>Holes</th><th>Notches</th><th>Qty</th><th>Price</th><th>CNC $</th><th></th></tr></thead>
+                          <tbody>{editLines.map((line, idx) => (
+                            <tr key={idx}>
+                              <td><input className="erp-form-input w-full" value={line.description} onChange={e => updateEditLine(idx, 'description', e.target.value)} /></td>
+                              <td><select className="erp-form-select w-full" value={line.product_type} onChange={e => updateEditLine(idx, 'product_type', e.target.value)}><option value="">-</option>{productTypes.map(pt => <option key={pt} value={pt}>{pt.replace(/_/g,' ')}</option>)}</select></td>
+                              <td><select className="erp-form-select w-full" value={line.glass_type} onChange={e => updateEditLine(idx, 'glass_type', e.target.value)}><option value="">-</option>{glassTypes.map(gt => <option key={gt} value={gt}>{gt}</option>)}</select></td>
+                              <td><select className="erp-form-select w-20" value={line.thickness} onChange={e => updateEditLine(idx, 'thickness', e.target.value)}><option value="">-</option>{thicknesses.map(t => <option key={t} value={t}>{t}</option>)}</select></td>
+                              <td><input className="erp-form-input w-14 text-right" type="number" value={line.width_inches} onChange={e => updateEditLine(idx, 'width_inches', e.target.value)} /></td>
+                              <td><input className="erp-form-input w-14 text-right" type="number" value={line.height_inches} onChange={e => updateEditLine(idx, 'height_inches', e.target.value)} /></td>
+                              <td><select className="erp-form-select w-full" value={line.edge_type} onChange={e => updateEditLine(idx, 'edge_type', e.target.value)}><option value="">-</option>{edgeTypes.map(et => <option key={et} value={et}>{et}</option>)}</select></td>
+                              <td className="text-center">
+                                <label className="flex items-center gap-1 justify-center">
+                                  <input type="checkbox" checked={line.has_holes} onChange={e => { updateEditLine(idx, 'has_holes', e.target.checked); if (!e.target.checked) { updateEditLine(idx, 'holes_count', 0); } }} />
+                                  {line.has_holes && <input className="erp-form-input w-10 text-center" type="number" min="1" placeholder="#" value={line.holes_count} onChange={e => updateEditLine(idx, 'holes_count', parseInt(e.target.value) || 0)} />}
+                                </label>
+                              </td>
+                              <td className="text-center">
+                                <label className="flex items-center gap-1 justify-center">
+                                  <input type="checkbox" checked={line.has_notches} onChange={e => { updateEditLine(idx, 'has_notches', e.target.checked); if (!e.target.checked) { updateEditLine(idx, 'notches_count', 0); } }} />
+                                  {line.has_notches && <input className="erp-form-input w-10 text-center" type="number" min="1" placeholder="#" value={line.notches_count} onChange={e => updateEditLine(idx, 'notches_count', parseInt(e.target.value) || 0)} />}
+                                </label>
+                              </td>
+                              <td><input className="erp-form-input w-14 text-right" type="number" value={line.quantity_ordered} onChange={e => updateEditLine(idx, 'quantity_ordered', e.target.value)} /></td>
+                              <td><input className="erp-form-input w-20 text-right" type="number" step="0.01" value={line.unit_price} onChange={e => updateEditLine(idx, 'unit_price', e.target.value)} /></td>
+                              <td className="text-right text-xs font-bold text-purple-700">{(line.has_holes || line.has_notches) ? `$${((line.holes_count || 0) * 12 + (line.notches_count || 0) * 25).toFixed(2)}` : '-'}</td>
+                              <td><button className="text-red-600 text-xs" onClick={() => removeEditLine(idx)}>✕</button></td>
+                            </tr>
+                          ))}</tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
                 )}
                 {activeTab === 'Fabrication' && (
                   <div>
