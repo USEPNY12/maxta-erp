@@ -1581,6 +1581,7 @@ module.exports = async () => {
   } catch(e) { console.log('Phase11 error:', e.message); }
   await migrateCNCDrilling();
   await migrateItemTypeRouting();
+  await migrateBugFixes_Jun29();
 };
 
 // === CNC Drilling Upgrade Migration ===
@@ -1679,4 +1680,24 @@ async function migrateItemTypeRouting() {
 
     console.log('Item Type Routing migration: applied successfully');
   } catch(e) { console.log('Item Type Routing migration error:', e.message); }
+}
+
+// === Bug Fixes Migration (Jun 29, 2026) ===
+async function migrateBugFixes_Jun29() {
+  try {
+    // Fix 1: Expand audit_log operation column from VARCHAR(20) to VARCHAR(100)
+    try { await pool.query("ALTER TABLE audit_log MODIFY COLUMN operation VARCHAR(100) NOT NULL"); } catch(e) { /* already done */ }
+
+    // Fix 2: Open July and August 2026 accounting periods (they were incorrectly closed)
+    try {
+      await pool.query("UPDATE accounting_periods SET status = 'open' WHERE period_year = 2026 AND period_number IN (7, 8) AND status = 'closed'");
+    } catch(e) { /* ignore */ }
+
+    // Fix 3: Ensure all future periods (Sep-Dec 2026) are open
+    try {
+      await pool.query("UPDATE accounting_periods SET status = 'open' WHERE period_year = 2026 AND period_number >= 9 AND status = 'closed'");
+    } catch(e) { /* ignore */ }
+
+    console.log('Bug Fixes (Jun 29): audit_log column expanded, accounting periods opened');
+  } catch(e) { console.log('Bug Fixes (Jun 29) error:', e.message); }
 }
