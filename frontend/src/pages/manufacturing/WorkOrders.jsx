@@ -426,10 +426,21 @@ function WorkOrders() {
                   </div>
                   <p className="text-blue-200 text-sm mt-1">{selected.item_description || selected.item_number} | {getProductLabel(selected.product_type)}</p>
                 </div>
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-2 items-center flex-wrap">
                   {selected.status === 'planned' && <button className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-4 py-1.5 rounded font-bold" onClick={() => handleAction('release')}>Release</button>}
                   {selected.status === 'scheduled' && <button className="bg-green-500 hover:bg-green-600 text-white text-sm px-4 py-1.5 rounded font-bold" onClick={() => handleAction('start')}>Start</button>}
                   {['in_progress','scheduled','released'].includes(selected.status) && <button className="bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-1.5 rounded font-bold" onClick={() => handleAction('complete')}>Complete</button>}
+                  {['planned','scheduled','released'].includes(selected.status) && (
+                    <button className="bg-red-600 hover:bg-red-700 text-white text-sm px-4 py-1.5 rounded font-bold" onClick={async () => {
+                      if (!window.confirm(`Delete ${selected.order_number}? This cannot be undone.`)) return;
+                      try {
+                        await api.delete(`/api/manufacturing/work-orders/${selected.id}`);
+                        toast.success('Work order deleted');
+                        setShowDetail(false);
+                        fetchOrders();
+                      } catch (err) { toast.error(err.response?.data?.error || 'Failed to delete'); }
+                    }}>Delete</button>
+                  )}
                   <LabelPrintButton type="work-order" id={selected.id} size="large" label="Print Production Label" />
                   <button className="text-gray-400 hover:text-white text-2xl px-2 ml-2" onClick={() => setShowDetail(false)}>×</button>
                 </div>
@@ -486,11 +497,11 @@ function WorkOrders() {
                   <div className="space-y-2">
                     {(selected.routing || [])?.map((r, i) => {
                       const isNextStep = r.status === 'pending' && (i === 0 || ['complete','completed','skipped'].includes(selected.routing[i-1]?.status));
-                      const canStart = isNextStep && ['scheduled','released','in_progress'].includes(selected.status);
+                      const canStart = isNextStep && ['planned','scheduled','released','in_progress'].includes(selected.status);
                       const canComplete = r.status === 'in_progress';
                       const canSkip = r.status === 'pending' && canStart && r.work_center_code === 'CNC';
                       return (
-                      <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${r.status === 'complete' || r.status === 'completed' ? 'bg-green-50 border-green-200' : r.status === 'skipped' ? 'bg-gray-50 border-gray-300 opacity-50' : r.status === 'in_progress' ? 'bg-yellow-50 border-yellow-300 shadow-md ring-2 ring-yellow-200' : isNextStep && ['scheduled','released','in_progress'].includes(selected.status) ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 opacity-60'}`}>
+                      <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${r.status === 'complete' || r.status === 'completed' ? 'bg-green-50 border-green-200' : r.status === 'skipped' ? 'bg-gray-50 border-gray-300 opacity-50' : r.status === 'in_progress' ? 'bg-yellow-50 border-yellow-300 shadow-md ring-2 ring-yellow-200' : isNextStep && ['planned','scheduled','released','in_progress'].includes(selected.status) ? 'bg-blue-50 border-blue-200 shadow-sm' : 'bg-white border-gray-200 opacity-60'}`}>
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow" style={{ backgroundColor: r.status === 'complete' || r.status === 'completed' ? '#16a34a' : r.status === 'skipped' ? '#9ca3af' : r.status === 'in_progress' ? '#d97706' : r.color || '#6b7280' }}>
                           {r.status === 'complete' || r.status === 'completed' ? '✓' : r.status === 'skipped' ? '⏭' : r.status === 'in_progress' ? '▶' : r.icon || (i+1)}
                         </div>
@@ -520,6 +531,10 @@ function WorkOrders() {
                             <button className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded font-bold shadow-sm transition-colors" onClick={async (e) => {
                               e.stopPropagation();
                               try {
+                                // Auto-release WO if still in planned status
+                                if (['planned','scheduled','released'].includes(selected.status) && selected.status !== 'in_progress') {
+                                  await api.post(`/api/manufacturing/work-orders/${selected.id}/start`);
+                                }
                                 await api.post('/api/manufacturing/shop-floor/start', { wo_routing_id: r.id });
                                 toast.success(`${r.work_center_name} started!`);
                                 openDetail(selected);

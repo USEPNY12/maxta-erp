@@ -336,8 +336,38 @@ router.post('/work-orders/:id/release', authenticate, async (req, res) => {
 
 router.post('/work-orders/:id/start', authenticate, async (req, res) => {
   try {
-    await pool.query("UPDATE work_orders SET status = 'in_progress', start_date = COALESCE(start_date, CURDATE()) WHERE id = ? AND status IN ('scheduled','released')", [req.params.id]);
+    // Also accept 'planned' status - auto-release and start in one action
+    await pool.query("UPDATE work_orders SET status = 'in_progress', release_date = COALESCE(release_date, CURDATE()), start_date = COALESCE(start_date, CURDATE()) WHERE id = ? AND status IN ('planned','scheduled','released')", [req.params.id]);
+    // Set current station to first routing step
+    const [firstOp] = await pool.query('SELECT work_center_id FROM wo_routing WHERE work_order_id = ? ORDER BY sequence LIMIT 1', [req.params.id]);
+    if (firstOp.length > 0) await pool.query('UPDATE work_orders SET current_station_id = ? WHERE id = ?', [firstOp[0].work_center_id, req.params.id]);
     res.json({ message: 'Work order started' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// DELETE work order (only if not started yet)
+router.delete('/work-orders/:id', authenticate, async (req, res) => {
+  try {
+    const [wos] = await pool.query('SELECT * FROM work_orders WHERE id = ?', [req.params.id]);
+    if (!wos.length) return res.status(404).json({ error: 'Work order not found' });
+    const wo = wos[0];
+    // Only allow delete if WO hasn't started production
+    if (['in_progress', 'completed', 'awaiting_receipt', 'closed'].includes(wo.status)) {
+      return res.status(400).json({ error: 'Cannot delete a work order that has already started or completed. Only planned/scheduled/released WOs can be deleted.' });
+    }
+    // Delete related records first
+    await pool.query('DELETE FROM wo_routing WHERE work_order_id = ?', [req.params.id]);
+    await pool.query('DELETE FROM shop_floor_tracking WHERE work_order_id = ?', [req.params.id]);
+    await pool.query('DELETE FROM wo_materials WHERE work_order_id = ?', [req.params.id]);
+    // Clear SO line reference if exists
+    if (wo.sales_order_line_id) {
+      await pool.query("UPDATE sales_order_lines SET work_order_id = NULL, production_status = 'pending' WHERE id = ?", [wo.sales_order_line_id]);
+    } else if (wo.sales_order_id) {
+      await pool.query("UPDATE sales_order_lines SET work_order_id = NULL, production_status = 'pending' WHERE work_order_id = ?", [req.params.id]);
+    }
+    // Delete the work order
+    await pool.query('DELETE FROM work_orders WHERE id = ?', [req.params.id]);
+    res.json({ message: 'Work order deleted successfully' });
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
