@@ -284,37 +284,63 @@ function SalesOrders() {
                         </tbody>
                       </table>
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="erp-grid" style={{ minWidth: '850px' }}>
-                          <thead><tr><th>Description*</th><th>Product Type</th><th>Glass</th><th>Thickness</th><th>W"</th><th>H"</th><th>Edge</th><th>Holes</th><th>Notches</th><th>Qty</th><th>Price</th><th>CNC $</th><th></th></tr></thead>
-                          <tbody>{editLines.map((line, idx) => (
-                            <tr key={idx}>
-                              <td><input className="erp-form-input w-full" value={line.description} onChange={e => updateEditLine(idx, 'description', e.target.value)} /></td>
-                              <td><select className="erp-form-select w-full" value={line.product_type} onChange={e => updateEditLine(idx, 'product_type', e.target.value)}><option value="">-</option>{productTypes.map(pt => <option key={pt} value={pt}>{pt.replace(/_/g,' ')}</option>)}</select></td>
-                              <td><select className="erp-form-select w-full" value={line.glass_type} onChange={e => updateEditLine(idx, 'glass_type', e.target.value)}><option value="">-</option>{glassTypes.map(gt => <option key={gt} value={gt}>{gt}</option>)}</select></td>
-                              <td><select className="erp-form-select w-20" value={line.thickness} onChange={e => updateEditLine(idx, 'thickness', e.target.value)}><option value="">-</option>{thicknesses.map(t => <option key={t} value={t}>{t}</option>)}</select></td>
-                              <td><input className="erp-form-input w-14 text-right" type="number" value={line.width_inches} onChange={e => updateEditLine(idx, 'width_inches', e.target.value)} /></td>
-                              <td><input className="erp-form-input w-14 text-right" type="number" value={line.height_inches} onChange={e => updateEditLine(idx, 'height_inches', e.target.value)} /></td>
-                              <td><select className="erp-form-select w-full" value={line.edge_type} onChange={e => updateEditLine(idx, 'edge_type', e.target.value)}><option value="">-</option>{edgeTypes.map(et => <option key={et} value={et}>{et}</option>)}</select></td>
-                              <td className="text-center">
-                                <label className="flex items-center gap-1 justify-center">
-                                  <input type="checkbox" checked={line.has_holes} onChange={e => { updateEditLine(idx, 'has_holes', e.target.checked); if (!e.target.checked) { updateEditLine(idx, 'holes_count', 0); } }} />
-                                  {line.has_holes && <input className="erp-form-input w-10 text-center" type="number" min="1" placeholder="#" value={line.holes_count} onChange={e => updateEditLine(idx, 'holes_count', parseInt(e.target.value) || 0)} />}
-                                </label>
-                              </td>
-                              <td className="text-center">
-                                <label className="flex items-center gap-1 justify-center">
-                                  <input type="checkbox" checked={line.has_notches} onChange={e => { updateEditLine(idx, 'has_notches', e.target.checked); if (!e.target.checked) { updateEditLine(idx, 'notches_count', 0); } }} />
-                                  {line.has_notches && <input className="erp-form-input w-10 text-center" type="number" min="1" placeholder="#" value={line.notches_count} onChange={e => updateEditLine(idx, 'notches_count', parseInt(e.target.value) || 0)} />}
-                                </label>
-                              </td>
-                              <td><input className="erp-form-input w-14 text-right" type="number" value={line.quantity_ordered} onChange={e => updateEditLine(idx, 'quantity_ordered', e.target.value)} /></td>
-                              <td><input className="erp-form-input w-20 text-right" type="number" step="0.01" value={line.unit_price} onChange={e => updateEditLine(idx, 'unit_price', e.target.value)} /></td>
-                              <td className="text-right text-xs font-bold text-purple-700">{(line.has_holes || line.has_notches) ? `$${((line.holes_count || 0) * 12 + (line.notches_count || 0) * 25).toFixed(2)}` : '-'}</td>
-                              <td><button className="text-red-600 text-xs" onClick={() => removeEditLine(idx)}>✕</button></td>
-                            </tr>
-                          ))}</tbody>
-                        </table>
+                      <div className="space-y-3">
+                        {editLines.length === 0 && <p className="text-gray-500 text-center py-4 text-sm">No lines yet. Click "+ Add Line" above to add items.</p>}
+                        {editLines.map((line, idx) => (
+                          <div key={idx} className="border rounded-lg p-3 bg-gray-50 relative">
+                            <button className="absolute top-2 right-2 text-red-600 font-bold text-lg" onClick={() => removeEditLine(idx)}>✕</button>
+                            <div className="text-xs font-bold text-gray-500 mb-2">Line {idx + 1}</div>
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                              <div className="col-span-2">
+                                <label className="text-[10px] text-gray-500">Description *</label>
+                                <input className="erp-form-input w-full" placeholder="e.g. 6mm Clear Tempered Panel" value={line.description} onChange={e => updateEditLine(idx, 'description', e.target.value)} />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500">Product Type</label>
+                                <select className="erp-form-select w-full" value={line.product_type} onChange={e => updateEditLine(idx, 'product_type', e.target.value)}><option value="">Select...</option>{productTypes.map(pt => <option key={pt} value={pt}>{pt.replace(/_/g,' ')}</option>)}</select>
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500">Glass Type</label>
+                                <select className="erp-form-select w-full" value={line.glass_type} onChange={e => updateEditLine(idx, 'glass_type', e.target.value)}><option value="">Select...</option>{glassTypes.map(gt => <option key={gt} value={gt}>{gt}</option>)}</select>
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500">Thickness</label>
+                                <select className="erp-form-select w-full" value={line.thickness} onChange={e => updateEditLine(idx, 'thickness', e.target.value)}><option value="">Select...</option>{thicknesses.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500">Edge</label>
+                                <select className="erp-form-select w-full" value={line.edge_type} onChange={e => updateEditLine(idx, 'edge_type', e.target.value)}><option value="">Select...</option>{edgeTypes.map(et => <option key={et} value={et}>{et}</option>)}</select>
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500">Width (inches)</label>
+                                <input className="erp-form-input w-full" type="number" placeholder="W" value={line.width_inches} onChange={e => updateEditLine(idx, 'width_inches', e.target.value)} />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500">Height (inches)</label>
+                                <input className="erp-form-input w-full" type="number" placeholder="H" value={line.height_inches} onChange={e => updateEditLine(idx, 'height_inches', e.target.value)} />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500">Quantity</label>
+                                <input className="erp-form-input w-full" type="number" value={line.quantity_ordered} onChange={e => updateEditLine(idx, 'quantity_ordered', e.target.value)} />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500">Unit Price ($)</label>
+                                <input className="erp-form-input w-full" type="number" step="0.01" value={line.unit_price} onChange={e => updateEditLine(idx, 'unit_price', e.target.value)} />
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs">
+                              <label className="flex items-center gap-1">
+                                <input type="checkbox" checked={line.has_holes} onChange={e => { updateEditLine(idx, 'has_holes', e.target.checked); if (!e.target.checked) updateEditLine(idx, 'holes_count', 0); }} />
+                                Holes {line.has_holes && <input className="erp-form-input w-12 text-center" type="number" min="1" value={line.holes_count} onChange={e => updateEditLine(idx, 'holes_count', parseInt(e.target.value) || 0)} />}
+                              </label>
+                              <label className="flex items-center gap-1">
+                                <input type="checkbox" checked={line.has_notches} onChange={e => { updateEditLine(idx, 'has_notches', e.target.checked); if (!e.target.checked) updateEditLine(idx, 'notches_count', 0); }} />
+                                Notches {line.has_notches && <input className="erp-form-input w-12 text-center" type="number" min="1" value={line.notches_count} onChange={e => updateEditLine(idx, 'notches_count', parseInt(e.target.value) || 0)} />}
+                              </label>
+                              {(line.has_holes || line.has_notches) && <span className="text-purple-700 font-bold">CNC: ${((line.holes_count || 0) * 12 + (line.notches_count || 0) * 25).toFixed(2)}</span>}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
