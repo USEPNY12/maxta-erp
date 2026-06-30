@@ -11,9 +11,9 @@
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | Routing steps not clickable from "planned" WO status | FIXED - PENDING DEPLOY | Added 'planned' to canStart, auto-release on first step click |
-| 2 | Delete Work Order button (if not started) | FIXED - PENDING DEPLOY | Red Delete button, backend DELETE endpoint with safety checks |
-| 3 | Deploy to Coolify | PENDING | Code pushed to GitHub (afa6aef), need to restart Coolify containers |
+| 1 | Routing steps not clickable from "planned" WO status | DONE | Added 'planned' to canStart, auto-release on first step click |
+| 2 | Delete Work Order button (if not started) | DONE | Red Delete button, backend DELETE endpoint with safety checks |
+| 3 | Deploy to Coolify | DONE | Deployed (30727ad), verified all endpoints working |
 
 ---
 
@@ -28,8 +28,8 @@
 | 5 | Add/Edit/Deactivate Item Types from UI | fa11de9 | Yes |
 | 6 | Add/Edit/Deactivate Routing Templates with step management from UI | fa11de9 | Yes |
 | 7 | View Steps modal with visual flow + detailed table | fa11de9 | Yes |
-| 8 | Routing steps clickable from planned status (auto-release + start) | afa6aef | Pending |
-| 9 | Delete WO button for unstarted work orders | afa6aef | Pending |
+| 8 | Routing steps clickable from planned status (auto-release + start) | afa6aef | Yes |
+| 9 | Delete WO button for unstarted work orders | afa6aef | Yes |
 
 ---
 
