@@ -14,6 +14,10 @@
 | 1 | Routing steps not clickable from "planned" WO status | DONE | Added 'planned' to canStart, auto-release on first step click |
 | 2 | Delete Work Order button (if not started) | DONE | Red Delete button, backend DELETE endpoint with safety checks |
 | 3 | Deploy to Coolify | DONE | Deployed (30727ad), verified all endpoints working |
+| 4 | Open June/July/August 2026 accounting periods | DONE | Reopened June, opened July+August via migrate.js |
+| 5 | Fix audit_log 'operation' column too short | DONE | Expanded to VARCHAR(100) via migrate.js |
+| 6 | WO price $0.00 investigation | DONE (Not a bug) | $0.00 is CNC cost field — shows $0 when no CNC pricing set |
+| 7 | nginx routing-templates/operations SPA route | DONE (Not a bug) | nginx.conf is correct; frontend uses embedded operations endpoint |
 
 ---
 
@@ -30,6 +34,9 @@
 | 7 | View Steps modal with visual flow + detailed table | fa11de9 | Yes |
 | 8 | Routing steps clickable from planned status (auto-release + start) | afa6aef | Yes |
 | 9 | Delete WO button for unstarted work orders | afa6aef | Yes |
+| 10 | Open accounting periods (June/July/August 2026) | 30727ad | Yes |
+| 11 | Fix audit_log operation column (VARCHAR(50) → VARCHAR(100)) | 30727ad | Yes |
+| 12 | Migration Phase 14 for Coolify (accounting periods + audit_log fix) | 30727ad | Yes |
 
 ---
 
@@ -37,10 +44,12 @@
 
 | # | Issue | Module | Severity | Status |
 |---|-------|--------|----------|--------|
-| 1 | nginx on Coolify catches `/api/manufacturing/routing-templates/{id}/operations` as SPA route | Coolify Config | Low | Workaround in place (frontend uses /routing-templates/:id which embeds operations) |
-| 2 | Accounting period 6/2026 is closed - GL postings fail for material issues/receipts | Accounting | Medium | Need to open July 2026 period or close/reopen June |
-| 3 | Audit log "Data too long for column 'operation'" error | System | Low | Column needs to be expanded (VARCHAR → TEXT) |
-| 4 | WO price showing $0.00 on some work orders | Manufacturing | Low | Needs investigation - may be missing pricing data |
+| ~~1~~ | ~~nginx on Coolify catches routing-templates/operations as SPA route~~ | ~~Coolify Config~~ | ~~Low~~ | RESOLVED - Not a bug, frontend uses correct endpoint |
+| ~~2~~ | ~~Accounting period 6/2026 is closed~~ | ~~Accounting~~ | ~~Medium~~ | FIXED - June reopened, July+August opened |
+| ~~3~~ | ~~Audit log "Data too long" error~~ | ~~System~~ | ~~Low~~ | FIXED - Column expanded to VARCHAR(100) |
+| ~~4~~ | ~~WO price showing $0.00~~ | ~~Manufacturing~~ | ~~Low~~ | RESOLVED - Not a bug, shows CNC cost (correct when no CNC) |
+
+**No open bugs as of Jun 29, 2026.**
 
 ---
 
@@ -174,7 +183,7 @@
 ### Deployment Checklist
 1. [ ] Test on Cloud PC (http://34.26.235.14:8081)
 2. [ ] `cd /home/ubuntu/maxta-erp && git add -A && git commit -m "description" && git push`
-3. [ ] Restart Coolify via API: `curl -X POST -H "Authorization: Bearer 5|zUHHsPnnEVxvjm5xZxJQRoDJzbS4w3GChZ5Kkz2macca30f0" http://165.227.110.37:8000/api/v1/services/m5r5ohmt0i9p5zq82i6pjrhw/restart`
+3. [ ] Restart Coolify via API: `curl -X POST -H "Authorization: Bearer 10|kWpkKuyLd1gZbOroqrmWZ6kiZZQQVL8BDYIuvTK5b1673122" http://165.227.110.37:8000/api/v1/services/m5r5ohmt0i9p5zq82i6pjrhw/restart`
 4. [ ] Wait ~2 minutes for containers to restart
 5. [ ] Verify: `curl -s http://165.227.110.37:8081/api/auth/login -X POST -H "Content-Type: application/json" -d '{"username":"admin","password":"admin123"}'`
 6. [ ] Run migration if needed: `curl http://165.227.110.37:8081/api/auth/run-migration`
@@ -190,7 +199,7 @@
 |---|---------|----------|--------|
 | 1 | HTTPS/SSL for production (Coolify) | High | Infrastructure |
 | 2 | Automated backups for both databases | High | Infrastructure |
-| 3 | Open July 2026 accounting period | High | Accounting |
+| ~~3~~ | ~~Open July 2026 accounting period~~ | ~~High~~ | ~~Accounting~~ | DONE |
 | 4 | Smart Glazier API actual integration (currently stub) | Medium | Integration |
 | 5 | Email notifications (SMTP setup) | Medium | System |
 | 6 | Customer portal (view orders/invoices) | Medium | Sales |
