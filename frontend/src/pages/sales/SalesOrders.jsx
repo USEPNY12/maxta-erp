@@ -148,19 +148,22 @@ function SalesOrders() {
   const [editMode, setEditMode] = useState(false);
   const [editLines, setEditLines] = useState([]);
 
+  const emptyLine = { description: '', product_type: '', glass_type: '', thickness: '', width_inches: '', height_inches: '', edge_type: '', has_holes: false, holes_count: 0, has_notches: false, notches_count: 0, hole_type: 'Standard Round Hole', notch_type: 'Standard Hinge Notch', hole_diameter: '', cnc_surcharge: 0, cnc_notes: '', manufacturing_notes: '', quantity_ordered: 1, unit_price: 0, item_id: null };
   const startEditLines = () => {
-    setEditLines((selected.lines || []).filter(l => l.production_status !== 'released' && !l.work_order_id).map(l => ({
+    const existing = (selected.lines || []).filter(l => l.production_status !== 'released' && !l.work_order_id).map(l => ({
       description: l.description || '', product_type: l.product_type || '', glass_type: l.glass_type || '', thickness: l.thickness || '',
       width_inches: l.width_inches || '', height_inches: l.height_inches || '', edge_type: l.edge_type || '',
       has_holes: !!l.has_holes, holes_count: l.holes_count || 0, has_notches: !!l.has_notches, notches_count: l.notches_count || 0,
       hole_type: l.hole_type || 'Standard Round Hole', notch_type: l.notch_type || 'Standard Hinge Notch', hole_diameter: l.hole_diameter || '',
       cnc_surcharge: l.cnc_surcharge || 0, cnc_notes: l.cnc_notes || '', manufacturing_notes: l.manufacturing_notes || '',
       quantity_ordered: l.quantity_ordered || 1, unit_price: l.unit_price || 0, item_id: l.item_id || null
-    })));
+    }));
+    // Auto-add a blank line if no editable lines exist
+    setEditLines(existing.length > 0 ? existing : [{ ...emptyLine }]);
     setEditMode(true);
   };
 
-  const addEditLine = () => setEditLines([...editLines, { description: '', product_type: '', glass_type: '', thickness: '', width_inches: '', height_inches: '', edge_type: '', has_holes: false, holes_count: 0, has_notches: false, notches_count: 0, hole_type: 'Standard Round Hole', notch_type: 'Standard Hinge Notch', hole_diameter: '', cnc_surcharge: 0, cnc_notes: '', manufacturing_notes: '', quantity_ordered: 1, unit_price: 0, item_id: null }]);
+  const addEditLine = () => setEditLines([...editLines, { ...emptyLine }]);
   const removeEditLine = (idx) => setEditLines(editLines.filter((_, i) => i !== idx));
   const updateEditLine = (idx, field, value) => { const lines = [...editLines]; lines[idx] = { ...lines[idx], [field]: value }; setEditLines(lines); };
 
@@ -251,13 +254,6 @@ function SalesOrders() {
                       {!editMode && selected.status !== 'closed' && selected.status !== 'cancelled' && selected.status !== 'invoiced' && (
                         <button className="erp-btn text-xs" onClick={startEditLines}>✏️ Edit Lines</button>
                       )}
-                      {editMode && (
-                        <>
-                          <button className="erp-btn text-xs" onClick={addEditLine}>+ Add Line</button>
-                          <button className="erp-btn erp-btn-primary text-xs" onClick={handleSaveLines}>💾 Save</button>
-                          <button className="erp-btn text-xs" onClick={() => setEditMode(false)}>Cancel</button>
-                        </>
-                      )}
                     </div>
                     {!editMode ? (
                       <table className="erp-grid">
@@ -285,7 +281,6 @@ function SalesOrders() {
                       </table>
                     ) : (
                       <div className="space-y-3">
-                        {editLines.length === 0 && <p className="text-gray-500 text-center py-4 text-sm">No lines yet. Click "+ Add Line" above to add items.</p>}
                         {editLines.map((line, idx) => (
                           <div key={idx} className="border rounded-lg p-3 bg-gray-50 relative">
                             <button className="absolute top-2 right-2 text-red-600 font-bold text-lg" onClick={() => removeEditLine(idx)}>✕</button>
@@ -341,6 +336,11 @@ function SalesOrders() {
                             </div>
                           </div>
                         ))}
+                        <div className="flex gap-2 mt-3 sticky bottom-0 bg-white py-2 border-t">
+                          <button className="erp-btn text-xs flex-1" onClick={addEditLine}>+ Add Line</button>
+                          <button className="erp-btn erp-btn-primary text-xs flex-1" onClick={handleSaveLines}>💾 Save</button>
+                          <button className="erp-btn text-xs" onClick={() => setEditMode(false)}>Cancel</button>
+                        </div>
                       </div>
                     )}
                   </div>
