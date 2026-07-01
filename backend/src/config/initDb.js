@@ -39,7 +39,7 @@ async function initDatabase() {
     }
 
     console.log('Creating admin user...');
-    const passwordHash = await bcrypt.hash('admin123', 10);
+    const passwordHash = await bcrypt.hash('MaxTA_Admin_2026!Prod', 10);
     await connection.query(`
       INSERT INTO users (username, email, password_hash, first_name, last_name, role, is_active)
       VALUES ('admin', 'admin@maxtagroup.com', ?, 'Admin', 'User', 'admin', TRUE)
@@ -54,7 +54,7 @@ async function initDatabase() {
     `);
 
     console.log('Database initialized successfully!');
-    console.log('Admin login: admin / admin123');
+    console.log('Admin login: admin / [see secure credentials]');
   } catch (error) {
     console.error('Error initializing database:', error.message);
     throw error;

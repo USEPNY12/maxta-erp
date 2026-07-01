@@ -1582,6 +1582,7 @@ module.exports = async () => {
   await migrateCNCDrilling();
   await migrateItemTypeRouting();
   await migrateBugFixes_Jun29();
+  await migrateSecurityHardening_Jul01();
 };
 
 // === CNC Drilling Upgrade Migration ===
@@ -1700,4 +1701,24 @@ async function migrateBugFixes_Jun29() {
 
     console.log('Bug Fixes (Jun 29): audit_log column expanded, accounting periods opened');
   } catch(e) { console.log('Bug Fixes (Jun 29) error:', e.message); }
+}
+
+// === Security Hardening Migration (Jul 01, 2026) ===
+async function migrateSecurityHardening_Jul01() {
+  try {
+    const bcrypt = require('bcryptjs');
+    // Update admin password to strong credential
+    const newHash = await bcrypt.hash('MaxTA_Admin_2026!Prod', 10);
+    const [rows] = await pool.query("SELECT password_hash FROM users WHERE username='admin'");
+    if (rows.length > 0) {
+      // Only update if still using the old weak password
+      const isOldPassword = await bcrypt.compare('admin123', rows[0].password_hash);
+      if (isOldPassword) {
+        await pool.query("UPDATE users SET password_hash = ? WHERE username = 'admin'", [newHash]);
+        console.log('Security Hardening: Admin password updated to strong credential');
+      } else {
+        console.log('Security Hardening: Admin password already updated');
+      }
+    }
+  } catch(e) { console.log('Security Hardening error:', e.message); }
 }

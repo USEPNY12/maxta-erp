@@ -7429,7 +7429,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'admin','admin@maxtagroup.com','$2a$10$UIW2K3EfwZ.ffKKx3X2cL.y9jeqNgbbKqqkvLzj10Azml436o/X2.','Admin','User','admin',1,'2026-07-01 15:35:54','2026-06-25 22:52:45','2026-07-01 15:35:54',NULL),(2,'jsmith','jsmith@maxtagroup.com','$2a$10$D3OumPRQPWK3MdVL6ijfZO2EsVFDfA7sAnazw.Rv2VTJw2G0pmCca','John','Smith','sales',1,NULL,'2026-06-26 12:07:55','2026-06-26 12:07:55','Sales');
+INSERT INTO `users` VALUES (1,'admin','admin@maxtagroup.com','$2a$10$cpX6rtv9L2lVzlWajL4skuo.Ko8zdc6pinXNYC0J3RvEDg7PPEjVG','Admin','User','admin',1,'2026-07-01 15:35:54','2026-06-25 22:52:45','2026-07-01 15:35:54',NULL),(2,'jsmith','jsmith@maxtagroup.com','$2a$10$D3OumPRQPWK3MdVL6ijfZO2EsVFDfA7sAnazw.Rv2VTJw2G0pmCca','John','Smith','sales',1,NULL,'2026-06-26 12:07:55','2026-06-26 12:07:55','Sales');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
