@@ -756,7 +756,8 @@ router.get('/shipments', authenticate, async (req, res) => {
                  FROM shipments s LEFT JOIN customers c ON s.customer_id = c.id 
                  LEFT JOIN sales_orders so ON s.sales_order_id = so.id WHERE 1=1`;
     const params = [];
-    if (status === 'open') { query += " AND s.status IN ('draft','shipped')"; }
+    if (status === 'open') { query += " AND s.invoice_id IS NULL"; }
+    else if (status === 'closed') { query += " AND s.invoice_id IS NOT NULL"; }
     else if (status && status !== 'all' && status !== '') { query += ' AND s.status = ?'; params.push(status); }
     if (customer_id) { query += ' AND s.customer_id = ?'; params.push(customer_id); }
     if (search) { query += ' AND (s.shipment_number LIKE ? OR c.company_name LIKE ? OR so.order_number LIKE ? OR s.tracking_number LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`); }
