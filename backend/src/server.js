@@ -136,11 +136,20 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Serve frontend in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../../frontend/dist')));
+// In Docker deployment, frontend is served by nginx, not the backend.
+// Only serve frontend files if the dist directory exists (non-Docker local dev).
+const frontendDistPath = path.join(__dirname, '../../frontend/dist');
+if (process.env.NODE_ENV === 'production' && require('fs').existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+} else {
+  // Catch-all for unmatched routes - return JSON 404
+  app.use((req, res, next) => {
+    if (!res.headersSent) {
+      res.status(404).json({ error: 'Route not found', path: req.originalUrl });
+    }
   });
 }
 
