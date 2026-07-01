@@ -2,15 +2,15 @@ version: '3.8'
 
 services:
   mysql:
-    image: mysql:8.0
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mysql
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-MaxTA_Root_2026!}
       MYSQL_DATABASE: ${MYSQL_DATABASE:-maxta_erp}
       MYSQL_USER: ${MYSQL_USER:-maxta_erp}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-MaxTA_ERP_2026!}
-    volumes:
-      - ./database/maxta_erp_full.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s

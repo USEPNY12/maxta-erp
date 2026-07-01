@@ -1,8 +1,7 @@
 FROM mysql:8.0
 
-# Copy the SQL dump
+# Copy the SQL dump directly into the init directory
 COPY database/maxta_erp_full.sql /docker-entrypoint-initdb.d/init.sql
 
-# Create a custom entrypoint wrapper that imports data if tables don't exist
-COPY docker/mysql-init.sh /usr/local/bin/mysql-init.sh
-RUN chmod +x /usr/local/bin/mysql-init.sh
+# Ensure proper permissions
+RUN chmod 644 /docker-entrypoint-initdb.d/init.sql
