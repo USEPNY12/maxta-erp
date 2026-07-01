@@ -1,8 +1,0 @@
-[mysqld]
-# Use non-standard port to prevent external access
-# Even if Docker/Coolify exposes port 3306, MySQL won't be listening on it
-port=3307
-
-# Security hardening
-skip-name-resolve
-local-infile=0

@@ -5,7 +5,3 @@ COPY database/maxta_erp_full.sql /docker-entrypoint-initdb.d/init.sql
 
 # Ensure proper permissions
 RUN chmod 644 /docker-entrypoint-initdb.d/init.sql
-
-# Custom MySQL config - use non-standard port (3307) internally
-# This prevents external access on default port 3306 even if Docker/Coolify exposes it
-COPY docker/mysql-security.cnf /etc/mysql/conf.d/security.cnf
