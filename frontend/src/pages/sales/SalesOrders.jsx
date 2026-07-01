@@ -147,6 +147,7 @@ function SalesOrders() {
   // Edit mode for existing orders
   const [editMode, setEditMode] = useState(false);
   const [editLines, setEditLines] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   const emptyLine = { description: '', product_type: '', glass_type: '', thickness: '', width_inches: '', height_inches: '', edge_type: '', has_holes: false, holes_count: 0, has_notches: false, notches_count: 0, hole_type: 'Standard Round Hole', notch_type: 'Standard Hinge Notch', hole_diameter: '', cnc_surcharge: 0, cnc_notes: '', manufacturing_notes: '', quantity_ordered: 1, unit_price: 0, item_id: null };
   const startEditLines = () => {
@@ -168,22 +169,36 @@ function SalesOrders() {
   const updateEditLine = (idx, field, value) => { const lines = [...editLines]; lines[idx] = { ...lines[idx], [field]: value }; setEditLines(lines); };
 
   const handleSaveLines = async () => {
+    // Filter lines that have at least description OR product_type OR glass_type filled
+    const linesToSave = editLines.filter(l => l.description || l.product_type || l.glass_type || l.width_inches || l.height_inches).map(l => ({
+      ...l,
+      description: l.description || `${l.glass_type || ''} ${l.thickness || ''} ${l.product_type || ''}`.trim() || 'Glass Panel',
+      quantity_ordered: parseFloat(l.quantity_ordered) || 1,
+      unit_price: parseFloat(l.unit_price) || 0
+    }));
+    if (linesToSave.length === 0) {
+      toast.error('Please fill in at least one line with a description or product details');
+      return;
+    }
+    setIsSaving(true);
     try {
       await api.put(`/api/sales/orders/${selected.id}`, {
         customer_id: selected.customer_id,
         customer_po: selected.customer_po,
         project_name: selected.project_name,
-        required_date: selected.required_date,
+        required_date: selected.required_date ? new Date(selected.required_date).toISOString().split('T')[0] : null,
         notes: selected.notes,
-        lines: editLines.filter(l => l.description).map(l => ({
-          ...l, quantity_ordered: parseFloat(l.quantity_ordered) || 1, unit_price: parseFloat(l.unit_price) || 0
-        }))
+        lines: linesToSave
       });
       toast.success('Order lines saved!');
       setEditMode(false);
       openDetail(selected);
       fetchOrders();
-    } catch (err) { toast.error(err.response?.data?.error || 'Failed to save lines'); }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save lines');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -288,7 +303,7 @@ function SalesOrders() {
                             <div className="grid grid-cols-2 gap-2 mb-2">
                               <div className="col-span-2">
                                 <label className="text-[10px] text-gray-500">Description *</label>
-                                <input className="erp-form-input w-full" placeholder="e.g. 6mm Clear Tempered Panel" value={line.description} onChange={e => updateEditLine(idx, 'description', e.target.value)} />
+                                <input className="erp-form-input w-full" placeholder="e.g. 6mm Clear Tempered Panel" value={line.description} onChange={e => updateEditLine(idx, 'description', e.target.value)} onBlur={e => updateEditLine(idx, 'description', e.target.value)} />
                               </div>
                               <div>
                                 <label className="text-[10px] text-gray-500">Product Type</label>
@@ -308,19 +323,19 @@ function SalesOrders() {
                               </div>
                               <div>
                                 <label className="text-[10px] text-gray-500">Width (inches)</label>
-                                <input className="erp-form-input w-full" type="number" placeholder="W" value={line.width_inches} onChange={e => updateEditLine(idx, 'width_inches', e.target.value)} />
+                                <input className="erp-form-input w-full" type="number" inputMode="decimal" placeholder="W" value={line.width_inches} onChange={e => updateEditLine(idx, 'width_inches', e.target.value)} onBlur={e => updateEditLine(idx, 'width_inches', e.target.value)} />
                               </div>
                               <div>
                                 <label className="text-[10px] text-gray-500">Height (inches)</label>
-                                <input className="erp-form-input w-full" type="number" placeholder="H" value={line.height_inches} onChange={e => updateEditLine(idx, 'height_inches', e.target.value)} />
+                                <input className="erp-form-input w-full" type="number" inputMode="decimal" placeholder="H" value={line.height_inches} onChange={e => updateEditLine(idx, 'height_inches', e.target.value)} onBlur={e => updateEditLine(idx, 'height_inches', e.target.value)} />
                               </div>
                               <div>
                                 <label className="text-[10px] text-gray-500">Quantity</label>
-                                <input className="erp-form-input w-full" type="number" value={line.quantity_ordered} onChange={e => updateEditLine(idx, 'quantity_ordered', e.target.value)} />
+                                <input className="erp-form-input w-full" type="number" inputMode="numeric" value={line.quantity_ordered} onChange={e => updateEditLine(idx, 'quantity_ordered', e.target.value)} onBlur={e => updateEditLine(idx, 'quantity_ordered', e.target.value)} />
                               </div>
                               <div>
                                 <label className="text-[10px] text-gray-500">Unit Price ($)</label>
-                                <input className="erp-form-input w-full" type="number" step="0.01" value={line.unit_price} onChange={e => updateEditLine(idx, 'unit_price', e.target.value)} />
+                                <input className="erp-form-input w-full" type="number" inputMode="decimal" step="0.01" value={line.unit_price} onChange={e => updateEditLine(idx, 'unit_price', e.target.value)} onBlur={e => updateEditLine(idx, 'unit_price', e.target.value)} />
                               </div>
                             </div>
                             <div className="flex items-center gap-4 text-xs">
@@ -336,10 +351,22 @@ function SalesOrders() {
                             </div>
                           </div>
                         ))}
-                        <div className="flex gap-2 mt-3 sticky bottom-0 bg-white py-2 border-t">
-                          <button className="erp-btn text-xs flex-1" onClick={addEditLine}>+ Add Line</button>
-                          <button className="erp-btn erp-btn-primary text-xs flex-1" onClick={handleSaveLines}>💾 Save</button>
-                          <button className="erp-btn text-xs" onClick={() => setEditMode(false)}>Cancel</button>
+                        <div className="flex flex-col gap-2 mt-3 sticky bottom-0 bg-white py-2 border-t">
+                          {isSaving && (
+                            <div className="flex items-center justify-center gap-2 py-2 px-3 bg-blue-50 border border-blue-200 rounded text-blue-700 text-xs font-medium">
+                              <span className="spinner-small"></span> Saving...
+                            </div>
+                          )}
+                          <div className="text-[10px] text-gray-500 text-center">
+                            {editLines.filter(l => l.description || l.product_type || l.glass_type || l.width_inches || l.height_inches).length} line(s) ready to save
+                          </div>
+                          <div className="flex gap-2">
+                            <button className="erp-btn text-xs flex-1" onClick={addEditLine} disabled={isSaving}>+ Add Line</button>
+                            <button className="erp-btn erp-btn-primary text-xs flex-1" onClick={handleSaveLines} disabled={isSaving} style={{ opacity: isSaving ? 0.7 : 1 }}>
+                              {isSaving ? <><span className="spinner-small" style={{ width: '10px', height: '10px', marginRight: '4px', display: 'inline-block' }}></span> Saving...</> : '💾 Save'}
+                            </button>
+                            <button className="erp-btn text-xs" onClick={() => setEditMode(false)} disabled={isSaving}>Cancel</button>
+                          </div>
                         </div>
                       </div>
                     )}
