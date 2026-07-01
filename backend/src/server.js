@@ -79,45 +79,51 @@ app.use('/api/setup', require('./routes/setup'));
 app.use('/api/cutting', require('./routes/cutting'));
 app.use('/api/cpq', require('./routes/cpq'));
 
+// Route loading diagnostics
+const routeErrors = [];
+function tryRoute(path, modulePath, name) {
+  try { app.use(path, require(modulePath)); } catch(e) { routeErrors.push({ name, path, error: e.message }); console.log(name + ' routes not loaded:', e.message); }
+}
+
 // V2 routes - email, documents, audit
-try { app.use('/api/email', require('./routes/email')); } catch(e) { console.log('Email routes not loaded:', e.message); }
-try { app.use('/api/documents', require('./routes/documents')); } catch(e) { console.log('Documents routes not loaded:', e.message); }
-try { app.use('/api/audit', require('./routes/audit')); } catch(e) { console.log('Audit routes not loaded:', e.message); }
-try { app.use('/api/labels', require('./routes/labels')); } catch(e) { console.log('Labels routes not loaded:', e.message); }
-try { app.use('/api/files', require('./routes/files')); } catch(e) { console.log('Files routes not loaded:', e.message); }
+tryRoute('/api/email', './routes/email', 'Email');
+tryRoute('/api/documents', './routes/documents', 'Documents');
+tryRoute('/api/audit', './routes/audit', 'Audit');
+tryRoute('/api/labels', './routes/labels', 'Labels');
+tryRoute('/api/files', './routes/files', 'Files');
 
 // V3 routes - New features (Smart Glazier, Dispatch, Notifications, Scheduling, CRM, Doc Management)
-try { app.use('/api/smartglazier', require('./routes/smartglazier')); } catch(e) { console.log('Smart Glazier routes not loaded:', e.message); }
-try { app.use('/api/dispatch', require('./routes/dispatch')); } catch(e) { console.log('Dispatch routes not loaded:', e.message); }
-try { app.use('/api/notifications', require('./routes/notifications')); } catch(e) { console.log('Notifications routes not loaded:', e.message); }
-try { app.use('/api/scheduling', require('./routes/scheduling')); } catch(e) { console.log('Scheduling routes not loaded:', e.message); }
-try { app.use('/api/crm', require('./routes/crm')); } catch(e) { console.log('CRM routes not loaded:', e.message); }
-try { app.use('/api/docmanagement', require('./routes/docmanagement')); } catch(e) { console.log('Doc Management routes not loaded:', e.message); }
-try { app.use('/api/lamination', require('./routes/lamination')); } catch(e) { console.log('Lamination routes not loaded:', e.message); }
+tryRoute('/api/smartglazier', './routes/smartglazier', 'Smart Glazier');
+tryRoute('/api/dispatch', './routes/dispatch', 'Dispatch');
+tryRoute('/api/notifications', './routes/notifications', 'Notifications');
+tryRoute('/api/scheduling', './routes/scheduling', 'Scheduling');
+tryRoute('/api/crm', './routes/crm', 'CRM');
+tryRoute('/api/docmanagement', './routes/docmanagement', 'Doc Management');
+tryRoute('/api/lamination', './routes/lamination', 'Lamination');
 
 // Phase 3 routes - Document Center, Versioning, Customer Portal
-try { app.use('/api/document-center', require('./routes/documentCenter')); } catch(e) { console.log('Document Center routes not loaded:', e.message); }
+tryRoute('/api/document-center', './routes/documentCenter', 'Document Center');
 
 // Phase 4 routes - Advanced Manufacturing (Scheduling, Utilization, Dashboard, Barcode, QC)
-try { app.use('/api/manufacturing-advanced', require('./routes/manufacturingAdvanced')); } catch(e) { console.log('Manufacturing Advanced routes not loaded:', e.message); }
+tryRoute('/api/manufacturing-advanced', './routes/manufacturingAdvanced', 'Manufacturing Advanced');
 
 // Phase 5 routes - Shipping & Logistics (Routes, Rack Loading, Drivers, POD, Freight)
-try { app.use('/api/shipping', require('./routes/shipping')); } catch(e) { console.log('Shipping routes not loaded:', e.message); }
+tryRoute('/api/shipping', './routes/shipping', 'Shipping');
 
 // Phase 7 routes - Advanced Accounting & Finance (Multi-currency, Bank Recon, Budgets, Cash Flow, Tax)
-try { app.use('/api/accounting-advanced', require('./routes/accountingAdvanced')); } catch(e) { console.log('Accounting Advanced routes not loaded:', e.message); }
+tryRoute('/api/accounting-advanced', './routes/accountingAdvanced', 'Accounting Advanced');
 
 // Phase 8 routes - Dashboard & Promotions (Executive KPI, Role-based Dashboards, Promotions Engine)
-try { app.use('/api/dashboard-exec', require('./routes/dashboardExec')); } catch(e) { console.log('Dashboard Exec routes not loaded:', e.message); }
+tryRoute('/api/dashboard-exec', './routes/dashboardExec', 'Dashboard Exec');
 
 // Phase 9 routes - Mobile App Readiness (Push Notifications, Kiosk Mode, Offline Sync)
-try { app.use('/api/mobile', require('./routes/mobileReady')); } catch(e) { console.log('Mobile Ready routes not loaded:', e.message); }
+tryRoute('/api/mobile', './routes/mobileReady', 'Mobile Ready');
 
 // Phase 11 routes - Service & Operations Modules
-try { app.use('/api/maintenance', require('./routes/maintenance')); } catch(e) { console.log('Maintenance routes not loaded:', e.message); }
-try { app.use('/api/field-service', require('./routes/fieldService')); } catch(e) { console.log('Field Service routes not loaded:', e.message); }
-try { app.use('/api/warranty', require('./routes/warranty')); } catch(e) { console.log('Warranty routes not loaded:', e.message); }
-try { app.use('/api/time-attendance', require('./routes/timeAttendance')); } catch(e) { console.log('Time & Attendance routes not loaded:', e.message); }
+tryRoute('/api/maintenance', './routes/maintenance', 'Maintenance');
+tryRoute('/api/field-service', './routes/fieldService', 'Field Service');
+tryRoute('/api/warranty', './routes/warranty', 'Warranty');
+tryRoute('/api/time-attendance', './routes/timeAttendance', 'Time & Attendance');
 
 // Static uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -132,7 +138,9 @@ app.get('/api/health', (req, res) => {
     phase: 'Phase 10 - Production Ready',
     uptime: Math.floor(process.uptime()),
     memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    routeErrors: routeErrors.length > 0 ? routeErrors : undefined,
+    routesLoaded: 32 - routeErrors.length
   });
 });
 
