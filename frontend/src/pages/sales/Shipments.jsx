@@ -2,13 +2,14 @@ import DocumentActions from '../../components/DocumentActions';
 import SerialNumbersTab from '../../components/SerialNumbersTab';
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { useToast } from '../../components/Toast';
 import api from '../../services/api';
 import ScanPanel from '../../components/ScanPanel';
 import ModulePage from '../../components/ModulePage';
 import { salesMenu } from '../../config/moduleMenus';
 
 function Shipments() {
+  const toast = useToast();
   const [shipments, setShipments] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -87,7 +88,9 @@ function Shipments() {
     } catch (err) { toast.error(err.response?.data?.error || 'Failed'); }
   };
 
+  const [creatingInvoice, setCreatingInvoice] = useState(false);
   const handleCreateInvoice = async (shipment) => {
+    setCreatingInvoice(true);
     try {
       const s = shipment || selected;
       const res = await api.post(`/api/sales/shipments/${s.id}/create-invoice`);
@@ -95,6 +98,7 @@ function Shipments() {
       if (selected) openDetail(selected);
       fetchShipments();
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to create invoice'); }
+    setCreatingInvoice(false);
   };
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
@@ -219,7 +223,8 @@ function Shipments() {
             </div>
             <div className="erp-modal-footer">
               {selected.status === 'pending' && <button className="erp-btn erp-btn-primary" onClick={handleMarkShipped}>📦 Mark as Shipped</button>}
-              {['pending', 'shipped'].includes(selected.status) && <button className="erp-btn" style={{ background: '#8e44ad', color: 'white' }} onClick={() => handleCreateInvoice()}>💰 Create Invoice</button>}
+              {['pending', 'shipped'].includes(selected.status) && !selected.invoice_id && <button className="erp-btn" style={{ background: '#8e44ad', color: 'white', opacity: creatingInvoice ? 0.7 : 1 }} onClick={() => handleCreateInvoice()} disabled={creatingInvoice}>{creatingInvoice ? <><span className="spinner-small" style={{ width: '12px', height: '12px', marginRight: '6px', display: 'inline-block' }}></span> Creating...</> : '💰 Create Invoice'}</button>}
+              {selected.invoice_id && <span className="text-xs text-green-700 font-medium px-2 py-1 bg-green-50 rounded">Invoice already created</span>}
               <DocumentActions documentType="packing_slip" documentId={selected.id} recipientEmail={selected.customer_email} recipientName={selected.customer_name} compact />
               <button className="erp-btn" onClick={() => setShowDetail(false)}>Close</button>
             </div>
