@@ -1037,6 +1037,25 @@ router.post('/invoices', authenticate, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
+// Update shipment (tracking, carrier, etc.)
+router.put('/shipments/:id', authenticate, async (req, res) => {
+  try {
+    const { tracking_number, carrier, ship_via, freight_charge, notes } = req.body;
+    const updates = [];
+    const params = [];
+    if (tracking_number !== undefined) { updates.push('tracking_number = ?'); params.push(tracking_number); }
+    if (carrier !== undefined) { updates.push('carrier = ?'); params.push(carrier); }
+    if (ship_via !== undefined) { updates.push('ship_via = ?'); params.push(ship_via); }
+    if (freight_charge !== undefined) { updates.push('freight_charge = ?'); params.push(parseFloat(freight_charge) || 0); }
+    if (notes !== undefined) { updates.push('notes = ?'); params.push(notes); }
+    if (updates.length === 0) return res.json({ message: 'Nothing to update' });
+    params.push(req.params.id);
+    await pool.query(`UPDATE shipments SET ${updates.join(', ')} WHERE id = ?`, params);
+    await req.audit('shipments', req.params.id, 'UPDATE', null, req.body);
+    res.json({ message: 'Shipment updated' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
 // Create invoice directly from shipment (auto-populate lines)
 router.post('/shipments/:id/create-invoice', authenticate, async (req, res) => {
   try {

@@ -12,7 +12,7 @@ function Shipments() {
   const toast = useToast();
   const [shipments, setShipments] = useState([]);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('open');
   const [showDetail, setShowDetail] = useState(false);
   const [selected, setSelected] = useState(null);
   const [activeTab, setActiveTab] = useState('Items');
@@ -20,13 +20,26 @@ function Shipments() {
   const [showNew, setShowNew] = useState(searchParams.get('new') === 'true');
   const [orders, setOrders] = useState([]);
   const [form, setForm] = useState({ sales_order_id: '', ship_date: new Date().toISOString().split('T')[0], carrier: '', tracking_number: '', ship_via: '', freight_charge: 0, notes: '', lines: [] });
+  
+  // Edit state for Open shipments in detail modal
+  const [editTracking, setEditTracking] = useState('');
+  const [editCarrier, setEditCarrier] = useState('');
+  const [editLineQtys, setEditLineQtys] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => { fetchShipments(); }, [statusFilter]);
 
   const fetchShipments = async () => {
     try {
-      const res = await api.get('/api/sales/shipments', { params: { search, status: statusFilter } });
-      setShipments(Array.isArray(res.data) ? res.data : []);
+      const res = await api.get('/api/sales/shipments', { params: { search, status: statusFilter === 'all' ? 'all' : statusFilter } });
+      let data = Array.isArray(res.data) ? res.data : [];
+      // Client-side filter for open/closed based on invoice_id
+      if (statusFilter === 'open') {
+        data = data.filter(s => !s.invoice_id);
+      } else if (statusFilter === 'closed') {
+        data = data.filter(s => !!s.invoice_id);
+      }
+      setShipments(data);
     } catch { setShipments([]); }
   };
 
@@ -35,6 +48,10 @@ function Shipments() {
       const res = await api.get(`/api/sales/shipments/${shipment.id}`);
       setSelected(res.data);
       setActiveTab('Items');
+      // Pre-populate edit fields for open shipments
+      setEditTracking(res.data.tracking_number || '');
+      setEditCarrier(res.data.carrier || '');
+      setEditLineQtys((res.data.lines || []).map(l => ({ ...l, ship_qty: l.quantity_shipped || 0 })));
       setShowDetail(true);
     } catch { toast.error('Failed to load shipment'); }
   };
@@ -80,12 +97,27 @@ function Shipments() {
     } catch (err) { toast.error(err.response?.data?.error || 'Failed'); }
   };
 
-  const handleMarkShipped = async () => {
+  // Submit & Create Invoice - the main action for Open shipments
+  const handleSubmitAndInvoice = async () => {
+    if (!selected) return;
+    setSubmitting(true);
     try {
-      await api.post(`/api/sales/shipments/${selected.id}/ship`);
-      toast.success('Marked as shipped');
-      openDetail(selected);
-    } catch (err) { toast.error(err.response?.data?.error || 'Failed'); }
+      // First update the shipment with tracking/carrier if changed
+      if (editTracking !== (selected.tracking_number || '') || editCarrier !== (selected.carrier || '')) {
+        await api.put(`/api/sales/shipments/${selected.id}`, {
+          tracking_number: editTracking,
+          carrier: editCarrier
+        });
+      }
+      // Now create the invoice
+      const res = await api.post(`/api/sales/shipments/${selected.id}/create-invoice`);
+      toast.success(`Invoice ${res.data.invoice_number} created successfully!`);
+      setShowDetail(false);
+      fetchShipments();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to create invoice');
+    }
+    setSubmitting(false);
   };
 
   const [creatingInvoice, setCreatingInvoice] = useState(false);
@@ -104,6 +136,8 @@ function Shipments() {
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
   const updateLineQty = (idx, val) => { const lines = [...form.lines]; lines[idx] = { ...lines[idx], ship_qty: val }; setForm({ ...form, lines }); };
 
+  const isOpen = (s) => !s.invoice_id;
+
   return (
     <ModulePage {...salesMenu}>
       <div className="p-3 h-full flex flex-col">
@@ -112,7 +146,9 @@ function Shipments() {
         <div className="erp-toolbar-separator"></div>
         <input className="erp-form-input w-48" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchShipments()} />
         <select className="erp-form-select ml-2" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          <option value="all">All</option><option value="pending">Pending</option><option value="shipped">Shipped</option><option value="delivered">Delivered</option>
+          <option value="open">Open</option>
+          <option value="closed">Closed</option>
+          <option value="all">All</option>
         </select>
         <button className="erp-btn ml-2" onClick={fetchShipments}>Refresh</button>
       </div>
@@ -121,7 +157,7 @@ function Shipments() {
         <table className="erp-grid">
           <thead><tr><th>Shipment#</th><th>Date</th><th>Order#</th><th>Customer</th><th>Carrier</th><th>Tracking</th><th>Items</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
-            {shipments.length === 0 ? <tr><td colSpan="9" className="text-center p-4 text-gray-500">No shipments</td></tr> : (shipments || [])?.map(s => (
+            {shipments.length === 0 ? <tr><td colSpan="9" className="text-center p-4 text-gray-500">{statusFilter === 'open' ? 'No open shipments — all invoiced!' : statusFilter === 'closed' ? 'No closed shipments yet' : 'No shipments'}</td></tr> : (shipments || [])?.map(s => (
               <tr key={s.id} className="cursor-pointer" onClick={() => openDetail(s)}>
                 <td className="text-blue-700 font-bold">{s.shipment_number || s.shipment_no}</td>
                 <td>{formatDate(s.ship_date || s.shipment_date)}</td>
@@ -130,9 +166,15 @@ function Shipments() {
                 <td>{s.carrier || '-'}</td>
                 <td className="text-[10px]">{s.tracking_number || '-'}</td>
                 <td className="text-center">{s.line_count || '-'}</td>
-                <td><span className={`erp-status erp-status-${(s.status || '').toLowerCase()}`}>{s.status}</span></td>
+                <td>
+                  {isOpen(s) ? (
+                    <span className="erp-status" style={{ background: '#fff3cd', color: '#856404', border: '1px solid #ffc107' }}>OPEN</span>
+                  ) : (
+                    <span className="erp-status" style={{ background: '#d4edda', color: '#155724', border: '1px solid #28a745' }}>CLOSED</span>
+                  )}
+                </td>
                 <td onClick={e => e.stopPropagation()}>
-                  {s.status === 'pending' && <button className="erp-btn text-xs" onClick={() => handleCreateInvoice(s)}>Invoice</button>}
+                  {isOpen(s) && <button className="erp-btn text-xs erp-btn-primary" onClick={() => openDetail(s)}>Submit</button>}
                 </td>
               </tr>
             ))}
@@ -146,19 +188,43 @@ function Shipments() {
           <div className="erp-modal" style={{ minWidth: '750px' }} onClick={e => e.stopPropagation()}>
             <div className="erp-modal-title">
               <span>Shipment {selected.shipment_number}</span>
-              <span className={`erp-status erp-status-${(selected.status || '').toLowerCase()}`}>{selected.status?.toUpperCase()}</span>
+              {isOpen(selected) ? (
+                <span className="erp-status" style={{ background: '#fff3cd', color: '#856404', border: '1px solid #ffc107' }}>OPEN</span>
+              ) : (
+                <span className="erp-status" style={{ background: '#d4edda', color: '#155724', border: '1px solid #28a745' }}>CLOSED</span>
+              )}
             </div>
             <div className="erp-modal-body" style={{ maxHeight: '65vh' }}>
               <div className="grid grid-cols-4 gap-3 mb-4 text-xs">
                 <div><span className="text-gray-500">Customer:</span><br/><strong>{selected.customer_name}</strong></div>
                 <div><span className="text-gray-500">Order#:</span><br/><strong className="text-purple-700">{selected.order_number}</strong></div>
                 <div><span className="text-gray-500">Ship Date:</span><br/><strong>{formatDate(selected.ship_date || selected.shipment_date)}</strong></div>
-                <div><span className="text-gray-500">Carrier:</span><br/><strong>{selected.carrier || '-'}</strong></div>
-                <div><span className="text-gray-500">Tracking:</span><br/><strong>{selected.tracking_number || '-'}</strong></div>
-                <div><span className="text-gray-500">Ship Via:</span><br/><strong>{selected.ship_via || '-'}</strong></div>
                 <div><span className="text-gray-500">Freight:</span><br/><strong>${parseFloat(selected.freight_charge || 0).toFixed(2)}</strong></div>
-                {selected.rack_number && <div><span className="text-gray-500">Rack#:</span><br/><strong>{selected.rack_number}</strong></div>}
               </div>
+
+              {/* Editable tracking/carrier for Open shipments */}
+              {isOpen(selected) && (
+                <div className="grid grid-cols-2 gap-3 mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                  <div className="erp-form-group">
+                    <label className="erp-form-label text-xs font-bold">Tracking Number:</label>
+                    <input className="erp-form-input" value={editTracking} onChange={e => setEditTracking(e.target.value)} placeholder="Enter tracking number..." />
+                  </div>
+                  <div className="erp-form-group">
+                    <label className="erp-form-label text-xs font-bold">Carrier:</label>
+                    <input className="erp-form-input" value={editCarrier} onChange={e => setEditCarrier(e.target.value)} placeholder="UPS, FedEx, Flatbed..." />
+                  </div>
+                </div>
+              )}
+
+              {/* Read-only tracking for Closed shipments */}
+              {!isOpen(selected) && (
+                <div className="grid grid-cols-4 gap-3 mb-4 text-xs">
+                  <div><span className="text-gray-500">Carrier:</span><br/><strong>{selected.carrier || '-'}</strong></div>
+                  <div><span className="text-gray-500">Tracking:</span><br/><strong>{selected.tracking_number || '-'}</strong></div>
+                  <div><span className="text-gray-500">Ship Via:</span><br/><strong>{selected.ship_via || '-'}</strong></div>
+                  {selected.rack_number && <div><span className="text-gray-500">Rack#:</span><br/><strong>{selected.rack_number}</strong></div>}
+                </div>
+              )}
 
               <div className="erp-tabs">
                 {['Items', 'Delivery', 'Scan Verify', 'Serials'].map(tab => (
@@ -222,9 +288,27 @@ function Shipments() {
               </div>
             </div>
             <div className="erp-modal-footer">
-              {selected.status === 'pending' && <button className="erp-btn erp-btn-primary" onClick={handleMarkShipped}>📦 Mark as Shipped</button>}
-              {['pending', 'shipped'].includes(selected.status) && !selected.invoice_id && <button className="erp-btn" style={{ background: '#8e44ad', color: 'white', opacity: creatingInvoice ? 0.7 : 1 }} onClick={() => handleCreateInvoice()} disabled={creatingInvoice}>{creatingInvoice ? <><span className="spinner-small" style={{ width: '12px', height: '12px', marginRight: '6px', display: 'inline-block' }}></span> Creating...</> : '💰 Create Invoice'}</button>}
-              {selected.invoice_id && <span className="text-xs text-green-700 font-medium px-2 py-1 bg-green-50 rounded">Invoice already created</span>}
+              {/* Open shipment: show Submit & Create Invoice button */}
+              {isOpen(selected) && (
+                <button 
+                  className="erp-btn erp-btn-primary" 
+                  style={{ background: '#8e44ad', color: 'white', opacity: submitting ? 0.7 : 1, minWidth: '180px' }}
+                  onClick={handleSubmitAndInvoice} 
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <><span className="spinner-small" style={{ width: '14px', height: '14px', marginRight: '8px', display: 'inline-block' }}></span> Creating Invoice...</>
+                  ) : (
+                    '💰 Submit & Create Invoice'
+                  )}
+                </button>
+              )}
+              {/* Closed shipment: show badge */}
+              {!isOpen(selected) && (
+                <span className="text-xs font-medium px-3 py-2 rounded" style={{ background: '#d4edda', color: '#155724', border: '1px solid #28a745' }}>
+                  ✓ Invoice Created — Closed
+                </span>
+              )}
               <DocumentActions documentType="packing_slip" documentId={selected.id} recipientEmail={selected.customer_email} recipientName={selected.customer_name} compact />
               <button className="erp-btn" onClick={() => setShowDetail(false)}>Close</button>
             </div>
@@ -245,7 +329,7 @@ function Shipments() {
                   </select></div>
                 <div className="erp-form-group"><label className="erp-form-label">Ship Date:</label><input className="erp-form-input" type="date" value={form.ship_date} onChange={e => setForm({ ...form, ship_date: e.target.value })} /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Carrier:</label><input className="erp-form-input" value={form.carrier} onChange={e => setForm({ ...form, carrier: e.target.value })} placeholder="UPS, FedEx, Flatbed" /></div>
-                <div className="erp-form-group"><label className="erp-form-label">Tracking#:</label><input className="erp-form-input" value={form.tracking_number} onChange={e => setForm({ ...form, tracking_number: e.target.value })} /></div>
+                <div className="erp-form-group"><label className="erp-form-label">Tracking#:</label><input className="erp-form-input" value={form.tracking_number} onChange={e => setForm({ ...form, tracking_number: e.target.value })} placeholder="Enter tracking number" /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Ship Via:</label><input className="erp-form-input" value={form.ship_via} onChange={e => setForm({ ...form, ship_via: e.target.value })} placeholder="Ground, Air, LTL" /></div>
                 <div className="erp-form-group"><label className="erp-form-label">Freight $:</label><input className="erp-form-input" type="number" step="0.01" value={form.freight_charge} onChange={e => setForm({ ...form, freight_charge: e.target.value })} /></div>
               </div>
